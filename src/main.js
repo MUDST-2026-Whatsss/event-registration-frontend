@@ -1,4 +1,7 @@
 import './assets/main.css'
+import '@fontsource/ibm-plex-sans-thai/400.css'
+import '@fontsource/ibm-plex-sans-thai/500.css'
+import '@fontsource/ibm-plex-sans-thai/600.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
