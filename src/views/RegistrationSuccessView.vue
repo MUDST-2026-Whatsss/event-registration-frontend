@@ -16,9 +16,10 @@ const registration = computed(() => registrations.value.find((item) => item.even
 const registrationId = computed(() => `EVT-2026-${String(route.params.id).padStart(4, '0')}`)
 const transactionId = computed(() => registration.value?.transactionId ?? route.query.transaction ?? 'TXN-PENDING')
 const amount = computed(() => registration.value?.amount ?? event.value?.price ?? 0)
+const isFree = computed(() => amount.value === 0)
 
 onMounted(() => {
-  if (!event.value || registration.value?.paymentStatus !== 'paid') {
+  if (!event.value || !['paid', 'not-required'].includes(registration.value?.paymentStatus)) {
     router.replace(event.value ? `/events/${event.value.id}` : '/events')
   }
 })
@@ -30,7 +31,7 @@ onMounted(() => {
     <main class="success-shell">
       <section v-if="event" class="success-card">
         <div class="success-icon"><Check :size="38" stroke-width="2.5" /></div>
-        <p class="success-eyebrow">Payment confirmed</p>
+        <p class="success-eyebrow">{{ isFree ? 'Registration confirmed' : 'Payment confirmed' }}</p>
         <h1>Registration successful!</h1>
         <p class="success-lead">Your place has been reserved. A confirmation summary is shown below.</p>
 
@@ -41,13 +42,13 @@ onMounted(() => {
 
         <dl class="success-details">
           <div><dt>Registration ID</dt><dd>{{ registrationId }}</dd></div>
-          <div><dt>Payment status</dt><dd class="paid"><Check :size="14" />Paid</dd></div>
-          <div><dt>Payment method</dt><dd>PromptPay</dd></div>
-          <div><dt>Amount</dt><dd>฿{{ amount.toLocaleString('th-TH', { minimumFractionDigits: 2 }) }}</dd></div>
-          <div><dt>Transaction reference</dt><dd>{{ transactionId }}</dd></div>
+          <div><dt>Payment status</dt><dd class="paid"><Check :size="14" />{{ isFree ? 'No payment required' : 'Paid' }}</dd></div>
+          <div><dt>Payment method</dt><dd>{{ isFree ? 'Free registration' : 'PromptPay' }}</dd></div>
+          <div><dt>Amount</dt><dd>{{ isFree ? 'Free' : `฿${amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}` }}</dd></div>
+          <div v-if="!isFree"><dt>Transaction reference</dt><dd>{{ transactionId }}</dd></div>
         </dl>
 
-        <div class="success-notice"><ReceiptText :size="19" /><span><strong>Payment receipt</strong><small>Keep your transaction reference for registration check-in.</small></span></div>
+        <div class="success-notice"><ReceiptText :size="19" /><span><strong>{{ isFree ? 'Registration complete' : 'Payment receipt' }}</strong><small>{{ isFree ? 'No payment was required for this event.' : 'Keep your transaction reference for registration check-in.' }}</small></span></div>
 
         <div class="success-actions">
           <RouterLink class="primary" to="/my-registrations">View my registrations</RouterLink>

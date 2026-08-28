@@ -77,6 +77,21 @@ async function confirmRegistration() {
     return
   }
 
+  if (!event.value.price) {
+    register(event.value.id, {
+      attendee: {
+        fullName: form.fullName,
+        phone: form.phone,
+        email: form.email,
+      },
+      amount: 0,
+      paymentMethod: 'Free',
+      paymentStatus: 'not-required',
+    })
+    router.replace({ name: 'registration-success', params: { id: event.value.id } })
+    return
+  }
+
   clearPaymentTimers()
   const runId = ++paymentRunId
   paymentOpen.value = true

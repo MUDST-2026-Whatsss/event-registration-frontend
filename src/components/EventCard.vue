@@ -9,6 +9,10 @@ const detailTarget = computed(() => ({
   path: `/events/${props.event.id}`,
   query: { from: route.fullPath },
 }))
+
+const formattedPrice = computed(() => (
+  props.event.price ? `฿${props.event.price.toLocaleString('th-TH')}` : 'Free'
+))
 </script>
 
 <template>
@@ -19,6 +23,7 @@ const detailTarget = computed(() => ({
     </div>
     <div class="event-card__body">
       <h3>{{ event.title }}</h3>
+      <div class="event-card__price" :class="{ free: !event.price }">{{ formattedPrice }}</div>
       <dl>
         <div><dt><CalendarDays :size="15" /><span class="sr-only">Date</span></dt><dd>{{ event.date }}</dd></div>
         <div><dt><MapPin :size="15" /><span class="sr-only">Location</span></dt><dd>{{ event.location }}</dd></div>
@@ -38,7 +43,9 @@ const detailTarget = computed(() => ({
 .event-card__badge--almost-full { color: #744700; background: #fff0c7; }
 .event-card__badge--upcoming { color: #2440a8; background: #dfe6ff; }
 .event-card__body { padding: 12px 13px 15px; }
-.event-card h3 { min-height: 48px; margin: 0 0 8px; color: #20263a; font-size: 1rem; font-weight: 600; line-height: 1.5; }
+.event-card h3 { min-height: 48px; margin: 0 0 6px; color: #20263a; font-size: 1rem; font-weight: 600; line-height: 1.5; }
+.event-card__price { display: inline-flex; margin-bottom: 9px; padding: 3px 8px; color: #174bd1; background: #e8edff; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+.event-card__price.free { color: #176a3f; background: #dff7e9; }
 .event-card dl, .event-card dd { margin: 0; }
 .event-card dl { display: grid; gap: 5px; }
 .event-card dl > div { display: grid; min-width: 0; grid-template-columns: 17px minmax(0, 1fr); gap: 5px; color: var(--neutral-600); font-size: .75rem; }
