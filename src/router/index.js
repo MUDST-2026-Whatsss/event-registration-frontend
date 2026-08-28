@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,6 +17,62 @@ const router = createRouter({
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
       component: () => import('../views/AboutView.vue'),
+    },
+    {
+      path: '/super-admin',
+      component: SuperAdminLayout,
+      children: [
+        { path: '', redirect: '/super-admin/event-approvals' },
+        {
+          path: 'dashboard',
+          name: 'sa-dashboard',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'Dashboard' },
+        },
+        {
+          path: 'all-events',
+          name: 'sa-all-events',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'All Events' },
+        },
+        {
+          path: 'registrations',
+          name: 'sa-registrations',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'Registrations' },
+        },
+        {
+          path: 'change-requests',
+          name: 'sa-change-requests',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'Change Requests' },
+        },
+        {
+          path: 'event-approvals',
+          name: 'sa-event-approvals',
+          component: () => import('../views/super_admin/EventApprovals.vue'),
+        },
+        {
+          path: 'user-management',
+          name: 'sa-user-management',
+          component: () => import('../views/super_admin/UserManagement.vue'),
+        },
+        {
+          path: 'role-management',
+          name: 'sa-role-management',
+          component: () => import('../views/super_admin/RoleManagement.vue'),
+        },
+        {
+          path: 'role-management/new',
+          name: 'sa-role-management-new',
+          component: () => import('../views/super_admin/RoleManagementCreate.vue'),
+        },
+        {
+          path: 'audit-logs',
+          name: 'sa-audit-logs',
+          component: () => import('../views/super_admin/AuditLogs.vue'),
+        },
+      ],
     },
   ],
 })
