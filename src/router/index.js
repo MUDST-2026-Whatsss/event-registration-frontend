@@ -87,15 +87,16 @@ const router = createRouter({
     },
     {
       path: '/admin',
-      name: 'admin-dashboard',
-      component: () => import('../views/admin/admindashboard.vue'),
-      meta: { title: 'Admin Dashboard | Eventsss' },
-    },
-    {
-      path: '/admin/dashboard',
-      name: 'admin-dashboard-page',
-      component: () => import('../views/admin/admindashboard.vue'),
-      meta: { title: 'Admin Dashboard | Eventsss' },
+      component: SuperAdminLayout,
+      children: [
+        { path: '', redirect: '/admin/dashboard' },
+        {
+          path: 'dashboard',
+          name: 'admin-dashboard-page',
+          component: () => import('../views/admin/admindashboard.vue'),
+          meta: { title: 'Admin Dashboard | Eventsss' },
+        },
+      ],
     },
     {
       path: '/forgot-password',
