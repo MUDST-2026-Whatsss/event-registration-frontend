@@ -22,23 +22,23 @@ const router = createRouter({
       path: '/super-admin',
       component: SuperAdminLayout,
       children: [
-        { path: '', redirect: '/super-admin/event-approvals' },
+        { path: '', redirect: '/super-admin/dashboard' },
         {
           path: 'dashboard',
           name: 'sa-dashboard',
-          component: () => import('../views/super_admin/ComingSoon.vue'),
+          component: () => import('../views/super_admin/Dashboard.vue'),
           props: { title: 'Dashboard' },
         },
         {
           path: 'all-events',
           name: 'sa-all-events',
-          component: () => import('../views/super_admin/ComingSoon.vue'),
+          component: () => import('../views/super_admin/AllEvents.vue'),
           props: { title: 'All Events' },
         },
         {
           path: 'change-requests',
           name: 'sa-change-requests',
-          component: () => import('../views/super_admin/ComingSoon.vue'),
+          component: () => import('../views/super_admin/ChangeRequests.vue'),
           props: { title: 'Change Requests' },
         },
         {
