@@ -10,6 +10,7 @@ import ProfileView from '../views/ProfileView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
 import { canRegisterForEvent, eventGroups } from '../data/events.js'
+import { SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
 import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
 
 const allEvents = eventGroups.flatMap((group) => group.events)
@@ -103,6 +104,10 @@ const router = createRouter({
     {
       path: '/super-admin',
       component: SuperAdminLayout,
+      meta: {
+        requiresAuth: true,
+        requiredRole: SUPER_ADMIN_ROLE,
+      },
       children: [
         { path: '', redirect: '/super-admin/event-approvals' },
         {
@@ -168,7 +173,16 @@ router.beforeEach((to) => {
   const storedAuth = window.localStorage.getItem('eventsss_mock_authenticated') === 'true'
     || window.sessionStorage.getItem('eventsss_mock_authenticated') === 'true'
 
-  return storedAuth ? true : { path: '/login', query: { redirect: to.fullPath } }
+  if (!storedAuth) return { path: '/login', query: { redirect: to.fullPath } }
+
+  const requiredRole = to.meta.requiredRole
+  const storedRole = window.localStorage.getItem('eventsss_mock_role') ?? 'user'
+
+  if (requiredRole && storedRole !== requiredRole) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  return true
 })
 
 router.afterEach((to) => {

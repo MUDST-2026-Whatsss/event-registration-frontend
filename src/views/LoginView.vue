@@ -4,7 +4,7 @@ import { LogIn } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthInput from '@/components/AuthInput.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
-import { useAuth } from '@/composables/useAuth.js'
+import { SUPER_ADMIN_ROLE, useAuth } from '@/composables/useAuth.js'
 import { useToast } from '@/composables/useToast.js'
 
 const router = useRouter()
@@ -58,8 +58,11 @@ const handleSubmit = () => {
   const isPasswordValid = validatePassword()
 
   if (isEmailValid && isPasswordValid) {
-    if (login(email.value, password.value)) {
-      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    const authenticatedRole = login(email.value, password.value)
+
+    if (authenticatedRole) {
+      const defaultRoute = authenticatedRole === SUPER_ADMIN_ROLE ? '/super-admin' : '/'
+      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : defaultRoute
       showToast({
         variant: 'success',
         title: 'Signed in successfully',
