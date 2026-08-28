@@ -18,8 +18,6 @@ const allEvents = eventGroups.flatMap((group) => group.events)
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/', name: 'home', component: HomeView },
-    { path: '/about', name: 'about', component: AboutView },
     {
       path: '/',
       name: 'home',
@@ -88,6 +86,18 @@ const router = createRouter({
       },
     },
     {
+      path: '/admin',
+      name: 'admin-dashboard',
+      component: () => import('../views/admin/admindashboard.vue'),
+      meta: { title: 'Admin Dashboard | Eventsss' },
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'admin-dashboard-page',
+      component: () => import('../views/admin/admindashboard.vue'),
+      meta: { title: 'Admin Dashboard | Eventsss' },
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: ForgotPasswordView,
@@ -115,8 +125,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           name: 'sa-dashboard',
-          component: () => import('../views/super_admin/ComingSoon.vue'),
-          props: { title: 'Dashboard' },
+          component: () => import('../views/admin/admindashboard.vue'),
         },
         {
           path: 'all-events',
