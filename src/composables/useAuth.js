@@ -6,10 +6,16 @@ const ROLE_KEY = 'eventsss_mock_role'
 
 export const USER_ROLE = 'user'
 export const SUPER_ADMIN_ROLE = 'super-admin'
+export const ADMIN_ROLE = 'admin'
 
 export const MOCK_CREDENTIALS = Object.freeze({
   email: 'demo@eventsss.com',
   password: 'password123',
+})
+
+export const ADMIN_CREDENTIALS = Object.freeze({
+  email: 'admin@eventsss.com',
+  password: 'admin123',
 })
 
 export const SUPER_ADMIN_CREDENTIALS = Object.freeze({
@@ -54,6 +60,12 @@ export function useAuth() {
       && password === SUPER_ADMIN_CREDENTIALS.password
     ) {
       role = SUPER_ADMIN_ROLE
+    }
+    else if (
+      normalizedEmail === ADMIN_CREDENTIALS.email
+      && password === ADMIN_CREDENTIALS.password
+    ) {
+      role = ADMIN_ROLE
     }
 
     if (role) {
