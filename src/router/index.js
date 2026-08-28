@@ -36,12 +36,6 @@ const router = createRouter({
           props: { title: 'All Events' },
         },
         {
-          path: 'registrations',
-          name: 'sa-registrations',
-          component: () => import('../views/super_admin/ComingSoon.vue'),
-          props: { title: 'Registrations' },
-        },
-        {
           path: 'change-requests',
           name: 'sa-change-requests',
           component: () => import('../views/super_admin/ComingSoon.vue'),

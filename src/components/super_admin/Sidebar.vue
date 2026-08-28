@@ -7,7 +7,6 @@ const route = useRoute()
 const items = [
   { label: 'Dashboard', icon: 'globe', to: '/super-admin/dashboard' },
   { label: 'All Events', icon: 'calendar', to: '/super-admin/all-events' },
-  { label: 'Registrations', icon: 'users', to: '/super-admin/registrations' },
   { label: 'Change Requests', icon: 'repeat', to: '/super-admin/change-requests' },
   { label: 'Event Approvals', icon: 'shield', to: '/super-admin/event-approvals' },
   { label: 'User Management', icon: 'user-check', to: '/super-admin/user-management' },
