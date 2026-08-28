@@ -10,6 +10,7 @@ import ProfileView from '../views/ProfileView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
 import { canRegisterForEvent, eventGroups } from '../data/events.js'
+import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
 
 const allEvents = eventGroups.flatMap((group) => group.events)
 
@@ -98,6 +99,56 @@ const router = createRouter({
       meta: {
         title: 'Reset password | Eventsss',
       },
+    },
+    {
+      path: '/super-admin',
+      component: SuperAdminLayout,
+      children: [
+        { path: '', redirect: '/super-admin/event-approvals' },
+        {
+          path: 'dashboard',
+          name: 'sa-dashboard',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'Dashboard' },
+        },
+        {
+          path: 'all-events',
+          name: 'sa-all-events',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'All Events' },
+        },
+        {
+          path: 'change-requests',
+          name: 'sa-change-requests',
+          component: () => import('../views/super_admin/ComingSoon.vue'),
+          props: { title: 'Change Requests' },
+        },
+        {
+          path: 'event-approvals',
+          name: 'sa-event-approvals',
+          component: () => import('../views/super_admin/EventApprovals.vue'),
+        },
+        {
+          path: 'user-management',
+          name: 'sa-user-management',
+          component: () => import('../views/super_admin/UserManagement.vue'),
+        },
+        {
+          path: 'role-management',
+          name: 'sa-role-management',
+          component: () => import('../views/super_admin/RoleManagement.vue'),
+        },
+        {
+          path: 'role-management/new',
+          name: 'sa-role-management-new',
+          component: () => import('../views/super_admin/RoleManagementCreate.vue'),
+        },
+        {
+          path: 'audit-logs',
+          name: 'sa-audit-logs',
+          component: () => import('../views/super_admin/AuditLogs.vue'),
+        },
+      ],
     },
     {
       path: '/:pathMatch(.*)*',
