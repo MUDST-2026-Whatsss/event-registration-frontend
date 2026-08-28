@@ -1,22 +1,34 @@
 <script setup>
+import { useRouter } from 'vue-router'
+import { useAuth } from '../../composables/useAuth.js'
 import Icon from './Icon.vue'
 
+const router = useRouter()
+const { logout } = useAuth()
+
 defineProps({
-  name: { type: String, default: 'Sarah Jenkins' },
-  role: { type: String, default: 'Event Director' },
+  name: { type: String, default: 'Super Admin' },
+  role: { type: String, default: 'Super Admin' },
   avatar: { type: String, default: 'https://i.pravatar.cc/72?img=47' },
 })
+
+function signOut() {
+  logout()
+  router.push('/login')
+}
 </script>
 
 <template>
-  <button type="button" class="sa-user-menu">
+  <div class="sa-user-menu">
     <img :src="avatar" :alt="name" class="sa-avatar" />
     <span class="sa-user-info">
       <span class="sa-user-name">{{ name }}</span>
       <span class="sa-user-role">{{ role }}</span>
     </span>
-    <Icon name="chevron-down" :size="15" />
-  </button>
+    <button type="button" class="sa-sign-out" title="Sign out" aria-label="Sign out" @click="signOut">
+      <Icon name="log-out" :size="16" />
+    </button>
+  </div>
 </template>
 
 <style scoped>
@@ -26,10 +38,29 @@ defineProps({
   gap: 10px;
   background: transparent;
   border: none;
-  cursor: pointer;
   padding: 4px;
   color: var(--sa-text-muted);
   font-family: inherit;
+}
+
+.sa-sign-out {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  color: var(--sa-text-secondary);
+  background: transparent;
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-radius-sm);
+  cursor: pointer;
+}
+
+.sa-sign-out:hover {
+  color: var(--sa-danger);
+  background: var(--sa-danger-bg);
+  border-color: #fbcaca;
 }
 
 .sa-user-info {
