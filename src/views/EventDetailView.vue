@@ -48,6 +48,10 @@ const registrationButtonLabel = computed(() => {
   return registered.value ? 'Registered' : 'Register Now'
 })
 
+function formatPrice(price) {
+  return price ? `฿${price.toLocaleString('th-TH')}` : 'Free'
+}
+
 function handleRegistration() {
   if (!registrationOpen.value || registered.value) return
   const registrationTarget = { path: `/events/${event.value.id}/register`, query: { from: backTarget.value } }
@@ -101,7 +105,7 @@ function handleRegistration() {
           <div v-if="event.status === 'upcoming'" class="registration-state upcoming"><CalendarClock :size="20" /><span><strong>Registration opens soon</strong><small>The opening date will be announced.</small></span></div>
           <div v-else-if="event.status === 'closed'" class="registration-state closed"><LockKeyhole :size="20" /><span><strong>Registration closed</strong><small>This event is no longer accepting registrations.</small></span></div>
           <div v-else class="availability"><span>Availability <strong>{{ event.filledSpots }} / {{ event.totalSpots }} Spots Filled</strong></span><div><i :style="{ width: `${availabilityPercent}%` }"></i></div><small>{{ spotsRemaining <= 15 ? `Only ${spotsRemaining} spots remaining!` : `${spotsRemaining} spots remaining` }}</small></div>
-          <div class="detail-price"><span>Standard Pass</span><strong>Free</strong></div>
+          <div class="detail-price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           <p>{{ registrationMessage }}</p>
           <button class="detail-register" type="button" :disabled="registered || !registrationOpen" @click="handleRegistration">{{ registrationButtonLabel }}</button>
           <small class="detail-closes">{{ event.status === 'upcoming' ? 'Registration schedule to be announced' : event.status === 'closed' ? 'Registration is no longer available' : 'Registration closes Oct 10, 2026' }}</small>

@@ -44,6 +44,15 @@ const router = createRouter({
       },
     },
     {
+      path: '/events/:id/registration-success',
+      name: 'registration-success',
+      component: () => import('../views/RegistrationSuccessView.vue'),
+      meta: {
+        title: 'Registration Complete | Eventsss',
+        requiresAuth: true,
+      },
+    },
+    {
       path: '/events/:id',
       name: 'event-detail',
       component: EventDetailView,
