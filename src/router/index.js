@@ -1,21 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import HomeView from '../views/HomeView.vue'
-import AboutView from '../views/AboutView.vue'
-import { SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
+
+
 import { canRegisterForEvent, eventGroups } from '../data/events.js'
-import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
+
 import AllEvents from '../views/admin/event/AllEvents.vue'
-import EventDetailView from '../views/EventDetailView.vue'
-import EventRegistrationView from '../views/EventRegistrationView.vue'
-import EventsView from '../views/EventsView.vue'
-import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import MyRegistrationsView from '../views/MyRegistrationsView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
+
+
 import { canRegisterForEvent, eventGroups } from '../data/events.js'
 import { SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
 import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'

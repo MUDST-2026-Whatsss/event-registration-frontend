@@ -6,7 +6,7 @@ import StatCard from '@/components/admin/StatCard.vue'
 import EventFilter from '@/components/admin/EventFilter.vue'
 import EventTable from '@/components/admin/EventTable.vue'
 
-import { eventGroups } from '@/data/events'
+import { events } from '@/data/events'
 </script>
 
 <template>
@@ -87,3 +87,5 @@ import { eventGroups } from '@/data/events'
   margin: 28px 0;
 }
 </style>
+
+
