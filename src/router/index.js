@@ -1,13 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import HomeView from '../views/HomeView.vue'
-
-
-import { canRegisterForEvent, eventGroups } from '../data/events.js'
-
-import AllEvents from '../views/admin/event/AllEvents.vue'
-
-
 import EventsView from '../views/EventsView.vue'
 import EventDetailView from '../views/EventDetailView.vue'
 import EventRegistrationView from '../views/EventRegistrationView.vue'
@@ -17,7 +11,9 @@ import ProfileView from '../views/ProfileView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
 
+import AllEvents from '../views/admin/event/AllEvents.vue'
 
+import { canRegisterForEvent, eventGroups } from '../data/events.js'
 import { SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
 import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
 
@@ -26,6 +22,7 @@ const allEvents = eventGroups.flatMap((group) => group.events)
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+
   routes: [
     {
       path: '/',
@@ -43,6 +40,16 @@ const router = createRouter({
         title: 'Events | Eventsss',
       },
     },
+
+    {
+      path: '/events/:id',
+      name: 'event-detail',
+      component: EventDetailView,
+      meta: {
+        title: 'Event details | Eventsss',
+      },
+    },
+
     {
       path: '/events/:id/register',
       name: 'event-registration',
@@ -52,14 +59,46 @@ const router = createRouter({
         requiresAuth: true,
       },
     },
+
     {
-      path: '/events/:id',
-      name: 'event-detail',
-      component: EventDetailView,
+      path: '/login',
+      name: 'login',
+      component: LoginView,
       meta: {
-        title: 'Event details | Eventsss',
+        title: 'Sign in | Eventsss',
       },
     },
+
+    {
+      path: '/register',
+      name: 'register',
+      component: RegisterView,
+      meta: {
+        title: 'Create account | Eventsss',
+      },
+    },
+
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: ForgotPasswordView,
+      meta: {
+        title: 'Forgot password | Eventsss',
+      },
+    },
+
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: ResetPasswordView,
+      meta: {
+        title: 'Reset password | Eventsss',
+      },
+    },
+
+    // =========================
+    // USER
+    // =========================
     {
       path: '/my-registrations',
       name: 'my-registrations',
@@ -69,6 +108,7 @@ const router = createRouter({
         requiresAuth: true,
       },
     },
+
     {
       path: '/profile',
       name: 'profile',
@@ -78,18 +118,24 @@ const router = createRouter({
         requiresAuth: true,
       },
     },
+
+    // =========================
+    // ADMIN
+    // =========================
     {
-      path: '/login',
-      name: 'login',
-      component: LoginView,
+      path: '/admin',
+      name: 'admin-dashboard',
+      component: () => import('../views/admin/admindashboard.vue'),
       meta: {
-        title: 'Sign in | Eventsss',
+        title: 'Admin Dashboard | Eventsss',
+        requiresAuth: true,
       },
     },
+
     {
-      path: '/register',
-      name: 'register',
-      component: RegisterView,
+      path: '/admin/all-events',
+      name: 'all-events',
+      component: AllEvents,
       meta: {
         title: 'Create account | Eventsss',
       },
@@ -123,6 +169,10 @@ const router = createRouter({
         title: 'Reset password | Eventsss',
       },
     },
+
+    // =========================
+    // SUPER ADMIN
+    // =========================
     {
       path: '/super-admin',
       component: SuperAdminLayout,
@@ -130,47 +180,65 @@ const router = createRouter({
         requiresAuth: true,
         requiredRole: SUPER_ADMIN_ROLE,
       },
+
       children: [
-        { path: '', redirect: '/super-admin/dashboard' },
+        {
+          path: '',
+          redirect: '/super-admin/dashboard',
+        },
+
         {
           path: 'dashboard',
           name: 'sa-dashboard',
           component: () => import('../views/admin/admindashboard.vue'),
           component: () => import('../views/super_admin/Dashboard.vue'),
-          props: { title: 'Dashboard' },
+          props: {
+            title: 'Dashboard',
+          },
         },
+
         {
           path: 'all-events',
           name: 'sa-all-events',
           component: () => import('../views/super_admin/AllEvents.vue'),
-          props: { title: 'All Events' },
+          props: {
+            title: 'All Events',
+          },
         },
+
         {
           path: 'change-requests',
           name: 'sa-change-requests',
           component: () => import('../views/super_admin/ChangeRequests.vue'),
-          props: { title: 'Change Requests' },
+          props: {
+            title: 'Change Requests',
+          },
         },
+
         {
           path: 'event-approvals',
           name: 'sa-event-approvals',
           component: () => import('../views/super_admin/EventApprovals.vue'),
         },
+
         {
           path: 'user-management',
           name: 'sa-user-management',
           component: () => import('../views/super_admin/UserManagement.vue'),
         },
+
         {
           path: 'role-management',
           name: 'sa-role-management',
           component: () => import('../views/super_admin/RoleManagement.vue'),
         },
+
         {
           path: 'role-management/new',
           name: 'sa-role-management-new',
           component: () => import('../views/super_admin/RoleManagementCreate.vue'),
         },
+
         {
           path: 'audit-logs',
           name: 'sa-audit-logs',
@@ -178,6 +246,10 @@ const router = createRouter({
         },
       ],
     },
+
+    // =========================
+    // 404
+    // =========================
     {
       path: '/:pathMatch(.*)*',
       redirect: '/',
@@ -194,31 +266,59 @@ const router = createRouter({
   ],
 })
 
+// =========================
+// ROUTE GUARD
+// =========================
 router.beforeEach((to) => {
   if (to.name === 'event-registration') {
-    const event = allEvents.find((item) => item.id === Number(to.params.id))
-    if (!canRegisterForEvent(event)) return event ? `/events/${event.id}` : '/events'
+    const event = allEvents.find(
+      (item) => item.id === Number(to.params.id)
+    )
+
+    if (!canRegisterForEvent(event)) {
+      return event
+        ? `/events/${event.id}`
+        : '/events'
+    }
   }
 
-  if (!to.meta.requiresAuth) return true
+  if (!to.meta.requiresAuth) {
+    return true
+  }
 
-  const storedAuth = window.localStorage.getItem('eventsss_mock_authenticated') === 'true'
-    || window.sessionStorage.getItem('eventsss_mock_authenticated') === 'true'
+  const storedAuth =
+    window.localStorage.getItem('eventsss_mock_authenticated') === 'true' ||
+    window.sessionStorage.getItem('eventsss_mock_authenticated') === 'true'
 
-  if (!storedAuth) return { path: '/login', query: { redirect: to.fullPath } }
+  if (!storedAuth) {
+    return {
+      path: '/login',
+      query: {
+        redirect: to.fullPath,
+      },
+    }
+  }
 
   const requiredRole = to.meta.requiredRole
-  const storedRole = window.localStorage.getItem('eventsss_mock_role') ?? 'user'
+
+  const storedRole =
+    window.localStorage.getItem('eventsss_mock_role') ?? 'user'
 
   if (requiredRole && storedRole !== requiredRole) {
-    return { path: '/login', query: { redirect: to.fullPath } }
+    return {
+      path: '/login',
+      query: {
+        redirect: to.fullPath,
+      },
+    }
   }
 
   return true
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ?? 'Eventsss | Event Registration Platform'
+  document.title =
+    to.meta.title ?? 'Eventsss | Event Registration Platform'
 })
 
 export default router

@@ -1,12 +1,18 @@
 <script setup>
+
 import Sidebar from '@/components/admin/Sidebar.vue'
 import PageTopbar from '@/components/super_admin/PageTopbar.vue'
+import UserMenu from '@/components/super_admin/UserMenu.vue'
 
 import StatCard from '@/components/admin/StatCard.vue'
 import EventFilter from '@/components/admin/EventFilter.vue'
 import EventTable from '@/components/admin/EventTable.vue'
 
-import { events } from '@/data/events'
+
+import { eventGroups } from '@/data/events'
+const events = Object.values(eventGroups).flat()
+
+
 </script>
 
 <template>
