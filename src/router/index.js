@@ -123,6 +123,11 @@ const router = createRouter({
           props: { title: 'All Events' },
         },
         {
+          path: 'all-events/:id/participants',
+          name: 'sa-event-participants',
+          component: () => import('../views/super_admin/Participants.vue'),
+        },
+        {
           path: 'change-requests',
           name: 'sa-change-requests',
           component: () => import('../views/super_admin/ChangeRequests.vue'),
