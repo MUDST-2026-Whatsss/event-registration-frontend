@@ -7,7 +7,10 @@ import { canRegisterForEvent, eventGroups } from '../data/events.js'
 
 import AllEvents from '../views/admin/event/AllEvents.vue'
 
-import HomeView from '../views/HomeView.vue'
+
+import EventsView from '../views/EventsView.vue'
+import EventDetailView from '../views/EventDetailView.vue'
+import EventRegistrationView from '../views/EventRegistrationView.vue'
 import LoginView from '../views/LoginView.vue'
 import MyRegistrationsView from '../views/MyRegistrationsView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -15,7 +18,6 @@ import RegisterView from '../views/RegisterView.vue'
 import ResetPasswordView from '../views/ResetPasswordView.vue'
 
 
-import { canRegisterForEvent, eventGroups } from '../data/events.js'
 import { SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
 import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
 
