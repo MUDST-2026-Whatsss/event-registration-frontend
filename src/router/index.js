@@ -219,6 +219,11 @@ const router = createRouter({
         },
 
         {
+          path: 'all-events/:id/participants',
+          name: 'sa-event-participants',
+          component: () => import('../views/super_admin/Participants.vue'),
+        },
+        {
           path: 'change-requests',
           name: 'sa-change-requests',
           component: () => import('../views/super_admin/ChangeRequests.vue'),
