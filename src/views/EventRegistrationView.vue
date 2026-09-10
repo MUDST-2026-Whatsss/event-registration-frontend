@@ -1,6 +1,7 @@
 <script setup>
-import { ArrowRight, CalendarDays, Check, Mail, MapPin, Phone, UserRound, X } from '@lucide/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { ArrowRight, CalendarDays, Check, Clock3, Mail, MapPin, Phone, QrCode, UserRound, X } from '@lucide/vue'
+import QRCode from 'qrcode'
+import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '../components/AppFooter.vue'
 import PublicHeader from '../components/PublicHeader.vue'
@@ -11,10 +12,15 @@ const PROFILE_KEY = 'eventsss_mock_profile'
 const route = useRoute()
 const router = useRouter()
 const { register } = useRegistrations()
-const dialog = ref(null)
-const successOpen = ref(false)
 const allEvents = eventGroups.flatMap((group) => group.events)
 const event = computed(() => allEvents.find((item) => item.id === Number(route.params.id)) ?? allEvents[0])
+const paymentModal = ref(null)
+const paymentOpen = ref(false)
+const paymentState = ref('idle')
+const qrDataUrl = ref('')
+const qrError = ref(false)
+const timers = []
+let paymentRunId = 0
 const detailTarget = computed(() => ({
   path: `/events/${event.value.id}`,
   query: typeof route.query.from === 'string' ? { from: route.query.from } : {},
@@ -30,30 +36,107 @@ const form = reactive({
   consent: false,
 })
 
-const registrationId = computed(() => `EVT-2026-${String(event.value.id).padStart(4, '0')}`)
+function formatPrice(price) {
+  return price ? `฿${price.toLocaleString('th-TH')}` : 'Free'
+}
+
+function clearPaymentTimers() {
+  while (timers.length) window.clearTimeout(timers.pop())
+}
+
+function finishPayment(runId) {
+  if (runId !== paymentRunId) return
+  const transactionId = `TXN-${Date.now().toString().slice(-10)}`
+
+  register(event.value.id, {
+    attendee: {
+      fullName: form.fullName,
+      phone: form.phone,
+      email: form.email,
+    },
+    amount: event.value.price ?? 0,
+    paymentMethod: 'PromptPay',
+    paymentStatus: 'paid',
+    transactionId,
+    paidAt: new Date().toISOString(),
+  })
+  paymentState.value = 'success'
+
+  timers.push(window.setTimeout(() => {
+    router.replace({
+      name: 'registration-success',
+      params: { id: event.value.id },
+      query: { transaction: transactionId },
+    })
+  }, 1200))
+}
 
 async function confirmRegistration() {
   if (!canRegisterForEvent(event.value)) {
     router.replace(`/events/${event.value.id}`)
     return
   }
-  register(event.value.id)
-  successOpen.value = true
+
+  if (!event.value.price) {
+    register(event.value.id, {
+      attendee: {
+        fullName: form.fullName,
+        phone: form.phone,
+        email: form.email,
+      },
+      amount: 0,
+      paymentMethod: 'Free',
+      paymentStatus: 'not-required',
+    })
+    router.replace({ name: 'registration-success', params: { id: event.value.id } })
+    return
+  }
+
+  clearPaymentTimers()
+  const runId = ++paymentRunId
+  paymentOpen.value = true
+  paymentState.value = 'generating'
+  qrDataUrl.value = ''
+  qrError.value = false
   await nextTick()
-  dialog.value?.focus()
+  paymentModal.value?.focus()
+
+  try {
+    qrDataUrl.value = await QRCode.toDataURL(JSON.stringify({
+      type: 'eventsss-promptpay',
+      eventId: event.value.id,
+      amount: event.value.price ?? 0,
+      reference: `PAY-${event.value.id}-${Date.now()}`,
+    }), {
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#183B67', light: '#FFFFFF' },
+    })
+  } catch {
+    qrError.value = true
+  }
+
+  if (runId !== paymentRunId) return
+  paymentState.value = 'ready'
+  timers.push(window.setTimeout(() => {
+    if (runId !== paymentRunId) return
+    paymentState.value = 'checking'
+    timers.push(window.setTimeout(() => finishPayment(runId), 2500))
+  }, 3500))
 }
 
-function closeSuccess() {
-  successOpen.value = false
-  router.push(detailTarget.value)
+function closePaymentModal() {
+  if (!['generating', 'ready'].includes(paymentState.value)) return
+  paymentRunId += 1
+  clearPaymentTimers()
+  paymentOpen.value = false
+  paymentState.value = 'idle'
+  qrDataUrl.value = ''
+  qrError.value = false
 }
 
-function handleKeydown(event) {
-  if (event.key === 'Escape' && successOpen.value) closeSuccess()
-}
-
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+onBeforeUnmount(clearPaymentTimers)
 </script>
 
 <template>
@@ -78,7 +161,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
               <div><dt><CalendarDays :size="18" /></dt><dd><strong>{{ event.date }}</strong><span>9:00 AM - 5:00 PM</span></dd></div>
               <div><dt><MapPin :size="18" /></dt><dd><strong>{{ event.location }}</strong><span>Mahidol University</span></dd></div>
             </dl>
-            <div class="event-review__price"><span>Standard Pass</span><strong>Free</strong></div>
+            <div class="event-review__price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           </div>
         </aside>
 
@@ -90,29 +173,48 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
             <label><span>Email</span><div><Mail :size="17" /><input v-model.trim="form.email" type="email" autocomplete="email" required /></div></label>
           </div>
           <label class="registration-consent"><input v-model="form.consent" type="checkbox" required /><span>I confirm that the attendee information is correct and agree to the event terms and privacy policy.</span></label>
-          <div class="registration-form__summary"><span>Total</span><strong>Free</strong></div>
-          <button class="registration-confirm" type="submit"><span>Confirm registration</span><ArrowRight :size="18" /></button>
-          <p class="registration-note">No payment is required for this event.</p>
+          <div class="registration-form__summary"><span>Total</span><strong>{{ formatPrice(event.price) }}</strong></div>
+          <button
+            class="registration-confirm"
+            :class="{ ready: form.consent }"
+            type="submit"
+            :disabled="paymentOpen || !form.consent"
+          >
+            <span>{{ form.consent ? 'Confirm registration' : 'Accept the terms to continue' }}</span>
+            <Check v-if="form.consent" :size="18" />
+            <ArrowRight v-else :size="18" />
+          </button>
+          <p class="registration-note">The PromptPay QR and payment status will be processed automatically.</p>
         </form>
       </div>
     </main>
     <AppFooter />
 
-    <div v-if="successOpen" class="success-backdrop" role="presentation">
-      <section ref="dialog" class="success-dialog" role="dialog" aria-modal="true" aria-labelledby="success-title" tabindex="-1">
-        <button class="success-dialog__close" type="button" aria-label="Close" title="Close" @click="closeSuccess"><X :size="20" /></button>
-        <div class="success-dialog__icon"><Check :size="30" stroke-width="2.5" /></div>
-        <p class="success-dialog__eyebrow">Registration complete</p>
-        <h2 id="success-title">You&rsquo;re registered!</h2>
-        <p>Your place for <strong>{{ event.title }}</strong> has been reserved successfully.</p>
-        <div class="success-dialog__ticket">
-          <span>Registration ID</span><strong>{{ registrationId }}</strong>
-          <span>Attendee</span><strong>{{ form.fullName }}</strong>
-        </div>
-        <div class="success-dialog__actions">
-          <RouterLink to="/my-registrations">View my registrations</RouterLink>
-          <button type="button" @click="closeSuccess">Back to event</button>
-        </div>
+    <div v-if="paymentOpen" class="payment-backdrop" @click.self="closePaymentModal">
+      <section ref="paymentModal" class="payment-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-title" tabindex="-1">
+        <button v-if="paymentState === 'generating' || paymentState === 'ready'" class="payment-dialog__close" type="button" aria-label="Close payment" title="Close" @click="closePaymentModal"><X :size="20" /></button>
+
+        <template v-if="paymentState === 'generating'">
+          <div class="payment-progress"><span class="payment-spinner"></span><h2 id="payment-title">Generating payment QR</h2><p>Please wait a moment.</p></div>
+        </template>
+
+        <template v-else-if="paymentState === 'ready'">
+          <div class="payment-dialog__heading"><span><QrCode :size="23" /></span><div><p>PromptPay</p><h2 id="payment-title">Scan to pay</h2></div></div>
+          <div class="payment-qr">
+            <img v-if="qrDataUrl" :src="qrDataUrl" alt="PromptPay QR code" />
+            <p v-else-if="qrError">QR code could not be generated.</p>
+          </div>
+          <div class="payment-total"><span>Total amount</span><strong>{{ formatPrice(event.price) }}</strong></div>
+          <div class="payment-auto"><Clock3 :size="16" /><span>Payment status will be checked automatically.</span></div>
+        </template>
+
+        <template v-else-if="paymentState === 'checking'">
+          <div class="payment-progress"><span class="payment-spinner"></span><h2 id="payment-title">Checking payment status</h2><p>Verifying transaction information...</p><small>Please do not close this window.</small></div>
+        </template>
+
+        <template v-else-if="paymentState === 'success'">
+          <div class="payment-progress success"><span><Check :size="34" /></span><h2 id="payment-title">Payment successful</h2><p>Your registration has been confirmed.</p><small>Opening your registration details...</small></div>
+        </template>
       </section>
     </div>
   </div>
@@ -156,24 +258,35 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .registration-consent input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: #2455db; }
 .registration-form__summary { display: flex; margin-top: 22px; padding-block: 17px; align-items: center; justify-content: space-between; border-block: 1px solid var(--neutral-200); }
 .registration-form__summary strong { font-size: 1.15rem; }
-.registration-confirm { display: flex; width: 100%; height: 48px; margin-top: 20px; align-items: center; justify-content: center; gap: 8px; color: var(--neutral-0); background: var(--gradient-brand); border-radius: 6px; box-shadow: 0 8px 18px rgb(177 151 252 / 25%); cursor: pointer; font-weight: 500; }
-.registration-confirm:hover { box-shadow: 0 11px 22px rgb(177 151 252 / 34%); transform: translateY(-1px); }
+.registration-confirm { display: flex; width: 100%; height: 48px; margin-top: 20px; align-items: center; justify-content: center; gap: 8px; color: #9297a5; background: #e5e7ec; border: 1px solid #d9dce4; border-radius: 6px; box-shadow: none; cursor: not-allowed; font-weight: 500; transition: color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.registration-confirm.ready { color: var(--neutral-0); background: var(--gradient-brand); border-color: transparent; box-shadow: 0 8px 18px rgb(177 151 252 / 25%); cursor: pointer; }
+.registration-confirm.ready:hover { box-shadow: 0 11px 22px rgb(177 151 252 / 34%); transform: translateY(-1px); }
+.registration-confirm.ready:active { transform: translateY(0); }
+.registration-confirm:disabled { transform: none; }
 .registration-note { margin: 10px 0 0; color: #8a8e99; font-size: .7rem; text-align: center; }
-.success-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; padding: 20px; place-items: center; background: rgb(24 24 27 / 56%); backdrop-filter: blur(5px); }
-.success-dialog { position: relative; width: min(100%, 470px); padding: 36px; background: var(--neutral-0); border: 1px solid rgb(255 255 255 / 70%); border-radius: 8px; box-shadow: 0 26px 70px rgb(24 24 27 / 28%); outline: 0; text-align: center; }
-.success-dialog__close { position: absolute; top: 14px; right: 14px; display: grid; width: 36px; height: 36px; place-items: center; color: var(--neutral-600); background: transparent; border-radius: 50%; cursor: pointer; }
-.success-dialog__close:hover { background: #f4f5f8; }
-.success-dialog__icon { display: grid; width: 64px; height: 64px; margin-inline: auto; place-items: center; color: #176a3f; background: #dff7e9; border-radius: 50%; box-shadow: 0 0 0 8px #f0fbf5; }
-.success-dialog__eyebrow { margin: 22px 0 3px !important; color: #176a3f !important; font-size: .7rem !important; font-weight: 600; text-transform: uppercase; }
-.success-dialog h2 { margin: 0; font-size: 1.8rem; }
-.success-dialog > p { margin: 9px auto 0; color: var(--neutral-600); font-size: .86rem; }
-.success-dialog__ticket { display: grid; margin-top: 24px; padding: 16px 18px; grid-template-columns: 1fr auto; gap: 8px 16px; background: #f7f8ff; border: 1px solid #dce1f4; border-radius: 6px; text-align: left; }
-.success-dialog__ticket span { color: var(--neutral-600); font-size: .74rem; }
-.success-dialog__ticket strong { color: #20263a; font-size: .78rem; text-align: right; }
-.success-dialog__actions { display: grid; margin-top: 24px; grid-template-columns: 1fr 1fr; gap: 10px; }
-.success-dialog__actions a, .success-dialog__actions button { display: grid; min-height: 44px; padding-inline: 12px; place-items: center; border-radius: 5px; cursor: pointer; font-size: .76rem; font-weight: 500; text-decoration: none; }
-.success-dialog__actions a { color: var(--neutral-0); background: #2455db; }
-.success-dialog__actions button { color: #33405f; background: var(--neutral-0); border: 1px solid #cbd0df; }
+.payment-backdrop { position: fixed; z-index: 120; inset: 0; display: grid; padding: 20px; place-items: center; background: rgb(24 24 27 / 60%); backdrop-filter: blur(6px); }
+.payment-dialog { position: relative; width: min(100%, 430px); min-height: 510px; padding: 28px; background: #fff; border: 1px solid rgb(255 255 255 / 70%); border-radius: 12px; box-shadow: 0 28px 80px rgb(24 24 27 / 32%); outline: 0; }
+.payment-dialog__close { position: absolute; z-index: 1; top: 13px; right: 13px; display: grid; width: 36px; height: 36px; place-items: center; color: var(--neutral-600); background: transparent; border-radius: 50%; cursor: pointer; }
+.payment-dialog__close:hover { background: #f2f4f8; }
+.payment-dialog__heading { display: flex; padding-right: 38px; align-items: center; gap: 11px; }
+.payment-dialog__heading > span { display: grid; width: 46px; height: 46px; place-items: center; color: #fff; background: #183b67; border-radius: 9px; }
+.payment-dialog__heading p { margin: 0; color: #2455db; font-size: .67rem; font-weight: 700; text-transform: uppercase; }
+.payment-dialog__heading h2 { margin: 1px 0 0; font-size: 1.45rem; }
+.payment-qr { display: grid; width: 270px; min-height: 270px; margin: 18px auto 0; padding: 10px; place-items: center; background: #fff; border: 2px solid #d9deeb; border-radius: 9px; }
+.payment-qr img { width: 100%; display: block; image-rendering: pixelated; }
+.payment-qr p { color: #8c3540; font-size: .76rem; text-align: center; }
+.payment-total { display: flex; margin-top: 17px; align-items: center; justify-content: center; gap: 12px; }
+.payment-total span { color: var(--neutral-600); font-size: .76rem; }
+.payment-total strong { font-size: 1.35rem; }
+.payment-auto { display: flex; margin-top: 10px; align-items: center; justify-content: center; gap: 6px; color: var(--neutral-600); font-size: .7rem; }
+.payment-progress { display: flex; min-height: 450px; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+.payment-progress h2 { margin: 20px 0 5px; font-size: 1.45rem; }
+.payment-progress p { margin: 0; color: var(--neutral-600); font-size: .82rem; }
+.payment-progress small { margin-top: 7px; color: #8a8e99; font-size: .7rem; }
+.payment-spinner { width: 56px; height: 56px; border: 5px solid #e4e8f5; border-top-color: #2455db; border-radius: 50%; animation: payment-spin .85s linear infinite; }
+.payment-progress.success > span { display: grid; width: 70px; height: 70px; place-items: center; color: #176a3f; background: #dff7e9; border-radius: 50%; box-shadow: 0 0 0 9px #f0fbf5; }
+@keyframes payment-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .payment-spinner { animation-duration: 1.8s; } }
 @media (max-width: 760px) { .registration-layout { grid-template-columns: 1fr; } .event-review { display: grid; grid-template-columns: 190px 1fr; } .event-review img { height: 100%; aspect-ratio: auto; } }
-@media (max-width: 540px) { .registration-shell { width: min(100% - 32px, 1080px); padding-block: 26px 60px; } .registration-heading h1 { font-size: 1.8rem; } .event-review { display: block; } .event-review img { height: auto; aspect-ratio: 1.7; } .registration-form { padding: 22px 18px; } .registration-fields { grid-template-columns: 1fr; } .registration-fields label.full { grid-column: auto; } .success-dialog { padding: 32px 20px 24px; } .success-dialog__actions { grid-template-columns: 1fr; } }
+@media (max-width: 540px) { .registration-shell { width: min(100% - 32px, 1080px); padding-block: 26px 60px; } .registration-heading h1 { font-size: 1.8rem; } .event-review { display: block; } .event-review img { height: auto; aspect-ratio: 1.7; } .registration-form { padding: 22px 18px; } .registration-fields { grid-template-columns: 1fr; } .registration-fields label.full { grid-column: auto; } .payment-dialog { min-height: 470px; padding: 22px 18px; } .payment-qr { width: min(100%, 250px); min-height: 250px; } }
 </style>

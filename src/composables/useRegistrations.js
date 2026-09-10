@@ -21,18 +21,20 @@ function persist() {
 }
 
 export function useRegistrations() {
-  function register(eventId) {
+  function register(eventId, details = {}) {
     const existing = registrations.value.find((item) => item.eventId === eventId)
 
     if (existing) {
       existing.status = 'registered'
       existing.registeredAt = new Date().toISOString().slice(0, 10)
+      Object.assign(existing, details)
       registrations.value = [...registrations.value]
     } else {
       registrations.value = [...registrations.value, {
         eventId,
         status: 'registered',
         registeredAt: new Date().toISOString().slice(0, 10),
+        ...details,
       }]
     }
 
