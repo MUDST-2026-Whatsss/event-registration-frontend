@@ -1,4 +1,5 @@
 <script setup>
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Icon from '@/components/super_admin/Icon.vue'
 
@@ -9,19 +10,47 @@ const items = [
   { label: 'All Events', icon: 'calendar', to: '/admin/all-events' },
 ]
 
+const STORAGE_KEY = 'eventsss_admin_sidebar_collapsed'
+
+// Persisted to localStorage so the choice carries across the admin pages.
+const collapsed = ref(false)
+
+onMounted(() => {
+  const stored = window.localStorage.getItem(STORAGE_KEY)
+  if (stored === null) {
+    collapsed.value = window.innerWidth < 1024
+  } else {
+    collapsed.value = stored === 'true'
+  }
+})
+
+function toggle() {
+  collapsed.value = !collapsed.value
+  window.localStorage.setItem(STORAGE_KEY, String(collapsed.value))
+}
+
 function isActive(to) {
   return route.path === to || route.path.startsWith(to + '/')
 }
 </script>
 
 <template>
-  <aside class="sa-sidebar">
+  <aside class="sa-sidebar" :class="{ collapsed }">
     <div class="sa-brand">
       <span class="sa-brand-mark"><Icon name="layers" :size="16" /></span>
-      <span class="sa-brand-name">Eventsss</span>
+      <span v-if="!collapsed" class="sa-brand-name">Eventsss</span>
+      <button
+        type="button"
+        class="sa-collapse"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        @click="toggle"
+      >
+        <Icon :name="collapsed ? 'chevron-right' : 'chevron-left'" :size="16" />
+      </button>
     </div>
 
-    <div class="sa-menu-label">Menu</div>
+    <div v-if="!collapsed" class="sa-menu-label">Menu</div>
 
     <nav class="sa-nav">
       <RouterLink
@@ -30,9 +59,10 @@ function isActive(to) {
         :to="item.to"
         class="sa-nav-item"
         :class="{ active: isActive(item.to) }"
+        :title="collapsed ? item.label : undefined"
       >
         <Icon :name="item.icon" :size="17" />
-        <span>{{ item.label }}</span>
+        <span v-if="!collapsed">{{ item.label }}</span>
       </RouterLink>
     </nav>
   </aside>
@@ -47,6 +77,18 @@ function isActive(to) {
   padding: 20px 14px;
   display: flex;
   flex-direction: column;
+  transition: width 0.18s ease;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.sa-sidebar.collapsed {
+  width: 72px;
+  padding: 20px 12px;
 }
 
 .sa-brand {
@@ -54,6 +96,12 @@ function isActive(to) {
   align-items: center;
   gap: 10px;
   padding: 4px 8px 20px;
+}
+
+.sa-sidebar.collapsed .sa-brand {
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 18px;
 }
 
 .sa-brand-mark {
@@ -72,6 +120,30 @@ function isActive(to) {
   font-size: 16px;
   font-weight: 700;
   color: var(--sa-text);
+}
+
+.sa-collapse {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--sa-radius-sm);
+  border: 1px solid var(--sa-border);
+  background: #fff;
+  color: var(--sa-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sa-collapse:hover {
+  background: var(--sa-gray-bg);
+  color: var(--sa-text);
+}
+
+.sa-sidebar.collapsed .sa-collapse {
+  margin-left: 0;
 }
 
 .sa-menu-label {
@@ -103,6 +175,14 @@ function isActive(to) {
   margin-left: -3px;
 }
 
+.sa-sidebar.collapsed .sa-nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: 10px 0;
+  margin-left: 0;
+  border-left: none;
+}
+
 .sa-nav-item:hover {
   background: var(--sa-gray-bg);
   color: var(--sa-text);
@@ -113,6 +193,10 @@ function isActive(to) {
   color: var(--sa-primary-text);
   font-weight: 700;
   border-left-color: var(--sa-primary);
+}
+
+.sa-sidebar.collapsed .sa-nav-item.active {
+  border-left-color: transparent;
 }
 
 .sa-nav-item.active :deep(svg) {

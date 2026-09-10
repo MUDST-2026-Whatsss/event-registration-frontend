@@ -1,46 +1,837 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-const activeMenu = ref('Dashboard')
+import Sidebar from '@/components/admin/Sidebar.vue'
+import PageTopbar from '@/components/super_admin/PageTopbar.vue'
+import UserMenu from '@/components/super_admin/UserMenu.vue'
+import Icon from '@/components/super_admin/Icon.vue'
+import { useToast } from '@/composables/useToast.js'
+
+const router = useRouter()
+const { showToast } = useToast()
+
+/* ---------------------------------------------------------------
+   Summary (mock — no backend yet)
+--------------------------------------------------------------- */
+const summary = {
+  totalRegistrations: 14208,
+  trend: '+12%',
+  managedEvents: 48,
+  updatedAgo: '12 minutes ago',
+  metrics: [
+    { label: 'Total Participants', value: '10,850' },
+    { label: 'Available Seats', value: '3,358' },
+    { label: 'Pending Approval', value: '214', tone: 'warning' },
+    { label: 'Avg. Fill Rate', value: '76%' },
+  ],
+}
+
+/* ---------------------------------------------------------------
+   Registrations trend — line chart
+--------------------------------------------------------------- */
+const trendRanges = {
+  'This Year': [820, 960, 900, 1120, 1350, 1180, 1520, 1780, 1650, 1980, 2240, 2350],
+  'Last 6 Months': [1520, 1780, 1650, 1980, 2240, 2350],
+  'Last 30 Days': [1980, 2080, 2160, 2120, 2260, 2300, 2380, 2350],
+}
+const selectedRange = ref('This Year')
+
+const CHART_W = 620
+const CHART_H = 220
+const PAD_X = 14
+const PAD_Y = 18
+
+const trendChart = computed(() => {
+  const data = trendRanges[selectedRange.value]
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const span = max - min || 1
+  const baseline = CHART_H - PAD_Y
+
+  const points = data.map((value, index) => {
+    const x = PAD_X + (index * (CHART_W - PAD_X * 2)) / (data.length - 1)
+    const y = baseline - ((value - min) / span) * (CHART_H - PAD_Y * 2)
+    return { x, y }
+  })
+
+  const line = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+  const area = `M ${PAD_X},${baseline} L ${line.replace(/ /g, ' L ')} L ${CHART_W - PAD_X},${baseline} Z`
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((t) => baseline - t * (CHART_H - PAD_Y * 2))
+
+  const formatTick = (value) =>
+    value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : `${value}`
+  const yTicks = [1, 0.75, 0.5, 0.25, 0].map((t) => formatTick(Math.round(min + t * span)))
+
+  return { points, line, area, gridLines, baseline, yTicks }
+})
+
+/* ---------------------------------------------------------------
+   Event status distribution — donut
+
+   Palette validated with the dataviz skill's checker (categorical,
+   light, all-pairs): blue / green / amber / red all pass the
+   lightness + normal-vision gates; the CVD warn is covered by the
+   secondary encoding here (gaps between arcs + value labels).
+--------------------------------------------------------------- */
+const statusSegments = [
+  { label: 'Upcoming', value: 20, color: '#2a78d6' },
+  { label: 'Full', value: 13, color: '#1baf7a' },
+  { label: 'Closed', value: 10, color: '#eda100' },
+  { label: 'Rejected', value: 5, color: '#e34948' },
+]
+const DONUT_R = 54
+const DONUT_C = 2 * Math.PI * DONUT_R
+const DONUT_GAP = 0.04 // slice separation, as a fraction of the circle
+const statusTotal = statusSegments.reduce((sum, s) => sum + s.value, 0)
+const hoveredStatus = ref(null)
+
+const donutArcs = computed(() => {
+  let cursor = 0
+  return statusSegments.map((segment) => {
+    const fraction = segment.value / statusTotal
+    const length = Math.max(DONUT_C * (fraction - DONUT_GAP), 1)
+    const arc = {
+      ...segment,
+      percent: Math.round(fraction * 100),
+      dash: `${length.toFixed(2)} ${(DONUT_C - length).toFixed(2)}`,
+      offset: (-DONUT_C * cursor).toFixed(2),
+    }
+    cursor += fraction
+    return arc
+  })
+})
+
+/* ---------------------------------------------------------------
+   Category overview
+--------------------------------------------------------------- */
+const categoryFilters = ['All', 'Upcoming', 'Full']
+const selectedCategoryFilter = ref('All')
+
 const categories = [
-  ['Summer Music Festival', '1,200 / 1,500', '80%', 'music'],
-  ['DevCon Tech Summit', '400 / 400', '100%', 'tech'],
-  ['Art & Design Workshop', '68 / 120', '57%', 'art'],
-  ['Marathon & Fitness Day', '312 / 500', '62%', 'fitness'],
-  ['Annual Gala Dinner', '150 / 200', '75%', 'gala'],
-  ['Leadership Bootcamp', '90 / 90', '100%', 'leadership'],
+  { name: 'Summer Music Festival', emoji: '🎵', tone: 'blue', events: '1,200 / 1,500', fill: 80, type: 'Upcoming' },
+  { name: 'DevCon Tech Summit', emoji: '💻', tone: 'blue', events: '400 / 400', fill: 100, type: 'Full' },
+  { name: 'Art & Design Workshop', emoji: '🎨', tone: 'pink', events: '68 / 120', fill: 57, type: 'Upcoming' },
+  { name: 'Marathon & Fitness Day', emoji: '🏃', tone: 'green', events: '312 / 500', fill: 62, type: 'Upcoming' },
+  { name: 'Annual Gala Dinner', emoji: '🥂', tone: 'amber', events: '150 / 200', fill: 75, type: 'Upcoming' },
+  { name: 'Leadership Bootcamp', emoji: '🎓', tone: 'gray', events: '90 / 90', fill: 100, type: 'Full' },
 ]
+
+const visibleCategories = computed(() => {
+  if (selectedCategoryFilter.value === 'All') return categories
+  return categories.filter((category) => category.type === selectedCategoryFilter.value)
+})
+
+/* ---------------------------------------------------------------
+   User activity feed
+--------------------------------------------------------------- */
 const activities = [
-  ['DB', 'Daniel Brooks approved 42 registrations for Summer Music Festival', 'Organizer · 2 min ago', 'Registration'],
-  ['PN', 'Priya Nair cancel for Art & Design Workshop', 'Moderator · 51 min ago', 'Cancel'],
-  ['TH', 'Tom Halvorsen marked Marathon & Fitness Day as Full', 'Organizer · 1 hr ago', 'Registration'],
-  ['LF', 'Lena Fischer exported the attendee list for Annual Gala Dinner', 'Coordinator · 2 hrs ago', 'Registration'],
+  { initials: 'DB', name: 'Daniel Brooks', action: 'approved 42 registrations for Summer Music Festival', meta: 'Organizer · 2 min ago', tag: 'Registration' },
+  { initials: 'PN', name: 'Priya Nair', action: 'cancel for Art & Design Workshop', meta: 'Moderator · 51 min ago', tag: 'Cancel' },
+  { initials: 'TH', name: 'Tom Halvorsen', action: 'marked Marathon & Fitness Day as Full', meta: 'Organizer · 1 hr ago', tag: 'Registration' },
+  { initials: 'LF', name: 'Lena Fischer', action: 'exported the attendee list for Annual Gala Dinner', meta: 'Coordinator · 2 hrs ago', tag: 'Registration' },
 ]
+const activitySearch = ref('')
+
+const visibleActivities = computed(() => {
+  const query = activitySearch.value.trim().toLowerCase()
+  if (!query) return activities
+  return activities.filter((item) =>
+    `${item.name} ${item.action} ${item.meta}`.toLowerCase().includes(query),
+  )
+})
+
+/* ---------------------------------------------------------------
+   Actions
+--------------------------------------------------------------- */
+function createEvent() {
+  router.push('/admin/create-event')
+}
+
+function openAllEvents() {
+  router.push('/admin/all-events')
+}
+
+function exportReport() {
+  const rows = [
+    ['Category', 'Registrations', 'Fill Rate'],
+    ...categories.map((category) => [category.name, category.events.replace(/,/g, ''), `${category.fill}%`]),
+  ]
+  const csv = rows.map((row) => row.join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'registrations-report.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+
+  showToast({
+    variant: 'success',
+    title: 'Report exported',
+    message: 'A CSV summary has been downloaded.',
+  })
+}
 </script>
 
 <template>
-  <div class="admin-shell">
-    <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">≋</span><strong>Eventsss</strong></div>
-      <small>MENU</small>
-      <button v-for="item in ['Dashboard', 'All Events']" :key="item" class="nav-item" :class="{ active: activeMenu === item }" @click="activeMenu = item">
-        <span>{{ item === 'Dashboard' ? '▦' : '▣' }}</span>{{ item }}
-      </button>
-    </aside>
-    <main class="main-content">
-      <header class="topbar"><span>Dashboard</span><div class="search">⌕　Search events, registrants...</div><div class="profile"><span class="avatar">SJ</span><b>Sarah Jenkins</b><small>Event Director</small>⌄</div></header>
-      <section class="content">
-        <div class="hero-card"><div><span>Total Registrations</span><h1>14,208 <em>↗ +12%</em></h1><p>Across 48 managed events · last updated 12 minutes ago</p></div><div class="hero-actions"><button class="primary">＋ Create Event</button><button>⇥ Export Report</button></div><div class="metrics"><div><span>Total Participants</span><b>10,850</b></div><div><span>Available Seats</span><b>3,358</b></div><div><span>Pending Approval</span><b class="warning">214</b></div><div><span>Avg. Fill Rate</span><b>76%</b></div></div></div>
-        <div class="chart-row"><section class="panel trend"><h3>Registrations Trend</h3><p>Track registration activity over time</p><div class="chart"><i v-for="n in 12" :key="n" :style="{ height: `${35 + n * 5 + (n % 3) * 8}px` }"></i></div></section><section class="panel status"><h3>Event Status Distribution</h3><p>By current lifecycle stage</p><div class="donut"><strong>48<small>Events</small></strong></div><div class="legend">● Upcoming Events　<span>● Full Events</span><br>● Closed Events　 <b>● Rejected Events</b></div></section></div>
-        <section class="panel category"><div class="section-title"><div><h3>Category Overview</h3><p>48 events across all categories</p></div><div><button class="pill selected">All⌄</button><button class="pill">Upcoming</button><button class="pill">Full</button></div></div><div class="table-head"><span>CATEGORY</span><span>NUMBER OF EVENTS</span><span>FILL RATE</span></div><div v-for="row in categories" :key="row[0]" class="category-row"><span><i :class="row[3]">✦</i>{{ row[0] }}</span><span>{{ row[1] }}</span><span><progress :value="parseInt(row[2])" max="100"></progress>{{ row[2] }}</span></div></section>
-        <section class="panel activity"><div class="section-title"><h3>User Activity</h3><div class="search small">⌕　Search activity　　All⌄</div></div><div v-for="item in activities" :key="item[1]" class="activity-row"><span class="avatar">{{ item[0] }}</span><div><b>{{ item[1] }}</b><small>{{ item[2] }}</small></div><label :class="{ cancel: item[3] === 'Cancel' }">{{ item[3] }}</label></div></section>
-      </section>
-    </main>
+  <div class="sa-shell">
+    <Sidebar />
+
+    <div class="sa-content">
+      <PageTopbar title="Dashboard">
+        <template #search>
+          <div class="sa-search dash-search">
+            <Icon name="search" :size="15" />
+            <input class="sa-input" type="search" placeholder="Search events, registrants..." aria-label="Search" />
+          </div>
+        </template>
+        <template #actions>
+          <UserMenu name="Sarah Jenkins" role="Event Director" />
+        </template>
+      </PageTopbar>
+
+      <main class="sa-body dash">
+        <!-- Hero summary -->
+        <section class="hero">
+          <div class="hero-head">
+            <div>
+              <span class="hero-label">Total Registrations</span>
+              <div class="hero-value">
+                {{ summary.totalRegistrations.toLocaleString() }}
+                <span class="hero-trend">
+                  <Icon name="arrow-up-down" :size="12" />{{ summary.trend }}
+                </span>
+              </div>
+              <p class="hero-note">
+                Across {{ summary.managedEvents }} managed events · last updated {{ summary.updatedAgo }}
+              </p>
+            </div>
+
+            <div class="hero-actions">
+              <button type="button" class="sa-btn sa-btn-primary" @click="createEvent">
+                <Icon name="plus" :size="15" />Create Event
+              </button>
+              <button type="button" class="sa-btn sa-btn-outline" @click="exportReport">
+                <Icon name="arrow-up-down" :size="15" />Export Report
+              </button>
+            </div>
+          </div>
+
+          <div class="hero-metrics">
+            <div v-for="metric in summary.metrics" :key="metric.label" class="hero-metric">
+              <span class="hero-metric-label">{{ metric.label }}</span>
+              <strong :class="{ warning: metric.tone === 'warning' }">{{ metric.value }}</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="chart-row">
+          <article class="sa-card panel">
+            <header class="panel-head">
+              <div>
+                <h2>Registrations Trend</h2>
+                <p>Track registration activity over time</p>
+              </div>
+              <select v-model="selectedRange" class="sa-select range-select">
+                <option v-for="range in Object.keys(trendRanges)" :key="range" :value="range">
+                  {{ range }}
+                </option>
+              </select>
+            </header>
+
+            <div class="trend-wrap">
+              <ul class="trend-y">
+                <li v-for="tick in trendChart.yTicks" :key="tick">{{ tick }}</li>
+              </ul>
+              <svg class="trend-chart" :viewBox="`0 0 ${CHART_W} ${CHART_H}`" preserveAspectRatio="none" role="img" aria-label="Registrations trend line chart">
+                <line
+                  v-for="(y, index) in trendChart.gridLines"
+                  :key="index"
+                  :x1="PAD_X" :x2="CHART_W - PAD_X" :y1="y" :y2="y"
+                  class="trend-grid"
+                />
+                <path :d="trendChart.area" class="trend-area" />
+                <polyline :points="trendChart.line" class="trend-line" vector-effect="non-scaling-stroke" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="sa-card panel">
+            <header class="panel-head">
+              <div>
+                <h2>Event Status Distribution</h2>
+                <p>By current lifecycle stage</p>
+              </div>
+            </header>
+
+            <div class="donut-wrap">
+              <div class="donut-figure">
+                <svg class="donut" viewBox="0 0 140 140" role="img" aria-label="Event status distribution donut chart">
+                  <g transform="rotate(-90 70 70)">
+                    <circle cx="70" cy="70" :r="DONUT_R" class="donut-track" />
+                    <circle
+                      v-for="arc in donutArcs"
+                      :key="arc.label"
+                      cx="70" cy="70" :r="DONUT_R"
+                      class="donut-arc"
+                      :class="{ dimmed: hoveredStatus && hoveredStatus !== arc.label }"
+                      :stroke="arc.color"
+                      :stroke-dasharray="arc.dash"
+                      :stroke-dashoffset="arc.offset"
+                      @mouseenter="hoveredStatus = arc.label"
+                      @mouseleave="hoveredStatus = null"
+                    />
+                  </g>
+                </svg>
+                <div class="donut-center">
+                  <strong>{{ (hoveredStatus ? donutArcs.find((a) => a.label === hoveredStatus).value : summary.managedEvents) }}</strong>
+                  <span>{{ hoveredStatus || 'Total events' }}</span>
+                </div>
+              </div>
+
+              <ul class="donut-legend">
+                <li
+                  v-for="arc in donutArcs"
+                  :key="arc.label"
+                  :class="{ dimmed: hoveredStatus && hoveredStatus !== arc.label }"
+                  @mouseenter="hoveredStatus = arc.label"
+                  @mouseleave="hoveredStatus = null"
+                >
+                  <span class="dot" :style="{ background: arc.color }" />
+                  <span class="legend-label">{{ arc.label }} Events</span>
+                  <span class="legend-value">{{ arc.value }} · {{ arc.percent }}%</span>
+                </li>
+              </ul>
+            </div>
+          </article>
+        </section>
+
+        <!-- Category overview -->
+        <section class="sa-card block">
+          <header class="panel-head">
+            <div>
+              <h2>Category Overview</h2>
+              <p>{{ summary.managedEvents }} events across all categories</p>
+            </div>
+            <div class="sa-segmented">
+              <button
+                v-for="filter in categoryFilters"
+                :key="filter"
+                type="button"
+                :class="{ active: selectedCategoryFilter === filter }"
+                @click="selectedCategoryFilter = filter"
+              >
+                {{ filter }}
+              </button>
+            </div>
+          </header>
+
+          <div class="sa-table-scroll">
+            <table class="sa-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Number of Events</th>
+                  <th>Fill Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="category in visibleCategories"
+                  :key="category.name"
+                  class="clickable"
+                  @click="openAllEvents"
+                >
+                  <td>
+                    <span class="cat-name">
+                      <span class="cat-icon" :class="category.tone">{{ category.emoji }}</span>
+                      {{ category.name }}
+                    </span>
+                  </td>
+                  <td>{{ category.events }}</td>
+                  <td>
+                    <span class="fill-cell">
+                      <span class="fill-bar"><span :style="{ width: `${category.fill}%` }" /></span>
+                      {{ category.fill }}%
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="!visibleCategories.length">
+                  <td colspan="3" class="empty-row">No categories in this view.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- User activity -->
+        <section class="sa-card block">
+          <header class="panel-head">
+            <div>
+              <h2>User Activity</h2>
+            </div>
+            <div class="sa-search">
+              <Icon name="search" :size="15" />
+              <input v-model="activitySearch" class="sa-input" type="search" placeholder="Search activity" aria-label="Search activity" />
+            </div>
+          </header>
+
+          <ul class="activity-list">
+            <li
+              v-for="item in visibleActivities"
+              :key="item.name + item.action"
+              class="activity-row clickable"
+              @click="openAllEvents"
+            >
+              <span class="activity-avatar">{{ item.initials }}</span>
+              <div class="activity-body">
+                <p><strong>{{ item.name }}</strong> {{ item.action }}</p>
+                <span class="activity-meta">{{ item.meta }}</span>
+              </div>
+              <span class="sa-pill" :class="item.tag === 'Cancel' ? 'sa-pill-red' : 'sa-pill-green'">
+                {{ item.tag }}
+              </span>
+            </li>
+            <li v-if="!visibleActivities.length" class="activity-empty">No activity matches your search.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-:global(body){background:#f7f9fc;font-family:Inter,"Segoe UI",sans-serif;color:#13213d}.admin-shell{display:flex;min-height:100vh}.sidebar{width:158px;background:#fff;border-right:1px solid #e7ebf2;padding:20px 10px}.brand{display:flex;align-items:center;gap:8px;padding:0 13px 35px;font-size:12px}.brand-mark{background:#2358dd;color:#fff;border-radius:6px;padding:3px 7px;font-size:18px}.sidebar small{display:block;color:#8b96aa;font-size:8px;padding:0 13px 10px}.nav-item{width:100%;text-align:left;background:none;padding:9px 13px;border-radius:8px;color:#65728a;font-size:10px}.nav-item span{margin-right:10px}.nav-item.active{background:#edf3ff;color:#2158d7}.main-content{flex:1}.topbar{height:58px;background:#fff;border-bottom:1px solid #e7ebf2;display:flex;align-items:center;gap:20px;padding:0 24px;font-size:10px}.search{border:1px solid #e4e9f1;border-radius:7px;color:#a2adbd;padding:7px 12px;flex:1;max-width:395px}.profile{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:9px}.profile small{color:#9aa5b6}.avatar{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#dbe5ff;color:#315bd0;font-size:9px}.content{max-width:1060px;margin:auto;padding:20px 24px}.hero-card{position:relative;background:linear-gradient(110deg,#ebe7ff,#fff0f6);padding:23px 25px;border-radius:15px;box-shadow:0 8px 18px #adb4c633}.hero-card span,.panel p,.metrics span{color:#78859a;font-size:9px}.hero-card h1{font-size:42px;line-height:1;margin:6px 0}.hero-card em{font-size:10px;background:#c9f1df;color:#38bb83;padding:4px 7px;border-radius:4px;vertical-align:middle;font-style:normal}.hero-card p{margin:0;font-size:9px;color:#8290a2}.hero-actions{position:absolute;right:25px;top:74px}.hero-actions button,.pill{background:#fff;border:1px solid #dce2ed;border-radius:7px;padding:7px 12px;color:#52617b;font-size:9px;margin-left:6px}.hero-actions .primary{background:#2459d8;color:#fff}.metrics{display:flex;justify-content:space-between;margin-top:38px}.metrics div{display:flex;flex-direction:column;gap:5px}.metrics b{font-size:15px}.warning{color:#eea72c}.chart-row{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;margin-top:20px}.panel{background:#fff;border:1px solid #e3e8f0;border-radius:15px;padding:18px 20px}.panel h3{font-size:11px;margin:0}.panel p{margin:3px 0}.trend{height:250px}.chart{height:165px;display:flex;align-items:end;gap:10px;padding:10px 20px;border-bottom:1px solid #dfe5ef;background:repeating-linear-gradient(to bottom,transparent,transparent 40px,#edf1f6 41px)}.chart i{flex:1;background:linear-gradient(#5e7ffd,#dce5ff);border-radius:8px 8px 0 0}.status{text-align:left}.donut{width:125px;height:125px;border-radius:50%;background:conic-gradient(#5d7df1 0 42%,#50c88a 42% 67%,#f4ac43 67% 87%,#fa8088 87%);margin:22px auto 8px;display:grid;place-items:center}.donut:after{content:"";position:absolute;width:78px;height:78px;background:#fff;border-radius:50%}.donut strong{z-index:1;font-size:11px;text-align:center}.donut small{display:block;color:#8793a4;font-size:8px;font-weight:400}.legend{font-size:8px;color:#5d7df1}.legend span{color:#50c88a}.legend b{color:#fa8088}.category,.activity{margin-top:20px}.section-title{display:flex;justify-content:space-between;align-items:center}.table-head,.category-row{display:grid;grid-template-columns:1.8fr 1fr 1fr;align-items:center}.table-head{color:#8793a4;font-size:8px;border-bottom:1px solid #e8edf4;padding:17px 0 9px}.category-row{font-size:9px;padding:9px 0;border-bottom:1px solid #f0f2f6}.category-row>span:first-child{display:flex;align-items:center;gap:8px}.category-row i{padding:5px;border-radius:7px;background:#dce8ff;color:#3668e7;font-style:normal}.category-row i.art{background:#ffe6f1;color:#e856a4}.category-row i.fitness{background:#d6f7f1;color:#0da991}.category-row i.gala{background:#fff0c9;color:#ecaa27}.category-row i.leadership{background:#edf1f6;color:#64738d}progress{width:29px;height:5px;margin-right:10px;accent-color:#5d7df1}.pill{padding:5px 9px}.pill.selected{color:#2459d8;background:#edf3ff}.activity-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f2f6;font-size:9px}.activity-row div{flex:1}.activity-row small{display:block;color:#9aa5b6;font-size:8px}.activity-row label{background:#d9f8e9;color:#36b879;padding:4px 8px;border-radius:5px;font-size:8px}.activity-row label.cancel{background:#ffe2e5;color:#ed7781}@media(max-width:800px){.sidebar{width:120px}.content{padding:14px}.hero-actions{position:static;margin-top:15px}.chart-row{grid-template-columns:1fr}.metrics{gap:12px;flex-wrap:wrap}.metrics div{min-width:120px}}
-.sidebar,.topbar{display:none}.admin-shell{display:block;min-height:0}.main-content{width:100%}.content{max-width:none;padding:14px 36px 28px}
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.dash-search {
+  width: 100%;
+  max-width: 420px;
+}
+
+.dash-search input {
+  width: 100%;
+}
+
+/* Hero -------------------------------------------------------- */
+.hero {
+  background: var(--gradient-page);
+  border: 1px solid var(--sa-border-soft);
+  border-radius: var(--sa-radius-lg);
+  padding: 24px 26px;
+  box-shadow: var(--sa-shadow);
+}
+
+.hero-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hero-label {
+  font-size: 12.5px;
+  color: var(--sa-text-secondary);
+}
+
+.hero-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 4px 0 6px;
+  color: var(--sa-text);
+}
+
+.hero-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+  background: var(--sa-success-bg);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.hero-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--sa-text-secondary);
+}
+
+.hero-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 30px;
+}
+
+.hero-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hero-metric-label {
+  font-size: 12px;
+  color: var(--sa-text-secondary);
+}
+
+.hero-metric strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--sa-text);
+}
+
+.hero-metric strong.warning {
+  color: var(--sa-warning);
+}
+
+/* Panels / charts ------------------------------------------- */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 20px;
+}
+
+.panel {
+  padding: 20px 22px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+/* Full-width cards have no inner padding of their own — their table / list
+   rows carry it — so the header row needs to be inset to match. */
+.block > .panel-head {
+  padding: 20px 22px 0;
+}
+
+.panel-head h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--sa-text);
+}
+
+.panel-head p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--sa-text-secondary);
+}
+
+.range-select {
+  width: auto;
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+
+.trend-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.trend-y {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--sa-text-muted);
+  text-align: right;
+  min-width: 26px;
+}
+
+.trend-chart {
+  flex: 1;
+  min-width: 0;
+  height: 200px;
+  display: block;
+}
+
+.trend-grid {
+  stroke: var(--sa-border-soft);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.trend-area {
+  fill: color-mix(in srgb, var(--brand-blue) 14%, transparent);
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--brand-blue);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.donut-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding-top: 4px;
+}
+
+.donut-figure {
+  position: relative;
+  width: 172px;
+  height: 172px;
+  filter: drop-shadow(0 8px 16px rgba(16, 24, 40, 0.1));
+}
+
+.donut {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.donut-track {
+  fill: none;
+  stroke: var(--sa-border-soft);
+  stroke-width: 12;
+}
+
+.donut-arc {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  cursor: pointer;
+  transition: opacity 0.15s ease, stroke-width 0.15s ease;
+}
+
+.donut-arc:hover {
+  stroke-width: 15;
+}
+
+.donut-arc.dimmed {
+  opacity: 0.25;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.donut-center strong {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--sa-text);
+}
+
+.donut-center span {
+  font-size: 11px;
+  color: var(--sa-text-secondary);
+  text-transform: capitalize;
+}
+
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 18px;
+}
+
+.donut-legend li {
+  display: grid;
+  grid-template-columns: 9px 1fr;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 1px;
+  font-size: 12px;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.donut-legend li.dimmed {
+  opacity: 0.4;
+}
+
+.donut-legend .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  color: var(--sa-text-secondary);
+}
+
+.legend-value {
+  grid-column: 2;
+  font-weight: 700;
+  color: var(--sa-text);
+}
+
+/* Category table ------------------------------------------- */
+.cat-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--sa-text);
+}
+
+.cat-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--sa-primary-soft);
+}
+
+.cat-icon.pink { background: #ffe6f1; }
+.cat-icon.green { background: #d8f5ea; }
+.cat-icon.amber { background: #fdf0d3; }
+.cat-icon.gray { background: var(--sa-gray-bg); }
+
+.fill-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--sa-text-secondary);
+}
+
+.fill-bar {
+  width: 90px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sa-border-soft);
+  overflow: hidden;
+}
+
+.fill-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand-blue);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.sa-table tbody tr.clickable:hover td {
+  background: var(--sa-gray-bg);
+}
+
+.empty-row {
+  color: var(--sa-text-muted);
+  text-align: center;
+}
+
+/* Activity feed ------------------------------------------- */
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--sa-border-soft);
+}
+
+.activity-row:last-child {
+  border-bottom: none;
+}
+
+.activity-row:hover {
+  background: var(--sa-gray-bg);
+}
+
+.activity-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--sa-primary-soft);
+  color: var(--sa-primary-text);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.activity-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-body p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sa-text);
+}
+
+.activity-meta {
+  font-size: 11.5px;
+  color: var(--sa-text-muted);
+}
+
+.activity-empty {
+  padding: 18px 22px;
+  font-size: 13px;
+  color: var(--sa-text-muted);
+}
+
+/* Responsive --------------------------------------------- */
+@media (max-width: 900px) {
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .dash-search input {
+    width: 150px;
+  }
+}
 </style>

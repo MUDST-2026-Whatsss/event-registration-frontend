@@ -52,6 +52,12 @@ function isActive(to) {
   padding: 20px 14px;
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
 }
 
 .sa-brand {

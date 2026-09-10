@@ -4,7 +4,7 @@ import { LogIn } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthInput from '@/components/AuthInput.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
-import { SUPER_ADMIN_ROLE, useAuth } from '@/composables/useAuth.js'
+import { ADMIN_ROLE, SUPER_ADMIN_ROLE, useAuth } from '@/composables/useAuth.js'
 import { useToast } from '@/composables/useToast.js'
 
 const router = useRouter()
@@ -61,8 +61,26 @@ const handleSubmit = () => {
     const authenticatedRole = login(email.value, password.value)
 
     if (authenticatedRole) {
-      const defaultRoute = authenticatedRole === SUPER_ADMIN_ROLE ? '/super-admin' : '/'
-      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : defaultRoute
+      const roleHome = {
+        [SUPER_ADMIN_ROLE]: '/super-admin',
+        [ADMIN_ROLE]: '/admin/dashboard',
+      }
+      const defaultRoute = roleHome[authenticatedRole] ?? '/'
+      const requestedRedirect =
+        typeof route.query.redirect === 'string' ? route.query.redirect : ''
+
+      // Only honour the requested redirect if it belongs to this role's area,
+      // so a stale link (e.g. admin arriving on ?redirect=/super-admin/...)
+      // doesn't bounce off the route guard back to login.
+      const areaFor = (path) =>
+        path.startsWith('/admin') ? ADMIN_ROLE
+        : path.startsWith('/super-admin') ? SUPER_ADMIN_ROLE
+        : null
+      const redirectArea = areaFor(requestedRedirect)
+      const redirect =
+        requestedRedirect && (redirectArea === null || redirectArea === authenticatedRole)
+          ? requestedRedirect
+          : defaultRoute
       showToast({
         variant: 'success',
         title: 'Signed in successfully',

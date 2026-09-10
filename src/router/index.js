@@ -14,7 +14,7 @@ import ResetPasswordView from '../views/ResetPasswordView.vue'
 import AllEvents from '../views/admin/event/AllEvents.vue'
 
 import { canRegisterForEvent, eventGroups } from '../data/events.js'
-import { SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
+import { ADMIN_ROLE, SUPER_ADMIN_ROLE } from '../composables/useAuth.js'
 import SuperAdminLayout from '../layouts/SuperAdminLayout.vue'
 
 
@@ -124,34 +124,37 @@ const router = createRouter({
     // =========================
     {
       path: '/admin',
+      redirect: '/admin/dashboard',
+    },
+    {
+      path: '/admin/dashboard',
       name: 'admin-dashboard',
       component: () => import('../views/admin/admindashboard.vue'),
       meta: {
         title: 'Admin Dashboard | Eventsss',
         requiresAuth: true,
+        requiredRole: ADMIN_ROLE,
       },
     },
-
     {
       path: '/admin/all-events',
-      name: 'all-events',
+      name: 'admin-all-events',
       component: AllEvents,
       meta: {
-        title: 'Create account | Eventsss',
+        title: 'All Events | Eventsss',
+        requiresAuth: true,
+        requiredRole: ADMIN_ROLE,
       },
     },
     {
-      path: '/admin',
-      component: SuperAdminLayout,
-      children: [
-        { path: '', redirect: '/admin/dashboard' },
-        {
-          path: 'dashboard',
-          name: 'admin-dashboard-page',
-          component: () => import('../views/admin/admindashboard.vue'),
-          meta: { title: 'Admin Dashboard | Eventsss' },
-        },
-      ],
+      path: '/admin/create-event',
+      name: 'admin-create-event',
+      component: () => import('../views/admin/event/CreateEvent.vue'),
+      meta: {
+        title: 'Create Event | Eventsss',
+        requiresAuth: true,
+        requiredRole: ADMIN_ROLE,
+      },
     },
     {
       path: '/forgot-password',
@@ -190,7 +193,6 @@ const router = createRouter({
         {
           path: 'dashboard',
           name: 'sa-dashboard',
-          component: () => import('../views/admin/admindashboard.vue'),
           component: () => import('../views/super_admin/Dashboard.vue'),
           props: {
             title: 'Dashboard',
@@ -255,14 +257,6 @@ const router = createRouter({
       redirect: '/',
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
-    {
-      path: '/admin/all-events',
-      name: 'all-events',
-      component: AllEvents,
-      meta: {
-        title: 'All Events | Eventsss',
-      },
-    },
   ],
 })
 

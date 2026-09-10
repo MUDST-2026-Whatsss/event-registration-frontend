@@ -1,4 +1,5 @@
 <script setup>
+import { useRouter } from 'vue-router'
 
 import Sidebar from '@/components/admin/Sidebar.vue'
 import PageTopbar from '@/components/super_admin/PageTopbar.vue'
@@ -10,9 +11,32 @@ import EventTable from '@/components/admin/EventTable.vue'
 
 
 import { eventGroups } from '@/data/events'
-const events = Object.values(eventGroups).flat()
 
+const router = useRouter()
 
+const statusByEventStatus = {
+  open: 'Published',
+  'almost-full': 'Published',
+  closed: 'Published',
+  upcoming: 'Pending',
+}
+
+const events = eventGroups.flatMap((group) =>
+  group.events.map((event) => {
+    const filled = event.filledSpots ?? 0
+    const total = event.totalSpots ?? 0
+    return {
+      ...event,
+      status: statusByEventStatus[event.status] ?? 'Draft',
+      registration: total ? `${filled} / ${total}` : '—',
+      progress: total ? Math.round((filled / total) * 100) : 0,
+    }
+  }),
+)
+
+function goToCreate() {
+  router.push('/admin/create-event')
+}
 </script>
 
 <template>
@@ -24,7 +48,7 @@ const events = Object.values(eventGroups).flat()
 
       <PageTopbar title="All Events">
     <template #actions>
-      <UserMenu />
+      <UserMenu name="Sarah Jenkins" role="Event Director" />
     </template>
   </PageTopbar>
 
@@ -35,7 +59,7 @@ const events = Object.values(eventGroups).flat()
             <p>Manage and track your assigned events and their approval status.</p>
           </div>
 
-          <button class="create-btn">+ Create New Event</button>
+          <button class="create-btn" @click="goToCreate">+ Create New Event</button>
         </div>
 
         <div class="stats">

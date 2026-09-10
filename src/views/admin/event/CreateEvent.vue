@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import Sidebar from '@/components/admin/Sidebar.vue'
 import PageTopbar from '@/components/super_admin/PageTopbar.vue'
 import UserMenu from '@/components/super_admin/UserMenu.vue'
+import Icon from '@/components/super_admin/Icon.vue'
 
 // Form Data State
 const form = ref({
@@ -54,20 +55,24 @@ const saveDraft = () => {
     <Sidebar />
 
     <div class="main">
-      <header class="topbar-custom">
-        <div class="breadcrumb">
-          <span class="text-gray">All Events</span>
-          <span class="separator">></span>
-          <span class="text-dark font-medium">Create New Event</span>
-        </div>
-        <div class="search-bar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" placeholder="Search my events..." />
-        </div>
-        <div class="user-actions">
-          <UserMenu />
-        </div>
-      </header>
+      <PageTopbar>
+        <template #lead>
+          <nav class="crumbs">
+            <RouterLink to="/admin/all-events">All Events</RouterLink>
+            <Icon name="chevron-right" :size="14" />
+            <span class="crumb-current">Create New Event</span>
+          </nav>
+        </template>
+        <template #search>
+          <div class="sa-search topbar-search">
+            <Icon name="search" :size="15" />
+            <input class="sa-input" type="search" placeholder="Search events…" aria-label="Search" />
+          </div>
+        </template>
+        <template #actions>
+          <UserMenu name="Sarah Jenkins" role="Event Director" />
+        </template>
+      </PageTopbar>
 
       <section class="content-scroll">
         <div class="form-container">
@@ -270,53 +275,41 @@ const saveDraft = () => {
   flex-direction: column;
 }
 
-/* Custom Topbar matching the image */
-.topbar-custom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 32px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
-}
-.breadcrumb {
+/* Topbar — breadcrumb + search, matching the shared PageTopbar */
+.crumbs {
   display: flex;
   align-items: center;
+  gap: 6px;
   font-size: 14px;
+  color: var(--sa-text-muted);
 }
-.text-gray { color: #64748b; }
-.separator { margin: 0 8px; color: #cbd5e1; }
-.text-dark { color: #0f172a; }
-.font-medium { font-weight: 500; }
+.crumbs a {
+  color: var(--sa-text-secondary);
+  text-decoration: none;
+}
+.crumbs a:hover {
+  color: var(--sa-primary-text);
+}
+.crumb-current {
+  font-weight: 600;
+  color: var(--sa-text);
+}
 
-.search-bar {
-  display: flex;
-  align-items: center;
-  background: #f1f5f9;
-  padding: 8px 16px;
-  border-radius: 8px;
-  width: 400px;
-}
-.search-bar svg { color: #64748b; margin-right: 8px; }
-.search-bar input {
-  border: none;
-  background: transparent;
+.topbar-search {
   width: 100%;
-  outline: none;
-  font-size: 14px;
+  max-width: 420px;
+}
+.topbar-search input {
+  width: 100%;
 }
 
-/* Scrollable Content Area */
+/* Content Area */
 .content-scroll {
   flex: 1;
-  overflow-y: auto;
   padding: 32px;
-  display: flex;
-  justify-content: center;
 }
 .form-container {
   width: 100%;
-  max-width: 800px;
 }
 
 /* Stepper */
