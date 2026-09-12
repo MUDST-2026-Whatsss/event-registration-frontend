@@ -1,51 +1,74 @@
 /* Design tokens + shared primitives for the Super Admin dashboard */
 :root {
   color-scheme: light;
-  --sa-bg: #f4f5f7;
-  --sa-sidebar-bg: #ffffff;
-  --sa-card-bg: #ffffff;
+  --console-bg: #f4f5f7;
+  --console-sidebar-bg: #ffffff;
+  --console-card-bg: #ffffff;
 
-  --sa-border: #e7e8ec;
-  --sa-border-soft: #eef0f3;
+  --console-border: #e7e8ec;
+  --console-border-soft: #eef0f3;
 
-  --sa-text: #16181d;
-  --sa-text-secondary: #6b7280;
-  --sa-text-muted: #9aa1ac;
-  --sa-label: #9aa1ac;
+  --console-text: #16181d;
+  --console-text-secondary: #6b7280;
+  --console-text-muted: #9aa1ac;
+  --console-label: #9aa1ac;
 
-  --sa-primary: #5b54f5;
-  --sa-primary-hover: #4a44e0;
-  --sa-primary-soft: #eef0fe;
-  --sa-primary-text: #5b54f5;
+  --console-primary: #5b54f5;
+  --console-primary-hover: #4a44e0;
+  --console-primary-soft: #eef0fe;
+  --console-primary-text: #5b54f5;
 
-  --sa-success: #16a34a;
-  --sa-success-bg: #dcfce7;
-  --sa-danger: #ef4444;
-  --sa-danger-bg: #fee2e2;
-  --sa-warning: #d97706;
-  --sa-warning-bg: #fef3c7;
-  --sa-info: #2563eb;
-  --sa-info-bg: #dbeafe;
-  --sa-gray-bg: #f3f4f6;
+  --console-success: #16a34a;
+  --console-success-bg: #dcfce7;
+  --console-danger: #ef4444;
+  --console-danger-bg: #fee2e2;
+  --console-warning: #d97706;
+  --console-warning-bg: #fef3c7;
+  --console-info: #2563eb;
+  --console-info-bg: #dbeafe;
+  --console-gray-bg: #f3f4f6;
 
-  --sa-radius-sm: 8px;
-  --sa-radius: 12px;
-  --sa-radius-lg: 16px;
-  --sa-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  /* Darker variants for text sitting on the -bg tints above, where the
+     base colour would not carry enough contrast at badge sizes. */
+  --console-success-text: #15803d;
+  --console-danger-text: #b91c1c;
+  --console-warning-text: #b45309;
+  --console-info-text: #1d4ed8;
+
+  --console-radius-sm: 8px;
+  --console-radius: 12px;
+  --console-radius-lg: 16px;
+  --console-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --console-content-max: 1540px;
+
+  /* Type scale — every console font-size should use one of these.
+     These are aliases onto the shared scale in base.css so the console
+     and the public pages cannot drift apart; the names stay because the
+     console references them in ~170 places. */
+  --console-fs-2xs: var(--fs-2xs); /* 11px — micro labels, eyebrows */
+  --console-fs-xs: var(--fs-xs); /* 12px — table headers, meta */
+  --console-fs-sm: var(--fs-sm); /* 13px — secondary text */
+  --console-fs-base: var(--fs-base); /* 14px — body */
+  --console-fs-md: var(--fs-md); /* 15px — emphasised body */
+  --console-fs-lg: var(--fs-lg); /* 18px — card titles */
+  --console-fs-xl: var(--fs-xl); /* 22px — section titles */
+  --console-fs-2xl: var(--fs-2xl); /* 24–28px — page heading */
+  --console-fs-3xl: var(--fs-3xl); /* 28–32px — hero figures */
+  --console-fs-display: 2.125rem; /* 34px — dashboard hero number */
 }
 
 body {
-  background: var(--sa-bg);
+  background: var(--console-bg);
 }
 
 /* The default Vue scaffold (main.css) centers #app as a max-width 1280px
    two-column grid on wide viewports, sized for the old welcome page. Undo
    that whenever this app shell is mounted so it can use the full window. */
-body:has(.sa-shell) {
+body:has(.console-shell) {
   display: block;
 }
 
-#app:has(.sa-shell) {
+#app:has(.console-shell) {
   max-width: none;
   width: 100%;
   margin: 0;
@@ -53,11 +76,11 @@ body:has(.sa-shell) {
   display: block;
 }
 
-.sa-shell {
+.console-shell {
   display: flex;
   min-height: 100vh;
-  background: var(--sa-bg);
-  color: var(--sa-text);
+  background: var(--console-bg);
+  color: var(--console-text);
   font-family:
     Inter,
     -apple-system,
@@ -69,42 +92,46 @@ body:has(.sa-shell) {
     sans-serif;
 }
 
-.sa-shell * {
+.console-shell * {
   box-sizing: border-box;
 }
 
-.sa-content {
+.console-content {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.sa-body {
+.console-body {
+  width: 100%;
+  max-width: var(--console-content-max);
+  margin-inline: auto;
   padding: 28px 32px 48px;
   flex: 1;
+  min-width: 0;
 }
 
 /* Topbar */
-.sa-topbar {
-  height: 60px;
+.console-topbar {
+  min-height: 68px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
-  background: var(--sa-card-bg);
-  border-bottom: 1px solid var(--sa-border);
+  background: var(--console-card-bg);
+  border-bottom: 1px solid var(--console-border);
 }
 
-.sa-topbar-title {
-  font-size: 15px;
+.console-topbar-title {
+  font-size: var(--console-fs-lg);
   font-weight: 600;
-  color: var(--sa-text);
+  color: var(--console-text);
 }
 
 /* Page heading row: title/subtitle left, action buttons right */
-.sa-heading-row {
+.console-heading-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -113,56 +140,56 @@ body:has(.sa-shell) {
   flex-wrap: wrap;
 }
 
-.sa-heading-actions {
+.console-heading-actions {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.sa-page-heading h1 {
-  font-size: 22px;
+.console-page-heading h1 {
+  font-size: var(--console-fs-2xl);
   font-weight: 700;
-  color: var(--sa-text);
+  color: var(--console-text);
   margin: 0 0 4px;
 }
 
-.sa-page-heading p {
-  font-size: 13.5px;
-  color: var(--sa-text-secondary);
+.console-page-heading p {
+  font-size: var(--console-fs-base);
+  color: var(--console-text-secondary);
   margin: 0;
 }
 
 /* Card */
-.sa-card {
-  background: var(--sa-card-bg);
-  border: 1px solid var(--sa-border);
-  border-radius: var(--sa-radius-lg);
-  box-shadow: var(--sa-shadow);
+.console-card {
+  background: var(--console-card-bg);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-lg);
+  box-shadow: var(--console-shadow);
 }
 
-.sa-card-header {
+.console-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 18px 22px;
-  border-bottom: 1px solid var(--sa-border-soft);
+  border-bottom: 1px solid var(--console-border-soft);
 }
 
-.sa-card-header h2 {
-  font-size: 15.5px;
+.console-card-header h2 {
+  font-size: var(--console-fs-lg);
   font-weight: 700;
   margin: 0;
 }
 
 /* Buttons */
-.sa-btn {
+.console-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
+  font-size: var(--console-fs-base);
   font-weight: 600;
   padding: 9px 16px;
-  border-radius: var(--sa-radius-sm);
+  border-radius: var(--console-radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   transition:
@@ -174,323 +201,339 @@ body:has(.sa-shell) {
   font-family: inherit;
 }
 
-.sa-btn:disabled {
+.console-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.sa-btn-primary {
-  background: var(--sa-primary);
+.console-btn-primary {
+  background: var(--console-primary);
   color: #fff;
 }
-.sa-btn-primary:hover:not(:disabled) {
-  background: var(--sa-primary-hover);
+.console-btn-primary:hover:not(:disabled) {
+  background: var(--console-primary-hover);
 }
 
-.sa-btn-outline {
+.console-btn-outline {
   background: #fff;
-  border-color: var(--sa-border);
-  color: var(--sa-text);
+  border-color: var(--console-border);
+  color: var(--console-text);
 }
-.sa-btn-outline:hover:not(:disabled) {
+
+/* Neutral action button, used beside the primary button in dialogs. */
+.console-btn-secondary {
+  color: var(--console-text-secondary);
+  background: #fff;
+  border: 1px solid var(--console-border);
+}
+
+.console-btn-secondary:hover:not(:disabled) {
+  background: var(--console-gray-bg);
+  color: var(--console-text);
+}
+.console-btn-outline:hover:not(:disabled) {
   border-color: #cfd2d9;
   background: #fafafb;
 }
 
-.sa-btn-ghost {
+.console-btn-ghost {
   background: transparent;
-  color: var(--sa-text-secondary);
+  color: var(--console-text-secondary);
 }
-.sa-btn-ghost:hover:not(:disabled) {
-  color: var(--sa-text);
+.console-btn-ghost:hover:not(:disabled) {
+  color: var(--console-text);
 }
 
-.sa-btn-sm {
+.console-btn-sm {
   padding: 6px 12px;
-  font-size: 12.5px;
+  font-size: var(--console-fs-sm);
 }
 
-.sa-icon-btn {
+.console-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--sa-radius-sm);
-  border: 1px solid var(--sa-border);
+  border-radius: var(--console-radius-sm);
+  border: 1px solid var(--console-border);
   background: #fff;
-  color: var(--sa-text-secondary);
+  color: var(--console-text-secondary);
   cursor: pointer;
   flex-shrink: 0;
 }
-.sa-icon-btn:hover:not(:disabled) {
-  background: var(--sa-gray-bg);
+.console-icon-btn:hover:not(:disabled) {
+  background: var(--console-gray-bg);
 }
-.sa-icon-btn.danger {
-  color: var(--sa-danger);
+.console-icon-btn.danger {
+  color: var(--console-danger);
 }
-.sa-icon-btn.success {
-  color: var(--sa-success);
+.console-icon-btn.success {
+  color: var(--console-success);
   border-color: #bbf0cf;
-  background: var(--sa-success-bg);
+  background: var(--console-success-bg);
 }
-.sa-icon-btn.success:hover:not(:disabled) {
+.console-icon-btn.success:hover:not(:disabled) {
   background: #c7f5da;
 }
-.sa-icon-btn.reject {
-  color: var(--sa-danger);
+.console-icon-btn.reject {
+  color: var(--console-danger);
   border-color: #fbcaca;
-  background: var(--sa-danger-bg);
+  background: var(--console-danger-bg);
 }
-.sa-icon-btn.reject:hover:not(:disabled) {
+.console-icon-btn.reject:hover:not(:disabled) {
   background: #fdd8d8;
 }
-.sa-icon-btn:disabled {
+.console-icon-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
 /* Inputs */
-.sa-field-label {
+.console-field-label {
   display: block;
-  font-size: 11.5px;
+  font-size: var(--console-fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--sa-label);
+  color: var(--console-label);
   margin-bottom: 8px;
 }
 
-.sa-input,
-.sa-select {
+.console-input,
+.console-select {
   width: 100%;
   padding: 10px 12px;
-  font-size: 13.5px;
-  border: 1px solid var(--sa-border);
-  border-radius: var(--sa-radius-sm);
+  font-size: var(--console-fs-base);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-sm);
   background: #fff;
-  color: var(--sa-text);
+  color: var(--console-text);
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s;
 }
-.sa-input::placeholder {
-  color: var(--sa-text-muted);
+.console-input::placeholder {
+  color: var(--console-text-muted);
 }
-.sa-input:focus,
-.sa-select:focus {
-  border-color: var(--sa-primary);
+.console-input:focus,
+.console-select:focus {
+  border-color: var(--console-primary);
 }
 
-.sa-search {
+.console-search {
   position: relative;
   display: flex;
   align-items: center;
 }
-.sa-search svg {
+.console-search svg {
   position: absolute;
   left: 11px;
-  color: var(--sa-text-muted);
+  color: var(--console-text-muted);
   pointer-events: none;
 }
-.sa-search input {
+.console-search input {
   padding-left: 32px;
   width: 220px;
 }
 
 /* Table */
-.sa-table {
+.console-table {
   width: 100%;
   border-collapse: collapse;
 }
-.sa-table th {
+.console-table th {
   text-align: left;
-  font-size: 11px;
+  font-size: var(--console-fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--sa-label);
+  color: var(--console-label);
   padding: 12px 22px;
-  border-bottom: 1px solid var(--sa-border-soft);
+  border-bottom: 1px solid var(--console-border-soft);
 }
-.sa-table td {
+.console-table td {
   padding: 16px 22px;
-  border-bottom: 1px solid var(--sa-border-soft);
-  font-size: 13.5px;
+  border-bottom: 1px solid var(--console-border-soft);
+  font-size: var(--console-fs-base);
   vertical-align: middle;
 }
-.sa-table tr:last-child td {
+.console-table tr:last-child td {
   border-bottom: none;
 }
-.sa-table-scroll {
+.console-table-scroll {
   overflow-x: auto;
+  /* Without this a scroll container inside flex/grid still grows to fit the
+     table instead of scrolling, which pushes the whole page sideways. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Status dot */
-.sa-status {
+.console-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--console-fs-base);
   font-weight: 600;
 }
-.sa-status .dot {
+.console-status .dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.sa-status.on {
-  color: var(--sa-success);
+.console-status.on {
+  color: var(--console-success);
 }
-.sa-status.on .dot {
-  background: var(--sa-success);
+.console-status.on .dot {
+  background: var(--console-success);
 }
-.sa-status.off {
-  color: var(--sa-text-muted);
+.console-status.off {
+  color: var(--console-text-muted);
 }
-.sa-status.off .dot {
+.console-status.off .dot {
   background: #d1d5db;
 }
 
 /* Pills / badges */
-.sa-pill {
+.console-pill {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--console-fs-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.sa-pill-primary {
-  background: var(--sa-primary-soft);
-  color: var(--sa-primary-text);
+.console-pill-primary {
+  background: var(--console-primary-soft);
+  color: var(--console-primary-text);
 }
-.sa-pill-gray {
-  background: var(--sa-gray-bg);
-  color: var(--sa-text-secondary);
+.console-pill-gray {
+  background: var(--console-gray-bg);
+  color: var(--console-text-secondary);
 }
-.sa-pill-green {
-  background: var(--sa-success-bg);
+.console-pill-green {
+  background: var(--console-success-bg);
   color: #15803d;
 }
-.sa-pill-amber {
-  background: var(--sa-warning-bg);
+.console-pill-amber {
+  background: var(--console-warning-bg);
   color: #b45309;
 }
-.sa-pill-red {
-  background: var(--sa-danger-bg);
+.console-pill-red {
+  background: var(--console-danger-bg);
   color: #b91c1c;
 }
-.sa-pill-blue {
-  background: var(--sa-info-bg);
+.console-pill-blue {
+  background: var(--console-info-bg);
   color: #1d4ed8;
 }
-.sa-pill-outline {
+.console-pill-outline {
   background: #fff;
-  border: 1px solid var(--sa-border);
-  color: var(--sa-text-secondary);
+  border: 1px solid var(--console-border);
+  color: var(--console-text-secondary);
   font-weight: 600;
 }
 
 /* Avatar */
-.sa-avatar {
+.console-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  background: var(--sa-gray-bg);
+  background: var(--console-gray-bg);
 }
 
 /* Pagination */
-.sa-pagination {
+.console-pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 4px 0;
-  font-size: 13px;
-  color: var(--sa-text-secondary);
+  font-size: var(--console-fs-base);
+  color: var(--console-text-secondary);
 }
-.sa-pagination-controls {
+.console-pagination-controls {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.sa-page-num {
+.console-page-num {
   width: 30px;
   height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--sa-radius-sm);
+  border-radius: var(--console-radius-sm);
   font-weight: 600;
-  color: var(--sa-text-secondary);
+  color: var(--console-text-secondary);
   cursor: pointer;
   border: 1px solid transparent;
   background: transparent;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--console-fs-base);
 }
-.sa-page-num.active {
-  background: var(--sa-primary-soft);
-  color: var(--sa-primary-text);
+.console-page-num.active {
+  background: var(--console-primary-soft);
+  color: var(--console-primary-text);
 }
 
 /* Segmented control */
-.sa-segmented {
+.console-segmented {
   display: inline-flex;
-  background: var(--sa-gray-bg);
-  border-radius: var(--sa-radius-sm);
+  background: var(--console-gray-bg);
+  border-radius: var(--console-radius-sm);
   padding: 3px;
   gap: 2px;
 }
-.sa-segmented button {
+.console-segmented button {
   border: none;
   background: transparent;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: var(--console-fs-sm);
   font-weight: 600;
   padding: 6px 14px;
   border-radius: 6px;
-  color: var(--sa-text-secondary);
+  color: var(--console-text-secondary);
   cursor: pointer;
 }
-.sa-segmented button.active {
+.console-segmented button.active {
   background: #fff;
-  color: var(--sa-text);
-  box-shadow: var(--sa-shadow);
+  color: var(--console-text);
+  box-shadow: var(--console-shadow);
 }
 
 /* Stat card */
-.sa-stat {
-  background: var(--sa-card-bg);
-  border: 1px solid var(--sa-border);
-  border-radius: var(--sa-radius-lg);
-  box-shadow: var(--sa-shadow);
+.console-stat {
+  background: var(--console-card-bg);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-lg);
+  box-shadow: var(--console-shadow);
   padding: 18px 20px;
 }
-.sa-stat .label {
-  font-size: 11px;
+.console-stat .label {
+  font-size: var(--console-fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--sa-label);
+  color: var(--console-label);
   margin-bottom: 10px;
 }
-.sa-stat .value {
-  font-size: 26px;
+.console-stat .value {
+  font-size: var(--console-fs-3xl);
   font-weight: 700;
-  color: var(--sa-text);
+  color: var(--console-text);
 }
-.sa-stat .value.danger {
-  color: var(--sa-danger);
+.console-stat .value.danger {
+  color: var(--console-danger);
 }
 
 /* Modal */
-.sa-modal-overlay {
+.console-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(16, 18, 24, 0.45);
@@ -500,22 +543,22 @@ body:has(.sa-shell) {
   z-index: 100;
   padding: 20px;
 }
-.sa-modal {
+.console-modal {
   background: #fff;
-  border-radius: var(--sa-radius-lg);
+  border-radius: var(--console-radius-lg);
   box-shadow: 0 20px 50px rgba(16, 24, 40, 0.25);
   width: 100%;
   max-width: 360px;
   overflow: hidden;
 }
-.sa-modal-header {
+.console-modal-header {
   text-align: center;
   padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--sa-border-soft);
+  border-bottom: 1px solid var(--console-border-soft);
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--console-fs-md);
 }
-.sa-modal-body {
+.console-modal-body {
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -523,10 +566,215 @@ body:has(.sa-shell) {
 }
 
 /* Scrollbar niceties */
-.sa-table-scroll::-webkit-scrollbar {
+.console-table-scroll::-webkit-scrollbar {
   height: 8px;
 }
-.sa-table-scroll::-webkit-scrollbar-thumb {
+.console-table-scroll::-webkit-scrollbar-thumb {
   background: #d9dbe1;
   border-radius: 999px;
+}
+
+/* =========================================================
+   Console modal shell
+   Shared by every console dialog so the surface, header and
+   close button stay identical across modals.
+========================================================= */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.modal-header {
+  min-height: 75px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--console-border-soft);
+}
+
+.modal-eyebrow {
+  display: block;
+  color: var(--console-primary);
+  font-size: var(--console-fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal-close {
+  width: 29px;
+  height: 29px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--console-border);
+  border-radius: 6px;
+  color: var(--console-text-secondary);
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  background: var(--console-gray-bg);
+  color: var(--console-text);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--console-border-soft);
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-enter-active,
+  .modal-leave-active {
+    transition: none;
+  }
+}
+
+/* =========================================================
+   Responsive
+   Console primitives are sized for the desktop grid. These
+   two blocks relax that density so every console page adapts
+   at once instead of each view hand-tuning its own widths.
+   Breakpoints: 768px (tablet) and 480px (phone).
+========================================================= */
+
+@media (max-width: 768px) {
+  .console-body {
+    padding: var(--sp-4) var(--sp-4) var(--sp-8);
+  }
+
+  .console-topbar {
+    padding: 0 var(--sp-4);
+  }
+
+  /* A fixed 220px search sits awkwardly once the topbar wraps. */
+  .console-search,
+  .console-search input {
+    width: 100%;
+  }
+
+  .console-heading-row {
+    margin-bottom: var(--sp-4);
+  }
+
+  .console-card-header {
+    padding: 14px var(--sp-4);
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .console-card-header > * {
+    max-width: 100%;
+  }
+
+  .console-heading-actions {
+    flex-wrap: wrap;
+  }
+
+  .console-table th,
+  .console-table td {
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+  }
+
+  .console-stat {
+    padding: var(--sp-4);
+  }
+
+  .modal-backdrop {
+    padding: var(--sp-3);
+    align-items: flex-end;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+
+  .console-modal,
+  .modal-backdrop > * {
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .console-body {
+    padding: var(--sp-3) var(--sp-3) var(--sp-6);
+  }
+
+  .console-topbar {
+    padding: 0 var(--sp-3);
+  }
+
+  .console-topbar-mid {
+    display: none;
+  }
+
+  .console-heading-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .console-heading-actions,
+  .console-heading-actions .console-btn {
+    width: 100%;
+  }
+
+  .console-heading-actions .console-btn {
+    justify-content: center;
+  }
+
+  .console-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .console-segmented {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .console-table th,
+  .console-table td {
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+  }
+
+  /* Dialog actions stack so labels are never truncated. */
+  .modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal-footer .console-btn {
+    justify-content: center;
+    width: 100%;
+  }
 }

@@ -31,6 +31,67 @@
   --color-focus: var(--brand-blue);
   --shadow-panel: 0 18px 48px rgb(77 62 129 / 10%);
   --font-sans: "IBM Plex Sans Thai", "Segoe UI", Tahoma, sans-serif;
+
+  /* =====================================================================
+     Shared primitive layer — one system, two skins.
+
+     Every token below is surface-agnostic: the public pages and the
+     console both build on these. Only *colour* and *font-family* differ
+     between the two surfaces; scale, rhythm and shape are shared so a
+     heading is the same size wherever it appears.
+
+     theme.css re-points its --console-fs-* aliases at this scale, so
+     these are the single source of truth for type size app-wide.
+  ===================================================================== */
+
+  /* Type scale. rem values chosen so each step lands on a whole pixel at
+     the 16px root, and matches the px steps the console already shipped. */
+  --fs-2xs: 0.6875rem; /* 11px — micro labels, eyebrows */
+  --fs-xs: 0.75rem; /* 12px — table headers, meta */
+  --fs-sm: 0.8125rem; /* 13px — secondary text, form labels */
+  --fs-base: 0.875rem; /* 14px — body */
+  --fs-md: 0.9375rem; /* 15px — emphasised body, inputs, buttons */
+  --fs-lg: 1.125rem; /* 18px — card titles */
+  --fs-xl: 1.375rem; /* 22px — section titles */
+  --fs-2xl: clamp(1.5rem, 1.5vw, 1.75rem); /* 24–28px — page heading */
+  --fs-3xl: clamp(1.75rem, 1.8vw, 2rem); /* 28–32px — hero figures */
+  --fs-display: clamp(2rem, 4vw, 3rem); /* page h1, shrinks on its own */
+
+  /* Line height. Headings need a tighter ratio than body copy; without
+     these every heading inherits body 1.5 and reads loose. */
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-base: 1.5;
+
+  /* Spacing scale — a 4px rhythm. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgb(24 24 27 / 6%);
+  --shadow-md: 0 3px 10px rgb(24 24 27 / 8%);
+  --shadow-lg: 0 18px 48px rgb(77 62 129 / 10%);
+
+  /* Breakpoints. Custom properties cannot be used inside a media query,
+     so these are documentation for authors rather than live values —
+     write the literal px and keep it to one of these four.
+       --bp-wide:   1280px
+       --bp-laptop: 1024px
+       --bp-tablet:  768px
+       --bp-phone:   480px */
 }
 
 *,
@@ -52,8 +113,8 @@ body {
   color: var(--color-text);
   background: var(--color-background);
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: var(--fs-lg);
+  line-height: var(--lh-base);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

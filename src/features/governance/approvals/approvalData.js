@@ -1,0 +1,36 @@
+// Approval feature mock data — swap for API responses when the backend is wired up.
+
+export const pendingApprovalEvents = [
+  {
+    id: 1,
+    icon: '🎵',
+    name: 'Summer Music Festival 2026',
+    category: 'Entertainment & Arts',
+    organizerAvatar: 'https://i.pravatar.cc/64?img=5',
+    organizer: 'Dana Whitfield',
+    organizerRole: 'Event Admin',
+    date: 'Aug 14, 2026',
+    dateISO: '2026-08-14',
+    location: 'Central Park, NYC',
+    participants: 6200,
+    max: 8000,
+    status: 'Pending Review',
+    priority: 'high',
+  },
+  {
+    id: 2,
+    icon: '⚙️',
+    name: 'AI & Future of Work Summit',
+    category: 'Technology',
+    organizerAvatar: 'https://i.pravatar.cc/64?img=9',
+    organizer: 'Priya Nair',
+    organizerRole: 'Sr. Coordinator',
+    date: 'Sep 03, 2026',
+    dateISO: '2026-09-03',
+    location: 'Moscone Center, SF',
+    participants: 1150,
+    max: 2400,
+    status: 'Pending Review',
+    priority: 'standard',
+  },
+]
