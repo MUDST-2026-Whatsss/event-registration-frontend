@@ -16,6 +16,7 @@ const currentRole = ref(null)
 const authUser = ref(null)
 const isInitializing = ref(false)
 const isInitialized = ref(false)
+const sessionExpired = ref(false)
 let initializationRequest = null
 let refreshRequest = null
 
@@ -39,6 +40,7 @@ function applyUser(user) {
   authUser.value = user
   currentRole.value = normalizeRole(user)
   isAuthenticated.value = Boolean(user && currentRole.value)
+  sessionExpired.value = false
 }
 
 function clearUser() {
@@ -64,7 +66,7 @@ async function refreshSession() {
   }
 }
 
-async function requestWithSession(path, options) {
+export async function authenticatedApiRequest(path, options) {
   try {
     return await apiRequest(path, options)
   } catch (error) {
@@ -73,6 +75,7 @@ async function requestWithSession(path, options) {
       await refreshSession()
     } catch (refreshError) {
       clearUser()
+      sessionExpired.value = true
       throw refreshError
     }
     return apiRequest(path, options)
@@ -150,7 +153,7 @@ export function useAuth() {
   }
 
   async function changePassword(currentPassword, newPassword) {
-    await requestWithSession('/auth/change-password', {
+    await authenticatedApiRequest('/auth/change-password', {
       method: 'POST',
       body: { currentPassword, newPassword },
     })
@@ -161,7 +164,7 @@ export function useAuth() {
   }
 
   async function updateCurrentUser(values) {
-    const user = await requestWithSession('/auth/me', {
+    const user = await authenticatedApiRequest('/auth/me', {
       method: 'PATCH',
       body: values,
     })
@@ -175,6 +178,7 @@ export function useAuth() {
     currentUser,
     isInitializing: readonly(isInitializing),
     isInitialized: readonly(isInitialized),
+    sessionExpired: readonly(sessionExpired),
     login,
     register,
     logout,

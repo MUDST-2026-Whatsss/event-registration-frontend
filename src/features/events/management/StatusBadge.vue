@@ -9,10 +9,17 @@ defineProps({
 })
 
 const statusClass = {
-  Published: 'published',
-  Pending: 'pending',
-  Rejected: 'rejected',
-  Draft: 'draft'
+  PUBLISHED: 'published',
+  PENDING_REVIEW: 'pending',
+  REJECTED: 'rejected',
+  DRAFT: 'draft',
+  CANCELLED: 'rejected',
+  COMPLETED: 'published',
+}
+
+const statusLabel = {
+  PUBLISHED: 'Published', PENDING_REVIEW: 'Pending review', REJECTED: 'Rejected',
+  DRAFT: 'Draft', CANCELLED: 'Cancelled', COMPLETED: 'Completed',
 }
 </script>
 
@@ -21,7 +28,7 @@ const statusClass = {
     class="badge"
     :class="statusClass[status]"
   >
-    {{ status }}
+    {{ statusLabel[status] || status }}
   </span>
 </template>
 

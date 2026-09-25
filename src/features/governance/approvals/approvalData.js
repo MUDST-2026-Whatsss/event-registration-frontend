@@ -3,7 +3,7 @@
 export const pendingApprovalEvents = [
   {
     id: 1,
-    icon: '🎵',
+    icon: 'music',
     name: 'Summer Music Festival 2026',
     category: 'Entertainment & Arts',
     organizerAvatar: 'https://i.pravatar.cc/64?img=5',
@@ -19,7 +19,7 @@ export const pendingApprovalEvents = [
   },
   {
     id: 2,
-    icon: '⚙️',
+    icon: 'settings',
     name: 'AI & Future of Work Summit',
     category: 'Technology',
     organizerAvatar: 'https://i.pravatar.cc/64?img=9',

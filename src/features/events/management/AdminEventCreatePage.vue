@@ -1,80 +1,257 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ConsoleIcon as Icon, PageTopbar, UserMenu } from '@/features/console-shell/public.js'
+import { ApiError } from '@/shared/lib/apiClient.js'
+import { useToast } from '@/shared/composables/useToast.js'
 import {
-  ConsoleIcon as Icon,
-  PageTopbar,
-  UserMenu,
-} from '@/features/console-shell/public.js'
+  createAdminEvent,
+  createEventChangeRequest,
+  deleteEventImage,
+  getAdminEvent,
+  listEventChangeRequests,
+  listEventCategories,
+  submitAdminEvent,
+  updateAdminEvent,
+  uploadEventImage,
+} from '../api/adminEventsApi.js'
 
-// Form Data State
+const route = useRoute()
+const router = useRouter()
+const { showToast } = useToast()
+const routeEventId = computed(() => route.params.eventId || null)
+const eventId = ref(routeEventId.value)
+const version = ref(0)
+const status = ref('DRAFT')
+const categories = ref([])
+const loading = ref(false)
+const saving = ref(false)
+const uploading = ref(false)
+const pageError = ref('')
+const fieldErrors = ref({})
+const imageInput = ref(null)
+const imageObjectKey = ref('')
+const imageUrl = ref('')
+const newlyUploadedImage = ref(false)
+const showAdminTip = ref(true)
+const changeReason = ref('')
+const changeRequests = ref([])
+
 const form = ref({
-  title: '',
-  description: '',
-  category: '',
-  location: '',
-  date: '',
-  startTime: '',
-  endTime: '',
-  maxParticipants: '',
-  deadline: '',
-  // งานฟรีคือราคา 0 — pricingType เป็นแค่ตัวคุม UI ส่วนที่ส่งไป backend คือ price
-  pricingType: 'free',
-  price: '',
-  currency: 'THB',
-  allowCancel: false,
-  showSeats: true,
-  rules: '',
-  contactEmail: '',
-  eligibility: ''
+  title: '', description: '', category: '', locationType: 'ONSITE', location: '', onlineUrl: '',
+  date: '', startTime: '', endTime: '', maxParticipants: '', registrationStart: '', deadline: '',
+  pricingType: 'free', price: '', currency: 'THB', allowCancel: false, showSeats: true,
+  rules: '', contactEmail: '', eligibility: '',
 })
 
-// ราคาที่จะบันทึกจริง: ฟรี = 0 เสมอ
 const effectivePrice = computed(() =>
-  form.value.pricingType === 'free' ? 0 : Number(form.value.price || 0)
-)
+  form.value.pricingType === 'free' ? 0 : Number(form.value.price || 0))
+const pageTitle = computed(() => eventId.value ? 'Edit Event' : 'Create New Event')
+const pendingChangeRequest = computed(() =>
+  changeRequests.value.find((request) => request.status === 'PENDING'))
+const isPublished = computed(() => status.value === 'PUBLISHED')
+const canEdit = computed(() =>
+  ['DRAFT', 'REJECTED'].includes(status.value)
+  || (isPublished.value && !pendingChangeRequest.value))
 
 function selectPricing(type) {
   form.value.pricingType = type
   if (type === 'free') form.value.price = ''
 }
 
-const newUser = ref('')
-const addedUsers = ref([
-  'support@event.com'
-])
-
-const handleAddUser = () => {
-  if (newUser.value.trim() && !addedUsers.value.includes(newUser.value)) {
-    addedUsers.value.push(newUser.value)
-    newUser.value = ''
-  }
+function toInstant(value) {
+  return value ? new Date(value).toISOString() : null
 }
 
-const handleRemoveUser = (index) => {
-  addedUsers.value.splice(index, 1)
+function eventInstant(time) {
+  return form.value.date && time ? toInstant(`${form.value.date}T${time}`) : null
 }
 
-// pricingType เป็นสถานะของ UI เท่านั้น payload ที่ส่งจริงใช้ price เป็นตัวเลข
-// (0 = ฟรี) ให้ตรงกับคอลัมน์ events.price_amount
-function buildPayload(status) {
-  const { pricingType, price, ...rest } = form.value
+function buildPayload() {
   return {
-    ...rest,
+    title: form.value.title.trim(),
+    summary: form.value.description.trim().slice(0, 500) || null,
+    description: form.value.description.trim() || null,
+    eventCategoryId: form.value.category,
+    eventType: form.value.pricingType === 'free' ? 'FREE' : 'PAID',
     price: effectivePrice.value,
-    status,
-    admins: addedUsers.value,
+    currency: form.value.currency,
+    refundPolicy: form.value.pricingType === 'paid' ? form.value.rules.trim() || null : null,
+    locationType: form.value.locationType,
+    locationName: ['ONSITE', 'HYBRID'].includes(form.value.locationType) ? form.value.location.trim() || null : null,
+    address: null,
+    onlineUrl: ['ONLINE', 'HYBRID'].includes(form.value.locationType) ? form.value.onlineUrl.trim() || null : null,
+    imageObjectKey: imageObjectKey.value || null,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
+    startAt: eventInstant(form.value.startTime),
+    endAt: eventInstant(form.value.endTime),
+    registrationStartAt: toInstant(form.value.registrationStart),
+    registrationEndAt: toInstant(form.value.deadline),
+    cancellationDeadlineAt: form.value.allowCancel ? toInstant(form.value.deadline) : null,
+    maximumParticipants: Number(form.value.maxParticipants),
+    rules: form.value.rules.trim() || null,
+    contactEmail: form.value.contactEmail.trim() || null,
+    eligibility: form.value.eligibility.trim() || null,
+    allowCancellation: form.value.allowCancel,
+    showRemainingSeats: form.value.showSeats,
   }
 }
 
-const submitForm = () => {
-  console.log('Submitting Event for Review:', buildPayload('PENDING_REVIEW'))
-  // TODO: Add API integration here
+function applyError(error) {
+  fieldErrors.value = error instanceof ApiError && error.fieldErrors ? error.fieldErrors : {}
+  pageError.value = error instanceof Error ? error.message : 'Unable to save the event.'
 }
 
-const saveDraft = () => {
-  console.log('Saving as Draft:', buildPayload('DRAFT'))
-  // TODO: Add API integration here
+async function persistDraft() {
+  const saved = eventId.value
+    ? await updateAdminEvent(eventId.value, version.value, buildPayload())
+    : await createAdminEvent(buildPayload())
+  eventId.value = saved.eventId
+  version.value = saved.version
+  status.value = saved.status
+  newlyUploadedImage.value = false
+  return saved
 }
+
+async function saveDraft() {
+  saving.value = true
+  pageError.value = ''
+  fieldErrors.value = {}
+  try {
+    await persistDraft()
+    showToast({ variant: 'success', title: 'Draft saved', message: 'Your event draft is stored securely.' })
+    await router.replace(`/admin/events/${eventId.value}/edit`)
+  } catch (error) {
+    applyError(error)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitForm() {
+  saving.value = true
+  pageError.value = ''
+  fieldErrors.value = {}
+  try {
+    await persistDraft()
+    const submitted = await submitAdminEvent(eventId.value, version.value)
+    version.value = submitted.version
+    status.value = submitted.status
+    showToast({ variant: 'success', title: 'Submitted for review', message: 'A super admin can now review this event.' })
+    await router.push('/admin/all-events')
+  } catch (error) {
+    applyError(error)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitChangeRequest() {
+  if (!changeReason.value.trim()) {
+    pageError.value = 'Please explain why this published event needs to change.'
+    return
+  }
+  saving.value = true
+  pageError.value = ''
+  fieldErrors.value = {}
+  try {
+    const created = await createEventChangeRequest(
+      eventId.value,
+      version.value,
+      changeReason.value.trim(),
+      buildPayload(),
+    )
+    changeRequests.value.unshift(created)
+    newlyUploadedImage.value = false
+    showToast({
+      variant: 'success',
+      title: 'Change request submitted',
+      message: 'The published event remains unchanged until a super admin approves the request.',
+    })
+    await router.push('/admin/all-events')
+  } catch (error) {
+    applyError(error)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleImage(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  uploading.value = true
+  pageError.value = ''
+  try {
+    if (newlyUploadedImage.value && imageObjectKey.value) await deleteEventImage(imageObjectKey.value)
+    const uploaded = await uploadEventImage(file)
+    imageObjectKey.value = uploaded.objectKey
+    imageUrl.value = uploaded.imageUrl
+    newlyUploadedImage.value = true
+  } catch (error) {
+    applyError(error)
+  } finally {
+    uploading.value = false
+  }
+}
+
+async function removeImage() {
+  if (newlyUploadedImage.value && imageObjectKey.value) {
+    try {
+      await deleteEventImage(imageObjectKey.value)
+    } catch (error) {
+      applyError(error)
+      return
+    }
+  }
+  imageObjectKey.value = ''
+  imageUrl.value = ''
+  newlyUploadedImage.value = false
+}
+
+function localDateTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+function applyEvent(event) {
+  eventId.value = event.eventId
+  version.value = event.version
+  status.value = event.status
+  imageObjectKey.value = event.imageObjectKey || ''
+  imageUrl.value = event.imageUrl || ''
+  const start = localDateTime(event.startAt)
+  const end = localDateTime(event.endAt)
+  Object.assign(form.value, {
+    title: event.title || '', description: event.description || '',
+    category: event.category?.eventCategoryId || '', locationType: event.locationType || 'ONSITE',
+    location: event.locationName || '', onlineUrl: event.onlineUrl || '', date: start.slice(0, 10),
+    startTime: start.slice(11, 16), endTime: end.slice(11, 16),
+    maxParticipants: event.maximumParticipants, registrationStart: localDateTime(event.registrationStartAt),
+    deadline: localDateTime(event.registrationEndAt), pricingType: event.eventType === 'PAID' ? 'paid' : 'free',
+    price: event.eventType === 'PAID' ? event.price : '', currency: event.currency || 'THB',
+    allowCancel: event.allowCancellation, showSeats: event.showRemainingSeats, rules: event.rules || '',
+    contactEmail: event.contactEmail || '', eligibility: event.eligibility || '',
+  })
+}
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    categories.value = await listEventCategories()
+    if (routeEventId.value) {
+      applyEvent(await getAdminEvent(routeEventId.value))
+      changeRequests.value = await listEventChangeRequests(routeEventId.value)
+    }
+    if (!form.value.registrationStart) form.value.registrationStart = localDateTime(new Date().toISOString())
+  } catch (error) {
+    applyError(error)
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -83,7 +260,7 @@ const saveDraft = () => {
           <nav class="crumbs">
             <RouterLink to="/admin/all-events">All Events</RouterLink>
             <Icon name="chevron-right" :size="14" />
-            <span class="crumb-current">Create New Event</span>
+            <span class="crumb-current">{{ pageTitle }}</span>
           </nav>
         </template>
         <template #search>
@@ -99,24 +276,36 @@ const saveDraft = () => {
 
       <section class="content-scroll">
         <div class="form-container">
+          <div v-if="pageError" class="form-alert" role="alert">
+            <strong>{{ pageError }}</strong>
+            <ul v-if="Object.keys(fieldErrors).length">
+              <li v-for="(message, field) in fieldErrors" :key="field">{{ field }}: {{ message }}</li>
+            </ul>
+          </div>
+          <p v-if="loading" class="loading-message">Loading event data…</p>
           
           <div class="stepper">
-            <div class="step active">
+            <div class="step" :class="{ active: ['DRAFT', 'REJECTED'].includes(status) }">
               <div class="circle">1</div>
               <span class="label">DRAFT</span>
             </div>
             <div class="line"></div>
-            <div class="step">
+            <div class="step" :class="{ active: status === 'PENDING_REVIEW' }">
               <div class="circle">2</div>
               <span class="label">PENDING REVIEW</span>
             </div>
             <div class="line"></div>
-            <div class="step">
+            <div class="step" :class="{ active: status === 'PUBLISHED' }">
               <div class="circle">3</div>
               <span class="label">PUBLISHED</span>
             </div>
           </div>
 
+          <div v-if="pendingChangeRequest" class="change-notice">
+            A change request is pending review. The published event remains unchanged until it is approved.
+          </div>
+
+          <fieldset class="form-fields" :disabled="!canEdit || loading || saving">
           <div class="card form-section">
             <div class="section-header">
               <h2>Basic Information</h2>
@@ -138,14 +327,33 @@ const saveDraft = () => {
                 <label>CATEGORY <span class="required">*</span></label>
                 <select v-model="form.category">
                   <option value="" disabled>Select category</option>
-                  <option value="conference">Conference</option>
-                  <option value="workshop">Workshop</option>
-                  <option value="meetup">Meetup</option>
+                  <option
+                    v-for="category in categories"
+                    :key="category.eventCategoryId"
+                    :value="category.eventCategoryId"
+                  >
+                    {{ category.nameEn || category.nameTh }}
+                  </option>
                 </select>
               </div>
               <div class="form-group">
-                <label>LOCATION <span class="required">*</span></label>
-                <input type="text" v-model="form.location" placeholder="Venue or Virtual link" />
+                <label>LOCATION TYPE <span class="required">*</span></label>
+                <select v-model="form.locationType">
+                  <option value="ONSITE">On site</option>
+                  <option value="ONLINE">Online</option>
+                  <option value="HYBRID">Hybrid</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div v-if="form.locationType !== 'ONLINE'" class="form-group">
+                <label>VENUE <span class="required">*</span></label>
+                <input type="text" v-model="form.location" placeholder="Venue name" />
+              </div>
+              <div v-if="form.locationType !== 'ONSITE'" class="form-group">
+                <label>ONLINE URL <span class="required">*</span></label>
+                <input type="url" v-model="form.onlineUrl" placeholder="https://…" />
               </div>
             </div>
 
@@ -168,12 +376,30 @@ const saveDraft = () => {
               <label>EVENT IMAGE</label>
               <div class="image-upload-box">
                 <div class="image-placeholder">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                  <img v-if="imageUrl" :src="imageUrl" alt="Event cover preview" class="image-preview" />
+                  <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                 </div>
                 <div class="upload-actions">
-                  <button class="btn-upload">
+                  <input
+                    ref="imageInput"
+                    class="sr-only"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    @change="handleImage"
+                  />
+                  <button type="button" class="btn-upload" :disabled="uploading || !canEdit" @click="imageInput?.click()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    Upload Image
+                    {{ uploading ? 'Uploading…' : imageUrl ? 'Replace image' : 'Upload image' }}
+                  </button>
+                  <button
+                    v-if="imageUrl"
+                    type="button"
+                    class="btn-remove-image"
+                    :disabled="uploading || !canEdit"
+                    @click="removeImage"
+                  >
+                    <Icon name="trash" :size="16" aria-hidden="true" />
+                    Remove image
                   </button>
                   <p class="hint">Recommended: 1200x630px, Max size 2MB</p>
                 </div>
@@ -193,8 +419,12 @@ const saveDraft = () => {
                 <input type="number" v-model="form.maxParticipants" placeholder="e.g. 500" />
               </div>
               <div class="form-group">
+                <label>REGISTRATION START <span class="required">*</span></label>
+                <input type="datetime-local" v-model="form.registrationStart" />
+              </div>
+              <div class="form-group">
                 <label>REGISTRATION DEADLINE <span class="required">*</span></label>
-                <input type="date" v-model="form.deadline" />
+                <input type="datetime-local" v-model="form.deadline" />
               </div>
             </div>
 
@@ -298,39 +528,43 @@ const saveDraft = () => {
             </div>
           </div>
 
-          <div class="card form-section">
+          <div v-if="isPublished" class="card form-section">
             <div class="section-header">
-              <h2>Add Users</h2>
-              <p>Add users to events</p>
+              <h2>Reason for change</h2>
+              <p>Published event changes require Super Admin approval.</p>
             </div>
-
-            <div class="add-user-input">
-              <input type="email" v-model="newUser" placeholder="support@event.com" @keyup.enter="handleAddUser" />
-              <button class="btn-add" @click="handleAddUser">Add</button>
-            </div>
-
-            <div class="user-list" v-if="addedUsers.length > 0">
-              <div class="user-item" v-for="(user, index) in addedUsers" :key="index">
-                <span>{{ user }}</span>
-                </div>
+            <div class="form-group">
+              <label>CHANGE REASON <span class="required">*</span></label>
+              <textarea v-model="changeReason" rows="3" placeholder="Explain what changed and why..."></textarea>
             </div>
           </div>
+          </fieldset>
 
           <div class="form-actions">
-            <button class="btn-cancel" @click="$router.push('/all-events')">Cancel</button>
+            <button type="button" class="btn-cancel" @click="router.push('/admin/all-events')">Cancel</button>
             <div class="right-actions">
-              <button class="btn-draft" @click="saveDraft">Save as Draft</button>
-              <button class="btn-submit" @click="submitForm">Submit for Review</button>
+              <button v-if="!isPublished" type="button" class="btn-draft" :disabled="saving || loading || !canEdit" @click="saveDraft">
+                {{ saving ? 'Saving…' : 'Save as Draft' }}
+              </button>
+              <button v-if="!isPublished" type="button" class="btn-submit" :disabled="saving || loading || !canEdit" @click="submitForm">
+                Submit for Review
+              </button>
+              <button v-else type="button" class="btn-submit" :disabled="saving || loading || !canEdit" @click="submitChangeRequest">
+                {{ saving ? 'Submitting…' : 'Submit Change Request' }}
+              </button>
             </div>
           </div>
 
         </div>
       </section>
 
-  <div class="admin-warning">
+  <aside v-if="showAdminTip" class="admin-warning" role="note" aria-label="Approval reminder">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" class="mr-2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
     <span>Super Admin approval required for event changes</span>
-  </div>
+    <button type="button" aria-label="Dismiss approval reminder" @click="showAdminTip = false">
+      <Icon name="x" :size="15" aria-hidden="true" />
+    </button>
+  </aside>
 </template>
 
 <style scoped>
@@ -372,6 +606,26 @@ const saveDraft = () => {
   max-width: 1200px;
   margin-inline: auto;
 }
+.form-alert {
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+}
+.form-alert ul { margin: 8px 0 0; padding-left: 20px; }
+.loading-message { color: var(--console-text-muted); }
+.change-notice {
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+}
+.form-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.form-fields:disabled { opacity: .75; }
 
 /* Stepper */
 .stepper {
@@ -453,6 +707,8 @@ input[type="email"],
 input[type="number"],
 input[type="date"],
 input[type="time"],
+input[type="url"],
+input[type="datetime-local"],
 select,
 textarea {
   width: 100%;
@@ -485,7 +741,9 @@ textarea { resize: vertical; }
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
+.image-preview { width: 100%; height: 100%; object-fit: cover; }
 .upload-actions { display: flex; flex-direction: column; gap: 12px; }
 .btn-upload {
   display: inline-flex;
@@ -501,6 +759,32 @@ textarea { resize: vertical; }
   width: fit-content;
 }
 .btn-upload:hover { background: #f8fafc; }
+.btn-remove-image {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 42px;
+  padding: 0 16px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #b91c1c;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.btn-remove-image:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+  box-shadow: 0 2px 8px rgb(220 38 38 / 10%);
+}
+.btn-upload:disabled,
+.btn-remove-image:disabled,
+.btn-draft:disabled,
+.btn-submit:disabled { opacity: .55; cursor: not-allowed; }
 .hint { font-size: var(--console-fs-sm); color: #94a3b8; margin: 0; }
 .mr-2 { margin-right: 8px; }
 
@@ -670,21 +954,36 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 /* Admin Warning */
 .admin-warning {
-  position: absolute;
+  position: fixed;
   bottom: 24px;
-  left: 24px;
+  right: 24px;
   background: #fef3c7;
   border: 1px solid #fde68a;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
+  gap: 8px;
   font-size: var(--console-fs-base);
   color: #92400e;
-  width: 200px;
-  z-index: 10;
+  width: min(280px, calc(100vw - 48px));
+  box-shadow: 0 12px 28px rgba(146, 64, 14, 0.16);
+  z-index: 40;
 }
 .admin-warning svg { flex-shrink: 0; }
+.admin-warning button {
+  align-self: flex-start;
+  margin: -5px -7px 0 auto;
+  padding: 2px 6px;
+  color: #92400e;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.admin-warning button:hover { background: rgba(217, 119, 6, 0.12); }
 
 @media (max-width: 768px) {
   .content-scroll {
@@ -741,8 +1040,7 @@ input:checked + .slider:before { transform: translateX(20px); }
   .admin-warning {
     right: 12px;
     bottom: 12px;
-    left: 12px;
-    width: auto;
+    width: min(280px, calc(100vw - 24px));
   }
 }
 </style>

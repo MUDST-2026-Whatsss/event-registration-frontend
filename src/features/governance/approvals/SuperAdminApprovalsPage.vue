@@ -117,7 +117,7 @@ function toggleSort() {
             <tr v-for="event in filtered" :key="event.id">
               <td>
                 <div class="console-event-cell">
-                  <span class="console-event-icon">{{ event.icon }}</span>
+                  <span class="console-event-icon"><Icon :name="event.icon" :size="18" aria-hidden="true" /></span>
                   <div>
                     <div style="font-weight: 700">{{ event.name }}</div>
                     <div class="console-muted-sm">{{ event.category }}</div>

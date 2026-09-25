@@ -1,14 +1,30 @@
+<script setup>
+defineProps({
+  modelValue: { type: String, default: '' },
+})
+
+const emit = defineEmits(['update:modelValue'])
+const tabs = [
+  ['', 'All'],
+  ['DRAFT', 'Draft'],
+  ['PUBLISHED', 'Published'],
+  ['PENDING_REVIEW', 'Pending'],
+  ['REJECTED', 'Rejected'],
+  ['CANCELLED', 'Cancelled'],
+]
+</script>
+
 <template>
   <div class="filter-box">
     <div class="tabs">
-      <button class="active">All</button>
-      <button>Draft</button>
-      <button>Published</button>
-      <button>Pending</button>
-      <button>Rejected</button>
+      <button
+        v-for="([value, label]) in tabs"
+        :key="label"
+        type="button"
+        :class="{ active: modelValue === value }"
+        @click="emit('update:modelValue', value)"
+      >{{ label }}</button>
     </div>
-
-    <button class="filter-btn">Filters</button>
   </div>
 </template>
 

@@ -69,9 +69,10 @@ export async function apiRequest(path, options = {}) {
   const method = (requestOptions.method ?? 'GET').toUpperCase()
   const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method)
   const headers = new Headers(requestOptions.headers)
+  const isFormData = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData
 
   headers.set('Accept', 'application/json')
-  if (requestOptions.body !== undefined && !headers.has('Content-Type')) {
+  if (requestOptions.body !== undefined && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   if (mutating) {
@@ -85,7 +86,9 @@ export async function apiRequest(path, options = {}) {
       method,
       headers,
       credentials: 'include',
-      body: requestOptions.body === undefined || typeof requestOptions.body === 'string'
+      body: requestOptions.body === undefined
+        || typeof requestOptions.body === 'string'
+        || isFormData
         ? requestOptions.body
         : JSON.stringify(requestOptions.body),
     })

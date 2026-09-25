@@ -13,7 +13,7 @@ const emit = defineEmits(['close', 'approve', 'reject'])
     <div class="console-modal console-details-modal">
       <div class="console-details-header">
         <div class="console-event-cell">
-          <span class="console-event-icon">{{ event.icon }}</span>
+          <span class="console-event-icon"><Icon :name="event.icon" :size="18" aria-hidden="true" /></span>
           <div>
             <div class="console-details-title">{{ event.name }}</div>
             <div class="console-muted-sm">{{ event.category }}</div>

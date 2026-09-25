@@ -1,4 +1,5 @@
 <script setup>
+import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 import StatusBadge from './StatusBadge.vue'
 
 
@@ -6,6 +7,7 @@ import StatusBadge from './StatusBadge.vue'
 defineProps({
   event: Object
 })
+defineEmits(['edit', 'cancel', 'withdraw'])
 </script>
 
 <template>
@@ -14,7 +16,8 @@ defineProps({
     <!-- Event Details -->
     <div class="info">
       <div class="event-image">
-        <span>🖼️</span>
+        <img v-if="event.imageUrl" :src="event.imageUrl" :alt="event.title" />
+        <Icon v-else name="image" :size="22" aria-hidden="true" />
       </div>
 
       <div>
@@ -25,7 +28,7 @@ defineProps({
 
     <!-- Date -->
     <div class="date">
-      {{ event.date }}
+      {{ new Date(event.startAt).toLocaleString() }}
     </div>
 
     <!-- Registrations -->
@@ -50,8 +53,27 @@ defineProps({
 
     <!-- Actions -->
     <div class="actions">
-      <button>✏️</button>
-      <button>🗑️</button>
+      <button
+        v-if="['DRAFT', 'REJECTED', 'PUBLISHED'].includes(event.status)"
+        type="button"
+        :title="event.status === 'PUBLISHED' ? 'Request event changes' : 'Edit event'"
+        :aria-label="event.status === 'PUBLISHED' ? 'Request event changes' : 'Edit event'"
+        @click="$emit('edit', event)"
+      ><Icon name="pencil" :size="17" /></button>
+      <button
+        v-if="event.status === 'PENDING_REVIEW'"
+        type="button"
+        title="Withdraw review"
+        aria-label="Withdraw review"
+        @click="$emit('withdraw', event)"
+      ><Icon name="undo" :size="17" /></button>
+      <button
+        v-if="!['CANCELLED', 'COMPLETED'].includes(event.status)"
+        type="button"
+        title="Cancel event"
+        aria-label="Cancel event"
+        @click="$emit('cancel', event)"
+      ><Icon name="x" :size="17" /></button>
     </div>
 
   </div>
@@ -83,6 +105,7 @@ defineProps({
   justify-content: center;
   flex-shrink: 0;
 }
+.event-image img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 
 .info h4 {
   margin: 0 0 5px;
@@ -125,11 +148,18 @@ defineProps({
 }
 
 .actions button {
-  border: none;
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--console-text-secondary);
   background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: var(--console-fs-lg);
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
+.actions button:hover { color: var(--console-primary); background: var(--console-primary-soft); border-color: var(--console-border); }
 
 @media (max-width: 768px) {
   .row {

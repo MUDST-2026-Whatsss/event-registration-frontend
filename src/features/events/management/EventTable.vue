@@ -4,8 +4,11 @@ import EventRow from './EventRow.vue'
 
 
 defineProps({
-  events: Array
+  events: { type: Array, default: () => [] },
+  page: { type: Number, default: 0 },
+  totalPages: { type: Number, default: 0 },
 })
+defineEmits(['page', 'edit', 'cancel', 'withdraw'])
 </script>
 
 <template>
@@ -20,16 +23,21 @@ defineProps({
 
     <EventRow
       v-for="event in events"
-      :key="event.id"
+      :key="event.eventId"
       :event="event"
+      @edit="$emit('edit', $event)"
+      @cancel="$emit('cancel', $event)"
+      @withdraw="$emit('withdraw', $event)"
     />
 
+    <div v-if="events.length === 0" class="empty-row">No events found.</div>
+
     <div class="pagination">
-      <span>Page 1 of 2</span>
+      <span>Page {{ totalPages ? page + 1 : 0 }} of {{ totalPages }}</span>
 
       <div class="pages">
-        <button class="active">1</button>
-        <button>2</button>
+        <button type="button" :disabled="page === 0" @click="$emit('page', page - 1)">Previous</button>
+        <button type="button" :disabled="page + 1 >= totalPages" @click="$emit('page', page + 1)">Next</button>
       </div>
     </div>
   </div>
@@ -63,6 +71,7 @@ defineProps({
   display: flex;
   gap: 10px;
 }
+.empty-row { padding: 36px 22px; color: #64748b; text-align: center; }
 .active {
   background: #2563eb;
   color: white;

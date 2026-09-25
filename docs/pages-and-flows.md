@@ -36,12 +36,13 @@ The `/admin/**` parent route uses `features/console-shell/ConsoleLayout.vue` and
 
 | Page | Route | Feature owner | Current state | Next backend integration |
 | --- | --- | --- | --- | --- |
-| Dashboard | `/admin/dashboard` | `features/dashboards` | Prototype aggregates | Scoped admin dashboard API |
-| All events | `/admin/all-events` | `features/events/management` | Prototype event table | Scoped admin event list and filters |
-| Create event | `/admin/create-event` | `features/events/management` | Prototype; builds and logs payload | Create draft and submit-for-review APIs |
+| Dashboard | `/admin/dashboard` | `features/dashboards` | **Partial API**: scoped event totals and recent events | Registration trends/activity after their APIs exist |
+| All events | `/admin/all-events` | `features/events/management` | **Live API**: scoped list, search, status filter, withdraw and cancel | Complete for event lifecycle |
+| Create event | `/admin/create-event` | `features/events/management` | **Live API**: image upload, draft creation and submit for review | Complete for event lifecycle |
+| Edit/request changes | `/admin/events/:eventId/edit` | `features/events/management` | **Live API**: DRAFT/REJECTED edit; PUBLISHED field-diff request | Super Admin decision UI is Phase 3 |
 
-Editing an existing event is not routed yet. Add it only with an API-backed event detail/update
-contract, optimistic version field, and permission rules.
+Admin event writes carry an optimistic version. Published edits create a field-level change request
+and leave the active event unchanged until a later Super Admin decision.
 
 ## Super-admin console
 

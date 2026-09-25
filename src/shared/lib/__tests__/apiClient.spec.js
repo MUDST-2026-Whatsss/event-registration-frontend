@@ -46,4 +46,21 @@ describe('shared apiClient CSRF handling', () => {
     expect(fetch.mock.calls[1][1].headers.get('X-XSRF-TOKEN')).toBe('expired-csrf')
     expect(fetch.mock.calls[3][1].headers.get('X-XSRF-TOKEN')).toBe('fresh-csrf')
   })
+
+  it('sends multipart bodies without JSON encoding or a manual content type', async () => {
+    fetch
+      .mockResolvedValueOnce(apiResponse({ token: 'csrf-token' }))
+      .mockResolvedValueOnce(apiResponse({ objectKey: 'event-images/owner/image.webp' }, 201))
+
+    const { apiRequest } = await import('../apiClient.js')
+    const body = new FormData()
+    body.append('file', new Blob(['image']), 'event.webp')
+
+    await apiRequest('/event-images', { method: 'POST', body })
+
+    const request = fetch.mock.calls[1][1]
+    expect(request.body).toBe(body)
+    expect(request.headers.has('Content-Type')).toBe(false)
+    expect(request.headers.get('X-XSRF-TOKEN')).toBe('csrf-token')
+  })
 })

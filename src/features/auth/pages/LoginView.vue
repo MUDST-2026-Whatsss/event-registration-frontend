@@ -26,6 +26,14 @@ if (route.query.registered === 'true') {
   })
 }
 
+if (route.query.reason === 'session-expired') {
+  showToast({
+    variant: 'warning',
+    title: 'Session expired',
+    message: 'Please sign in again to continue.',
+  })
+}
+
 const errors = reactive({
   email: '',
   password: '',

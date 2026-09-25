@@ -69,6 +69,39 @@ describe('auth feature API session', () => {
     expect(auth.isAuthenticated.value).toBe(true)
   })
 
+  it('refreshes and retries a protected feature API after access-token expiry', async () => {
+    const admin = { ...user, role: 'ADMIN', roles: ['ADMIN'] }
+    fetch
+      .mockResolvedValueOnce(apiResponse({ code: 'UNAUTHENTICATED' }, 401))
+      .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-token' }))
+      .mockResolvedValueOnce(apiResponse({ user: admin }))
+      .mockResolvedValueOnce(apiResponse({ total: 1, draft: 1 }))
+
+    const { authenticatedApiRequest, useAuth } = await import('../useAuth.js')
+    const result = await authenticatedApiRequest('/admin/events/stats')
+
+    expect(result).toEqual({ total: 1, draft: 1 })
+    expect(useAuth().isAuthenticated.value).toBe(true)
+    expect(fetch).toHaveBeenNthCalledWith(4, '/api/v1/admin/events/stats', expect.objectContaining({
+      credentials: 'include',
+    }))
+  })
+
+  it('marks the session expired when the refresh cookie is no longer valid', async () => {
+    fetch
+      .mockResolvedValueOnce(apiResponse({ code: 'UNAUTHENTICATED' }, 401))
+      .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'csrf-token' }))
+      .mockResolvedValueOnce(apiResponse({ code: 'INVALID_REFRESH_TOKEN' }, 401))
+
+    const { authenticatedApiRequest, useAuth } = await import('../useAuth.js')
+
+    await expect(authenticatedApiRequest('/admin/events/stats')).rejects.toMatchObject({
+      status: 401,
+      code: 'INVALID_REFRESH_TOKEN',
+    })
+    expect(useAuth().sessionExpired.value).toBe(true)
+  })
+
   it('stays signed out when neither access nor refresh session is valid', async () => {
     fetch
       .mockResolvedValueOnce(apiResponse({ code: 'UNAUTHENTICATED' }, 401))

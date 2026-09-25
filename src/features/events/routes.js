@@ -43,6 +43,16 @@ export const adminEventRoutes = [
       title: 'Create Event | Eventsss',
     },
   },
+  {
+    path: 'events/:eventId/edit',
+    name: 'admin-edit-event',
+    component: () => import('./management/AdminEventCreatePage.vue'),
+    meta: {
+      heading: 'Edit Event',
+      ownTopbar: true,
+      title: 'Edit Event | Eventsss',
+    },
+  },
 ]
 
 export const superAdminEventRoutes = [
