@@ -1,233 +1,124 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useToast } from '@/shared/composables/useToast.js'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
-import EventParticipantsModal from './EventParticipantsModal.vue'
 import EventAdminsModal from './EventAdminsModal.vue'
-import { consoleEvents, availableAdmins as consoleAdmins } from './eventManagementData.js'
+import {
+  listAdminEvents, listEventAdmins, listEventAdminCandidates,
+  replaceEventAdmins,
+} from '@/features/events/api/adminEventsApi.js'
 
-/* =========================================================
-   EVENT DATA
-========================================================= */
-
-const events = ref([...consoleEvents])
-
-/* =========================================================
-   SEARCH + STATUS + CATEGORY FILTER
-========================================================= */
-
+const events = ref([])
+const availableAdmins = ref([])
 const searchQuery = ref('')
 const activeTab = ref('All')
-
+const page = ref(0)
+const totalPages = ref(0)
+const totalElements = ref(0)
+const loading = ref(false)
+const errorMessage = ref('')
 const { showToast } = useToast()
 
 const showFilters = ref(false)
 const selectedCategories = ref([])
+const tabs = ['All', 'Draft', 'Published', 'Pending', 'Rejected', 'Cancelled']
+const categories = computed(() => [...new Set(events.value.map((event) => event.category).filter(Boolean))])
 
-const tabs = [
-  'All',
-  'Draft',
-  'Published',
-  'Pending',
-  'Rejected',
-]
-
-const categories = [
-  'Workshop',
-  'Seminar',
-  'Music',
-  'Camp',
-  'Others',
-]
-
-const filteredEvents = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-
-  return events.value.filter((event) => {
-
-    /* Status */
-    const matchesTab =
-      activeTab.value === 'All' ||
-      event.status === activeTab.value
-
-    /* Category */
-    const matchesCategory =
-      selectedCategories.value.length === 0 ||
-      selectedCategories.value.includes(event.category)
-
-    /* Search */
-    const matchesSearch =
-      !query ||
-      event.name.toLowerCase().includes(query) ||
-      event.venue.toLowerCase().includes(query) ||
-      event.category.toLowerCase().includes(query) ||
-      event.admins.some((admin) =>
-        admin.name.toLowerCase().includes(query),
-      )
-
-    return (
-      matchesTab &&
-      matchesCategory &&
-      matchesSearch
-    )
-  })
+const statusMap = {
+  Draft: 'DRAFT', Published: 'PUBLISHED', Pending: 'PENDING_REVIEW',
+  Rejected: 'REJECTED', Cancelled: 'CANCELLED',
+}
+const statusLabel = (status) => ({
+  DRAFT: 'Draft', PUBLISHED: 'Published', PENDING_REVIEW: 'Pending',
+  REJECTED: 'Rejected', CANCELLED: 'Cancelled', COMPLETED: 'Completed',
+}[status] || status)
+const formatDate = (value) => value ? new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(value)) : 'TBD'
+const formatTime = (start, end) => start && end
+  ? `${new Date(start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  : 'Unset'
+const mapEvent = (event) => ({
+  id: event.eventId, name: event.title, venue: event.locationName || event.onlineUrl || 'Location not set',
+  date: formatDate(event.startAt), time: formatTime(event.startAt, event.endAt),
+  registrations: event.registrationCount, capacity: event.maximumParticipants,
+  status: statusLabel(event.status), category: event.category?.nameEn || event.category?.nameTh || 'Uncategorized',
+  image: event.imageUrl, admins: [], raw: event,
 })
 
-function selectTab(tab) {
-  activeTab.value = tab
+const filteredEvents = computed(() => events.value.filter((event) =>
+  selectedCategories.value.length === 0 || selectedCategories.value.includes(event.category)))
+
+async function loadEvents() {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const payload = await listAdminEvents({
+      status: statusMap[activeTab.value], query: searchQuery.value.trim(), page: page.value, size: 10,
+    })
+    events.value = payload.content.map(mapEvent)
+    totalPages.value = payload.totalPages
+    totalElements.value = payload.totalElements
+  } catch (error) { errorMessage.value = error.message }
+  finally { loading.value = false }
 }
 
-function toggleFilters() {
-  showFilters.value = !showFilters.value
-}
-
+function selectTab(tab) { activeTab.value = tab; page.value = 0 }
+function toggleFilters() { showFilters.value = !showFilters.value }
 function toggleCategory(category) {
-  if (selectedCategories.value.includes(category)) {
-    selectedCategories.value =
-      selectedCategories.value.filter(
-        (item) => item !== category,
-      )
-  } else {
-    selectedCategories.value.push(category)
-  }
+  selectedCategories.value = selectedCategories.value.includes(category)
+    ? selectedCategories.value.filter((item) => item !== category)
+    : [...selectedCategories.value, category]
 }
-
-function clearFilters() {
-  selectedCategories.value = []
-}
-
-
-/* =========================================================
-   PARTICIPANTS POPUP
-========================================================= */
+function clearFilters() { selectedCategories.value = [] }
 
 const selectedEvent = ref(null)
-const showParticipants = ref(false)
-
-function openParticipants(event) {
-  selectedEvent.value = event
-  showParticipants.value = true
-}
-
-function closeParticipants() {
-  showParticipants.value = false
-  selectedEvent.value = null
-}
-
-
-/* =========================================================
-   MANAGE ADMINS POPUP
-========================================================= */
-
 const showAdmins = ref(false)
 const selectedAdminIds = ref([])
+const protectedOwnerIds = ref([])
 
-const availableAdmins = consoleAdmins
-
-function openAdmins(event) {
+async function openAdmins(event) {
   selectedEvent.value = event
-
-  selectedAdminIds.value =
-    event.admins.map((admin) => admin.id)
-
-  showAdmins.value = true
+  try {
+    const [candidates, assignments] = await Promise.all([
+      listEventAdminCandidates(), listEventAdmins(event.id),
+    ])
+    const assignmentById = new Map(assignments.map((item) => [item.userId, item]))
+    protectedOwnerIds.value = assignments.filter((item) => item.owner).map((item) => item.userId)
+    selectedAdminIds.value = assignments.map((item) => item.userId)
+    availableAdmins.value = [...new Map([
+      ...candidates.map((item) => [item.userId, { id: item.userId, name: item.email, role: 'Event Admin', avatar: '' }]),
+      ...assignments.map((item) => [item.userId, {
+        id: item.userId, name: item.email, role: item.owner ? 'Event Owner' : 'Event Admin', avatar: '',
+        owner: item.owner || assignmentById.get(item.userId)?.owner,
+      }]),
+    ]).values()]
+    showAdmins.value = true
+  } catch (error) { showToast({ title: error.message, variant: 'danger' }) }
 }
-
-function closeAdmins() {
-  showAdmins.value = false
-  selectedEvent.value = null
-  selectedAdminIds.value = []
-}
-
+function closeAdmins() { showAdmins.value = false; selectedEvent.value = null; selectedAdminIds.value = []; protectedOwnerIds.value = [] }
 function toggleAdmin(adminId) {
-  if (selectedAdminIds.value.includes(adminId)) {
-    selectedAdminIds.value =
-      selectedAdminIds.value.filter(
-        (id) => id !== adminId,
-      )
-  } else {
-    selectedAdminIds.value.push(adminId)
-  }
+  if (protectedOwnerIds.value.includes(adminId)) return
+  selectedAdminIds.value = selectedAdminIds.value.includes(adminId)
+    ? selectedAdminIds.value.filter((id) => id !== adminId) : [...selectedAdminIds.value, adminId]
 }
-
-function saveAdmins() {
+async function saveAdmins() {
   if (!selectedEvent.value) return
-
-  const event = events.value.find(
-    (item) => item.id === selectedEvent.value.id,
-  )
-
-  if (!event) return
-
-  event.admins = availableAdmins.filter((admin) =>
-    selectedAdminIds.value.includes(admin.id),
-  )
-
-  closeAdmins()
-
-  showToast({
-    title: 'Event admins updated successfully.',
-    variant: 'success',
-  })
+  try {
+    await replaceEventAdmins(selectedEvent.value.id,
+      selectedAdminIds.value.filter((id) => !protectedOwnerIds.value.includes(id)))
+    closeAdmins()
+    showToast({ title: 'Event admins updated successfully.', variant: 'success' })
+  } catch (error) { showToast({ title: error.message, variant: 'danger' }) }
 }
-
-
-/* =========================================================
-   DELETE
-========================================================= */
-
-const showDeleteModal = ref(false)
-const eventToDelete = ref(null)
-
-function openDelete(event) {
-  eventToDelete.value = event
-  showDeleteModal.value = true
-}
-
-function closeDelete() {
-  showDeleteModal.value = false
-  eventToDelete.value = null
-}
-
-function confirmDelete() {
-  if (!eventToDelete.value) return
-
-  const deletedName = eventToDelete.value.name
-
-  events.value = events.value.filter(
-    (event) => event.id !== eventToDelete.value.id,
-  )
-
-  closeDelete()
-
-  showToast({
-    title: `"${deletedName}" has been deleted.`,
-    variant: 'danger',
-  })
-}
-
-
-/* =========================================================
-   TOAST
-========================================================= */
-
-
-
-/* =========================================================
-   HELPERS
-========================================================= */
 
 function registrationPercent(event) {
-  if (!event.capacity) return 0
-
-  return Math.round(
-    (event.registrations / event.capacity) * 100,
-  )
+  return event.capacity ? Math.round((event.registrations / event.capacity) * 100) : 0
 }
 
-function isFreeEvent(event) {
-  return event.id === 3 || event.id === 4
-}
+let searchTimer
+watch(searchQuery, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page.value = 0; loadEvents() }, 300) })
+watch(activeTab, loadEvents)
+watch(page, loadEvents)
+onMounted(loadEvents)
 </script>
 
 
@@ -282,7 +173,7 @@ function isFreeEvent(event) {
         v-if="searchQuery"
         class="search-count"
       >
-        Showing {{ filteredEvents.length }} events
+        Showing {{ filteredEvents.length }} of {{ totalElements }} events
       </span>
 
     </section>
@@ -414,7 +305,7 @@ function isFreeEvent(event) {
         <div class="toolbar-right">
 
           <span class="showing-text">
-            Showing {{ filteredEvents.length }} events
+            Showing {{ filteredEvents.length }} of {{ totalElements }} events
           </span>
 
         </div>
@@ -460,6 +351,9 @@ function isFreeEvent(event) {
 
 
           <tbody>
+
+            <tr v-if="errorMessage"><td colspan="5" class="empty-cell">{{ errorMessage }}</td></tr>
+            <tr v-else-if="loading"><td colspan="5" class="empty-cell">Loading events...</td></tr>
 
             <tr
               v-for="event in filteredEvents"
@@ -610,22 +504,6 @@ function isFreeEvent(event) {
                 <div class="event-actions">
 
 
-                  <!-- Participants -->
-
-                  <button
-                    class="icon-action"
-                    title="View participants"
-                    @click="openParticipants(event)"
-                  >
-
-                    <Icon
-                      name="users"
-                      :size="15"
-                    />
-
-                  </button>
-
-
                   <!-- Manage Admins -->
 
                   <button
@@ -636,22 +514,6 @@ function isFreeEvent(event) {
 
                     <Icon
                       name="shield"
-                      :size="15"
-                    />
-
-                  </button>
-
-
-                  <!-- Delete -->
-
-                  <button
-                    class="icon-action danger"
-                    title="Delete event"
-                    @click="openDelete(event)"
-                  >
-
-                    <Icon
-                      name="trash"
                       :size="15"
                     />
 
@@ -708,12 +570,12 @@ function isFreeEvent(event) {
       <div class="console-pagination table-footer">
 
         <span>
-          Page 1 of 2
+          Page {{ totalPages ? page + 1 : 0 }} of {{ totalPages }}
         </span>
 
         <div class="console-pagination-controls">
 
-          <button class="console-page-num">
+          <button class="console-page-num" :disabled="page === 0" @click="page--">
 
             <Icon
               name="chevron-left"
@@ -722,15 +584,9 @@ function isFreeEvent(event) {
 
           </button>
 
-          <button class="console-page-num active">
-            1
-          </button>
+          <button class="console-page-num active">{{ page + 1 }}</button>
 
-          <button class="console-page-num">
-            2
-          </button>
-
-          <button class="console-page-num">
+          <button class="console-page-num" :disabled="page + 1 >= totalPages" @click="page++">
 
             <Icon
               name="chevron-right"
@@ -747,18 +603,6 @@ function isFreeEvent(event) {
 
 
     <!-- =====================================================
-         PARTICIPANTS MODAL
-    ====================================================== -->
-
-    <EventParticipantsModal
-      :open="showParticipants"
-      :event="selectedEvent"
-      :is-free-event="isFreeEvent"
-      @close="closeParticipants"
-    />
-
-
-    <!-- =====================================================
          MANAGE ADMINS MODAL
     ====================================================== -->
 
@@ -772,73 +616,6 @@ function isFreeEvent(event) {
       @toggle="toggleAdmin"
     />
 
-
-    <!-- =====================================================
-         DELETE MODAL
-    ====================================================== -->
-
-    <Transition name="modal">
-
-      <div
-        v-if="showDeleteModal && eventToDelete"
-        class="modal-backdrop"
-        @click.self="closeDelete"
-      >
-
-        <div class="delete-modal">
-
-          <div class="delete-icon">
-
-            <Icon
-              name="trash"
-              :size="20"
-            />
-
-          </div>
-
-
-          <h2>
-            Delete Event?
-          </h2>
-
-
-          <p>
-
-            Are you sure you want to delete
-
-            <strong>
-              "{{ eventToDelete.name }}"
-            </strong>?
-
-            This action cannot be undone.
-
-          </p>
-
-
-          <div class="delete-actions">
-
-            <button
-              class="console-btn console-btn-secondary"
-              @click="closeDelete"
-            >
-              Cancel
-            </button>
-
-
-            <button
-              class="console-btn delete-confirm"
-              @click="confirmDelete"
-            >
-              Delete Event
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </Transition>
 
   </main>
 

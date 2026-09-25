@@ -4,6 +4,7 @@ import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 
 const props = defineProps({
   statuses: { type: Array, default: () => [] },
+  total: { type: Number, default: 0 },
 })
 
 const eventStatuses = computed(() => props.statuses)
@@ -161,7 +162,7 @@ const getSegmentTransform = (segment) => {
 
         <!-- Center -->
         <div class="donut-center">
-          <strong>1,204</strong>
+          <strong>{{ total.toLocaleString() }}</strong>
           <span>Total Events</span>
         </div>
 

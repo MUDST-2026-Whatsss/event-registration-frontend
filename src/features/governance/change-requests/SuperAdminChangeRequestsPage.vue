@@ -1,14 +1,55 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
-import { changeRequests as changeRequestSeed } from './changeRequestData.js'
 import ChangeRequestReviewModal from './ChangeRequestReviewModal.vue'
+import { approveChangeRequest, listChangeRequests, rejectChangeRequest } from '../governanceApi.js'
+import { useToast } from '@/shared/composables/useToast.js'
 
 /* =========================================================
    Change Request Data
 ========================================================= */
 
-const changeRequests = ref([...changeRequestSeed])
+const changeRequests = ref([])
+const loading = ref(false)
+const errorMessage = ref('')
+const { showToast } = useToast()
+
+const humanize = (value) => value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+const displayValue = (value) => {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  return String(value)
+}
+const relativeDate = (value) => new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+const mapRequest = (request) => ({
+  id: request.requestId,
+  requestId: request.requestId,
+  version: request.version,
+  eventName: request.event.title,
+  submittedBy: request.requestedBy?.email || 'Unknown',
+  role: 'Event Admin',
+  submitted: relativeDate(request.createdAt),
+  changeType: `${request.items.length} field${request.items.length === 1 ? '' : 's'} changed`,
+  changeTypeClass: 'blue', icon: 'calendar', avatar: '',
+  changes: request.items.map((item) => ({
+    field: humanize(item.fieldName), oldValue: displayValue(item.oldValue), newValue: displayValue(item.newValue),
+  })),
+  status: request.status[0] + request.status.slice(1).toLowerCase(),
+  reason: request.reason,
+})
+
+async function loadRequests() {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const payload = await listChangeRequests({ size: 100 })
+    changeRequests.value = payload.content.map(mapRequest)
+  } catch (error) {
+    errorMessage.value = error.message
+  } finally {
+    loading.value = false
+  }
+}
 
 /* =========================================================
    Search
@@ -57,51 +98,31 @@ function closeReview() {
 const actionMessage = ref('')
 const actionMessageType = ref('success')
 
-function approveRequest() {
+async function approveRequest(comment = '') {
   if (!selectedRequest.value) return
 
-  const request = changeRequests.value.find(
-    (item) => item.id === selectedRequest.value.id,
-  )
-
-  if (!request) return
-
-  request.status = 'Approved'
-
-  actionMessage.value =
-    `${request.eventName} change request approved.`
-
-  actionMessageType.value = 'success'
-
-  closeReview()
-
-  setTimeout(() => {
-    actionMessage.value = ''
-  }, 3000)
+  const request = selectedRequest.value
+  try {
+    await approveChangeRequest(request.requestId, request.version, comment)
+    closeReview()
+    showToast({ title: `${request.eventName} change request approved.`, variant: 'success' })
+    await loadRequests()
+  } catch (error) { showToast({ title: error.message, variant: 'danger' }) }
 }
 
-function rejectRequest() {
+async function rejectRequest(comment) {
   if (!selectedRequest.value) return
 
-  const request = changeRequests.value.find(
-    (item) => item.id === selectedRequest.value.id,
-  )
-
-  if (!request) return
-
-  request.status = 'Rejected'
-
-  actionMessage.value =
-    `${request.eventName} change request rejected.`
-
-  actionMessageType.value = 'danger'
-
-  closeReview()
-
-  setTimeout(() => {
-    actionMessage.value = ''
-  }, 3000)
+  const request = selectedRequest.value
+  try {
+    await rejectChangeRequest(request.requestId, request.version, comment)
+    closeReview()
+    showToast({ title: `${request.eventName} change request rejected.`, variant: 'success' })
+    await loadRequests()
+  } catch (error) { showToast({ title: error.message, variant: 'danger' }) }
 }
+
+onMounted(loadRequests)
 </script>
 
 <template>
@@ -186,6 +207,8 @@ function rejectRequest() {
 
     <section class="request-list">
 
+      <p v-if="errorMessage" class="action-message danger">{{ errorMessage }}</p>
+      <p v-if="loading" class="console-card" style="padding:24px;text-align:center">Loading change requests...</p>
       <article
         v-for="request in filteredRequests"
         :key="request.id"

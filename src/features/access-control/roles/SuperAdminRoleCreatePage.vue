@@ -1,123 +1,80 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { useToast } from '@/shared/composables/useToast.js'
+import { createRole, listPermissions } from './rolesApi.js'
 
 const router = useRouter()
+const { showToast } = useToast()
+const permissions = ref([])
+const selectedPermissions = ref([])
+const loading = ref(false)
+const saving = ref(false)
+const codeEdited = ref(false)
+const form = reactive({ name: '', code: '', description: '', scopeType: 'ASSIGNED_EVENTS', status: 'ACTIVE' })
 
-const roleName = ref('')
-const systemRole = ref('Admin')
-const department = ref('All Current & Future Events')
-const accountStatus = ref('Active')
+const valid = computed(() => form.name.trim() && /^[A-Z][A-Z0-9_]*$/.test(form.code) && selectedPermissions.value.length)
 
-const permissions = ref([
-  { key: 'all-event', label: 'All Event', checked: true },
-  { key: 'event-registration', label: 'Event Registration', checked: true },
-  { key: 'my-registration', label: 'My Registration', checked: true },
-  { key: 'create-event', label: 'Create Event', checked: false },
-  { key: 'event-approvals', label: 'Event Approvals', checked: true },
-  { key: 'change-request', label: 'Change Request', checked: true },
-  { key: 'dashboard', label: 'Dashboard', checked: true },
-  { key: 'role-management', label: 'Role Management', checked: false },
-  { key: 'user-management', label: 'User Management', checked: false },
-])
+watch(() => form.name, (name) => {
+  if (!codeEdited.value) form.code = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+})
 
-function togglePermission(item) {
-  item.checked = !item.checked
+async function loadPermissions() {
+  loading.value = true
+  try { permissions.value = await listPermissions() }
+  catch (error) { showToast({ title: error.message, variant: 'danger' }) }
+  finally { loading.value = false }
 }
 
-function cancel() {
-  router.push('/super-admin/role-management')
+async function submit() {
+  if (!valid.value) return
+  saving.value = true
+  try {
+    await createRole({ ...form, name: form.name.trim(), permissionCodes: selectedPermissions.value })
+    showToast({ title: 'Role created.', variant: 'success' })
+    router.push('/super-admin/role-management')
+  } catch (error) {
+    showToast({ title: error.message, variant: 'danger' })
+  } finally { saving.value = false }
 }
 
-function createRole() {
-  // Wire up to the backend once the roles API is available.
-  router.push('/super-admin/role-management')
-}
+onMounted(loadPermissions)
 </script>
 
 <template>
-
   <div class="console-body">
     <div class="console-heading-row">
-      <div class="console-page-heading">
-        <h1>Create New Role</h1>
-        <p>Define role information, permissions and account status.</p>
-      </div>
+      <div class="console-page-heading"><h1>Create New Role</h1><p>Create a database-backed role and assign explicit permission codes.</p></div>
       <div class="console-heading-actions">
-        <button type="button" class="console-btn console-btn-ghost" @click="cancel">Cancel</button>
-        <button type="button" class="console-btn console-btn-primary" :disabled="!roleName" @click="createRole">
-          Create Role
-        </button>
+        <button class="console-btn console-btn-ghost" @click="router.push('/super-admin/role-management')">Cancel</button>
+        <button class="console-btn console-btn-primary" :disabled="!valid || saving" @click="submit">{{ saving ? 'Creating...' : 'Create Role' }}</button>
       </div>
     </div>
 
-    <div class="console-create-role-grid">
-      <div class="console-create-role-main">
-        <div class="console-card">
-          <div class="console-card-header"><h2>Role Information</h2></div>
-          <div class="console-card-body">
-            <label class="console-field-label" for="role-name">Role Name *</label>
-            <input
-              id="role-name"
-              v-model="roleName"
-              class="console-input"
-              placeholder="e.g. Super Admin downgrade"
-            />
+    <div class="role-grid">
+      <div class="console-card">
+        <div class="console-card-header"><h2>Role Information</h2></div>
+        <div class="console-card-body form-stack">
+          <div class="form-row">
+            <div><label class="console-field-label">Display name *</label><input v-model="form.name" class="console-input" placeholder="e.g. Registration Reviewer" /></div>
+            <div><label class="console-field-label">Role code *</label><input v-model="form.code" class="console-input" placeholder="REGISTRATION_REVIEWER" @input="codeEdited = true" /></div>
           </div>
-        </div>
-
-        <div class="console-card">
-          <div class="console-card-header"><h2>Role &amp; Permission</h2></div>
-          <div class="console-card-body">
-            <div class="console-form-row">
-              <div>
-                <label class="console-field-label" for="system-role">System Role *</label>
-                <select id="system-role" v-model="systemRole" class="console-select">
-                  <option>Admin</option>
-                  <option>User</option>
-                  <option>Super Admin</option>
-                </select>
-              </div>
-              <div>
-                <label class="console-field-label" for="department">Department</label>
-                <input id="department" v-model="department" class="console-input" />
-              </div>
-            </div>
-
-            <label class="console-field-label" style="margin-top: 18px">Permissions Summary</label>
-            <div class="console-permission-grid">
-              <button
-                v-for="perm in permissions"
-                :key="perm.key"
-                type="button"
-                class="console-permission-chip"
-                :class="{ checked: perm.checked }"
-                @click="togglePermission(perm)"
-              >
-                <span>{{ perm.label }}</span>
-                <span class="console-permission-box">
-                  <Icon v-if="perm.checked" name="check" :size="12" />
-                </span>
-              </button>
-            </div>
+          <div><label class="console-field-label">Description</label><textarea v-model="form.description" class="console-input description" placeholder="What this role is responsible for" /></div>
+          <div class="form-row">
+            <div><label class="console-field-label">Scope *</label><select v-model="form.scopeType" class="console-select"><option value="SELF">Self</option><option value="ASSIGNED_EVENTS">Assigned events</option><option value="GLOBAL">Global</option></select></div>
+            <div><label class="console-field-label">Status *</label><select v-model="form.status" class="console-select"><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></div>
           </div>
         </div>
       </div>
 
-      <div class="console-create-role-side">
-        <div class="console-card">
-          <div class="console-card-body">
-            <label class="console-field-label">Account Status</label>
-            <label class="console-radio-card" :class="{ selected: accountStatus === 'Active' }">
-              <input v-model="accountStatus" type="radio" value="Active" name="status" />
-              Active
-            </label>
-            <label class="console-radio-card" :class="{ selected: accountStatus === 'Disabled' }">
-              <input v-model="accountStatus" type="radio" value="Disabled" name="status" />
-              Disabled
-            </label>
-          </div>
+      <div class="console-card">
+        <div class="console-card-header"><div><h2>Permissions</h2><p>{{ selectedPermissions.length }} selected</p></div></div>
+        <div class="console-card-body permission-grid">
+          <label v-for="permission in permissions" :key="permission.code" class="permission-option">
+            <input v-model="selectedPermissions" type="checkbox" :value="permission.code" />
+            <span><strong>{{ permission.code }}</strong><small>{{ permission.description }}</small></span>
+          </label>
+          <p v-if="loading" class="empty">Loading permissions...</p>
         </div>
       </div>
     </div>
@@ -125,117 +82,20 @@ function createRole() {
 </template>
 
 <style scoped>
-.console-create-role-grid {
-  display: grid;
-  grid-template-columns: 1fr 260px;
-  gap: 20px;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .console-create-role-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.console-create-role-main,
-.console-create-role-side {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.console-card-body {
-  padding: 20px 22px 22px;
-}
-
-.console-form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 560px) {
-  .console-form-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.console-permission-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 8px;
-}
-
-@media (max-width: 560px) {
-  .console-permission-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.console-permission-chip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 11px 12px;
-  border-radius: var(--console-radius-sm);
-  border: 1px solid var(--console-border);
-  background: #fff;
-  font-family: inherit;
-  font-size: var(--console-fs-base);
-  font-weight: 600;
-  color: var(--console-text-secondary);
-  cursor: pointer;
-  text-align: left;
-}
-
-.console-permission-chip.checked {
-  border-color: var(--console-primary);
-  background: var(--console-primary-soft);
-  color: var(--console-text);
-}
-
-.console-permission-box {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  border: 1.5px solid var(--console-border);
-  background: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.console-permission-chip.checked .console-permission-box {
-  background: var(--console-primary);
-  border-color: var(--console-primary);
-}
-
-.console-radio-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border-radius: var(--console-radius-sm);
-  border: 1px solid var(--console-border);
-  font-size: var(--console-fs-base);
-  font-weight: 600;
-  color: var(--console-text-secondary);
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.console-radio-card input {
-  accent-color: var(--console-primary);
-}
-
-.console-radio-card.selected {
-  border-color: #bcf0cf;
-  background: var(--console-success-bg);
-  color: #15803d;
-}
+.role-grid, .form-stack { display: grid; gap: 20px; }
+.console-card-body { padding: 20px 22px 22px; }
+.form-stack { gap: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.description { min-height: 84px; resize: vertical; }
+.console-card-header p { margin: 2px 0 0; color: var(--console-text-muted); font-size: var(--console-fs-sm); }
+.permission-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.permission-option { display: flex; gap: 9px; align-items: flex-start; padding: 11px; border: 1px solid var(--console-border); border-radius: var(--console-radius-sm); cursor: pointer; }
+.permission-option:has(input:checked) { border-color: var(--console-primary); background: var(--console-primary-soft); }
+.permission-option input { margin-top: 3px; accent-color: var(--console-primary); }
+.permission-option span { display: grid; gap: 3px; min-width: 0; }
+.permission-option strong { font-size: var(--console-fs-xs); overflow-wrap: anywhere; }
+.permission-option small { color: var(--console-text-muted); }
+.empty { color: var(--console-text-muted); }
+@media (max-width: 900px) { .permission-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .form-row, .permission-grid { grid-template-columns: 1fr; } }
 </style>

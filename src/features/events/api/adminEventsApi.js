@@ -73,3 +73,18 @@ export function deleteEventImage(objectKey) {
   const [, ownerId, fileName] = objectKey.split('/')
   return authenticatedApiRequest(`/event-images/${ownerId}/${fileName}`, { method: 'DELETE' })
 }
+
+export function listEventAdminCandidates() {
+  return authenticatedApiRequest('/admin/event-admins')
+}
+
+export function listEventAdmins(eventId) {
+  return authenticatedApiRequest(`/admin/events/${eventId}/admins`)
+}
+
+export function replaceEventAdmins(eventId, adminUserIds) {
+  return authenticatedApiRequest(`/admin/events/${eventId}/admins`, {
+    method: 'PUT',
+    body: { adminUserIds },
+  })
+}

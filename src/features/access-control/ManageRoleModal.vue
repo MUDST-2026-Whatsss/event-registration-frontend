@@ -1,8 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 
-
-
 const props = defineProps({
   open: { type: Boolean, default: false },
   currentRole: { type: String, default: '' },
@@ -13,7 +11,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'save'])
-
 const selected = ref(props.currentRole || props.roles[0])
 
 watch(
@@ -36,9 +33,7 @@ function save() {
         <select v-model="selected" class="console-select">
           <option v-for="role in roles" :key="role" :value="role">{{ role }}</option>
         </select>
-        <button type="button" class="console-btn console-btn-primary" style="justify-content: center" @click="save">
-          Save
-        </button>
+        <button type="button" class="console-btn console-btn-primary" style="justify-content: center" @click="save">Save</button>
       </div>
     </div>
   </div>

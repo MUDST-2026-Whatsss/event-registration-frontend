@@ -50,15 +50,15 @@ The `/super-admin/**` parent route uses the same console shell and requires the 
 
 | Page | Route | Feature owner | Current state | Next backend integration |
 | --- | --- | --- | --- | --- |
-| Dashboard | `/super-admin/dashboard` | `features/dashboards` | Prototype aggregates | System dashboard API |
-| All events | `/super-admin/all-events` | `features/events/management` | Prototype local mutations | Global event list, status, and admin assignment APIs |
+| Dashboard | `/super-admin/dashboard` | `features/dashboards` | **Live API**: event lifecycle totals, recent reviews, and change-request summary | User/admin totals after access-control API |
+| All events | `/super-admin/all-events` | `features/events/management` | **Live API**: global event list/search/status filters and admin assignments | Participant operations after registration API |
 | Participants | `/super-admin/all-events/:id/participants` | `features/registrations/management` | Prototype; selected-event context and changes use localStorage | Event registrations, check-in, cancellation, and export APIs |
-| Change requests | `/super-admin/change-requests` | `features/governance/change-requests` | Prototype decisions | Change-request queue and decision APIs |
-| Event approvals | `/super-admin/event-approvals` | `features/governance/approvals` | Prototype decisions | Event review queue and decision APIs |
-| Audit logs | `/super-admin/audit-logs` | `features/governance/audit` | Prototype records | Paginated audit-log API |
-| User management | `/super-admin/user-management` | `features/access-control/users` | Prototype users and statistics | User search, status, and role-assignment APIs |
-| Role management | `/super-admin/role-management` | `features/access-control/roles` | Prototype roles | Role and permission APIs |
-| Create role | `/super-admin/role-management/new` | `features/access-control/roles` | Prototype; does not persist | Create/update role APIs |
+| Change requests | `/super-admin/change-requests` | `features/governance/change-requests` | **Live API**: queue, field diff, approve and reject | Complete for event governance |
+| Event approvals | `/super-admin/event-approvals` | `features/governance/approvals` | **Live API**: queue/detail, approve and reject | Complete for event governance |
+| Audit logs | `/super-admin/audit-logs` | `features/governance/audit` | **Live API**: search, target filter and pagination | Complete for current audit fields |
+| User management | `/super-admin/user-management` | `features/access-control/users` | **Live API**: users, stats, status and role assignment | Invitation flow remains |
+| Role management | `/super-admin/role-management` | `features/access-control/roles` | **Live API**: roles, permissions, usage and editing | Complete for create/update |
+| Create role | `/super-admin/role-management/new` | `features/access-control/roles` | **Live API**: persists custom role and permissions | Complete |
 
 ## Runtime flows
 

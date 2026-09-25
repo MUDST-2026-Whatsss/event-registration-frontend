@@ -1,159 +1,118 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
-import { auditLogs } from './auditLogData.js'
+import { listAuditLogs } from './auditApi.js'
 
 const search = ref('')
-const filter = ref('All')
-const currentPage = ref(1)
+const targetType = ref('')
+const page = ref(0)
+const totalPages = ref(0)
+const totalElements = ref(0)
+const logs = ref([])
+const loading = ref(false)
+const errorMessage = ref('')
+let searchTimer
 
-const logs = ref([...auditLogs])
+function initials(value) {
+  return (value || 'System').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+}
 
-const filtered = computed(() =>
-  logs.value.filter((log) => {
-    const matchesFilter = filter.value === 'All' || log.tag === filter.value
-    const q = search.value.toLowerCase()
-    const matchesSearch =
-      !q ||
-      log.name.toLowerCase().includes(q) ||
-      log.target.toLowerCase().includes(q) ||
-      log.action.toLowerCase().includes(q)
-    return matchesFilter && matchesSearch
-  }),
-)
+function actionLabel(action) {
+  return action.toLowerCase().replaceAll('_', ' ')
+}
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / 10)))
+function formatDate(value) {
+  return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
 
-const tonePill = { green: 'console-pill-green', amber: 'console-pill-amber', red: 'console-pill-red' }
+async function load() {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const result = await listAuditLogs({ query: search.value.trim(), targetType: targetType.value, page: page.value, size: 20 })
+    logs.value = result.content
+    totalPages.value = result.totalPages
+    totalElements.value = result.totalElements
+  } catch (error) {
+    errorMessage.value = error.message
+  } finally { loading.value = false }
+}
+
+watch(search, () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => { page.value = 0; load() }, 300)
+})
+watch(targetType, () => { page.value = 0; load() })
+watch(page, load)
+onBeforeUnmount(() => window.clearTimeout(searchTimer))
+onMounted(load)
 </script>
 
 <template>
-
   <div class="console-body">
-    <div class="console-page-heading" style="margin-bottom: 20px">
-      <h1>History Logs</h1>
-      <p>Found {{ filtered.length }} revision events found.</p>
-    </div>
+    <div v-if="errorMessage" class="page-alert">{{ errorMessage }}</div>
+    <div class="console-page-heading heading"><h1>Audit Logs</h1><p>{{ totalElements.toLocaleString() }} immutable administrative records from the database.</p></div>
 
     <div class="console-card">
-      <div class="console-card-header">
-        <h2>Revision History</h2>
-        <div style="display: flex; gap: 10px">
-          <div class="console-search">
-            <Icon name="search" :size="15" />
-            <input v-model="search" class="console-input" placeholder="Search activity" />
-          </div>
-          <select v-model="filter" class="console-select" style="width: auto">
-            <option>All</option>
-            <option>Registration</option>
-            <option>Request</option>
-            <option>Approval</option>
+      <div class="console-card-header audit-header">
+        <div><h2>Activity History</h2><p>Newest actions appear first.</p></div>
+        <div class="filters">
+          <div class="console-search"><Icon name="search" :size="15" /><input v-model="search" class="console-input" placeholder="Search action, actor or target" /></div>
+          <select v-model="targetType" class="console-select type-filter">
+            <option value="">All targets</option><option value="EVENT">Events</option><option value="USER">Users</option><option value="ROLE">Roles</option>
           </select>
         </div>
       </div>
 
-      <ul class="console-log-list">
-        <li v-for="log in filtered" :key="log.id" class="console-log-item">
-          <img :src="log.avatar" :alt="log.name" class="console-avatar" />
-          <div class="console-log-text">
-            <p>
-              <strong>{{ log.name }}</strong>
-              {{ log.action }}
-              <strong>{{ log.target }}</strong>
-              <span v-if="log.suffix"> {{ log.suffix }}</span>
-            </p>
-            <span class="console-log-meta">{{ log.role }} · {{ log.time }}</span>
+      <ul class="audit-list">
+        <li v-for="log in logs" :key="log.auditLogId" class="audit-item">
+          <span class="actor-initials">{{ initials(log.actor?.displayName) }}</span>
+          <div class="audit-text">
+            <p><strong>{{ log.actor?.displayName || 'System' }}</strong> {{ actionLabel(log.action) }}<strong v-if="log.targetLabel"> {{ log.targetLabel }}</strong></p>
+            <span>{{ log.actor?.email || 'System process' }} · {{ formatDate(log.createdAt) }}</span>
           </div>
-          <span class="console-pill" :class="tonePill[log.tone]">{{ log.tag }}</span>
+          <div class="audit-tags">
+            <span class="console-pill console-pill-blue">{{ log.targetType }}</span>
+            <span class="console-pill" :class="log.outcome === 'SUCCESS' ? 'console-pill-green' : 'console-pill-red'">{{ log.outcome }}</span>
+          </div>
         </li>
-        <li v-if="!filtered.length" class="console-log-empty">No activity matches your filters.</li>
+        <li v-if="loading" class="empty">Loading audit logs...</li>
+        <li v-else-if="!logs.length" class="empty">No audit records match the current filters.</li>
       </ul>
     </div>
 
     <div class="console-pagination">
-      <span>Showing 1 to {{ filtered.length }} of {{ logs.length }} revision events</span>
+      <span>Page {{ totalPages ? page + 1 : 0 }} of {{ totalPages }} · {{ totalElements.toLocaleString() }} records</span>
       <div class="console-pagination-controls">
-        <button type="button" class="console-icon-btn" :disabled="currentPage <= 1" @click="currentPage--">
-          <Icon name="chevron-left" :size="15" />
-        </button>
-        <button type="button" class="console-page-num active">{{ currentPage }}</button>
-        <button type="button" class="console-icon-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
-          <Icon name="chevron-right" :size="15" />
-        </button>
+        <button class="console-page-num" :disabled="page === 0 || loading" @click="page--"><Icon name="chevron-left" :size="15" /></button>
+        <button class="console-page-num active">{{ totalPages ? page + 1 : 0 }}</button>
+        <button class="console-page-num" :disabled="page + 1 >= totalPages || loading" @click="page++"><Icon name="chevron-right" :size="15" /></button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.console-log-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.console-log-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 22px;
-  border-bottom: 1px solid var(--console-border-soft);
-}
-
-.console-log-item:last-child {
-  border-bottom: none;
-}
-
-.console-log-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.console-log-text p {
-  margin: 0 0 3px;
-  font-size: var(--console-fs-base);
-  color: var(--console-text);
-  font-weight: 400;
-}
-
-.console-log-meta {
-  font-size: var(--console-fs-sm);
-  color: var(--console-text-muted);
-}
-
-.console-log-empty {
-  padding: 32px;
-  text-align: center;
-  color: var(--console-text-muted);
-  font-size: var(--console-fs-base);
-}
-
-@media (max-width: 600px) {
-  .console-card-header > div {
-    display: grid !important;
-    width: 100%;
-    grid-template-columns: 1fr;
-  }
-
-  .console-card-header .console-select {
-    width: 100% !important;
-  }
-
-  .console-log-item {
-    align-items: flex-start;
-    padding-inline: 16px;
-  }
-}
-
-@media (max-width: 420px) {
-  .console-log-item {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr);
-  }
-
-  .console-log-item > .console-pill {
-    grid-column: 2;
-    justify-self: start;
-  }
+.heading { margin-bottom: 20px; }
+.audit-header { gap: 14px; flex-wrap: wrap; }
+.audit-header h2 { margin-bottom: 2px; }
+.audit-header p { margin: 0; color: var(--console-text-muted); font-size: var(--console-fs-sm); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.console-search input { width: 260px; }
+.type-filter { width: auto; min-width: 140px; }
+.audit-list { list-style: none; margin: 0; padding: 0; }
+.audit-item { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 15px 22px; border-bottom: 1px solid var(--console-border-soft); }
+.audit-item:last-child { border-bottom: none; }
+.actor-initials { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #eef2ff; color: #4f46e5; font-weight: 750; font-size: 12px; }
+.audit-text { min-width: 0; }
+.audit-text p { margin: 0 0 4px; color: var(--console-text); overflow-wrap: anywhere; }
+.audit-text span { color: var(--console-text-muted); font-size: var(--console-fs-sm); }
+.audit-tags { display: flex; gap: 6px; align-items: center; }
+.empty { padding: 34px; text-align: center; color: var(--console-text-muted); }
+.page-alert { margin-bottom: 16px; border: 1px solid #fecaca; border-radius: var(--console-radius); padding: 12px 14px; background: #fef2f2; color: #b91c1c; }
+@media (max-width: 700px) {
+  .filters, .console-search, .console-search input, .type-filter { width: 100%; }
+  .audit-item { grid-template-columns: 38px minmax(0, 1fr); padding-inline: 16px; align-items: start; }
+  .audit-tags { grid-column: 2; }
 }
 </style>

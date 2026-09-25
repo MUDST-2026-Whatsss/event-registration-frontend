@@ -1,12 +1,15 @@
 <script setup>
+import { ref, watch } from 'vue'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
   request: { type: Object, default: null },
 })
 
 defineEmits(['close', 'approve', 'reject'])
+const comment = ref('')
+watch(() => props.request, () => { comment.value = '' })
 </script>
 
 <template>
@@ -44,14 +47,15 @@ defineEmits(['close', 'approve', 'reject'])
 
       </div>
 
+      <div class="decision-section">
+        <label class="modal-eyebrow" for="change-review-comment">Decision comment</label>
+        <textarea id="change-review-comment" v-model="comment" class="console-input decision-comment" placeholder="Required when rejecting" />
+      </div>
+
       <!-- Requester -->
       <div class="modal-requester">
 
-        <img
-          :src="request.avatar"
-          :alt="request.submittedBy"
-          class="modal-avatar"
-        />
+        <span class="modal-avatar modal-avatar-placeholder" aria-hidden="true">{{ request.submittedBy.slice(0, 1).toUpperCase() }}</span>
 
         <div>
           <strong>
@@ -115,7 +119,8 @@ defineEmits(['close', 'approve', 'reject'])
 
         <button
           class="console-btn reject-btn"
-          @click="$emit('reject')"
+          :disabled="!comment.trim()"
+          @click="$emit('reject', comment)"
         >
           <Icon
             name="x"
@@ -127,7 +132,7 @@ defineEmits(['close', 'approve', 'reject'])
 
         <button
           class="console-btn console-btn-primary"
-          @click="$emit('approve')"
+          @click="$emit('approve', comment)"
         >
           <Icon
             name="check"
@@ -153,6 +158,8 @@ defineEmits(['close', 'approve', 'reject'])
 
   border-radius: 8px;
 }
+.decision-section { padding: 0 22px 18px; }
+.decision-comment { width: 100%; min-height: 76px; margin-top: 7px; resize: vertical; }
 .change-table-header,
 .change-table-row {
   display: grid;
@@ -223,6 +230,7 @@ defineEmits(['close', 'approve', 'reject'])
 
   border-radius: 50%;
 }
+.modal-avatar-placeholder { display: inline-grid; place-items: center; color: var(--console-primary); background: var(--console-primary-soft); font-weight: 700; }
 .modal-requester {
   display: flex;
   align-items: center;

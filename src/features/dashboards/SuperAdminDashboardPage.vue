@@ -1,9 +1,56 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
-import { dashboardChangeRequests, eventStatuses, recentApprovals } from './dashboardData.js'
 import EventsOverviewCard from './EventsOverviewCard.vue'
+import { getAdminEventStats } from '@/features/events/api/adminEventsApi.js'
+import { listChangeRequests, listEventReviews } from '@/features/governance/governanceApi.js'
 
-const changeRequests = dashboardChangeRequests
+const stats = ref({ total: 0, draft: 0, pendingReview: 0, published: 0, rejected: 0, cancelled: 0 })
+const reviews = ref([])
+const requests = ref([])
+const errorMessage = ref('')
+
+const eventStatuses = computed(() => {
+  const values = [
+    ['Published', stats.value.published, '#5878f2'],
+    ['Pending Approval', stats.value.pendingReview, '#36b9b5'],
+    ['Draft', stats.value.draft, '#f5a623'],
+    ['Rejected', stats.value.rejected, '#ef5350'],
+    ['Cancelled', stats.value.cancelled, '#9aa5b5'],
+  ]
+  return values.map(([label, count, color]) => ({
+    label, count, color, percent: stats.value.total ? Number(((count / stats.value.total) * 100).toFixed(1)) : 0,
+  }))
+})
+const recentApprovals = computed(() => reviews.value.map((review) => ({
+  id: review.reviewId, name: review.event.title, submittedBy: review.submittedBy?.email || 'Unknown',
+  time: new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(review.submittedAt)),
+  status: review.decision === 'PENDING' ? 'Pending' : review.decision[0] + review.decision.slice(1).toLowerCase(),
+  image: review.event.imageUrl,
+})))
+const changeRequests = computed(() => {
+  const count = (status) => requests.value.filter((request) => request.status === status).length
+  return [
+    { label: 'Total Requests', value: requests.value.length, note: 'Recorded requests', type: 'success' },
+    { label: 'Pending Review', value: count('PENDING'), note: 'Needs review', type: 'warning' },
+    { label: 'Approved', value: count('APPROVED'), note: 'Approved', type: 'success' },
+    { label: 'Rejected', value: count('REJECTED'), note: 'Rejected', type: 'danger' },
+  ]
+})
+
+async function loadDashboard() {
+  errorMessage.value = ''
+  try {
+    const [eventStats, reviewPage, requestPage] = await Promise.all([
+      getAdminEventStats(), listEventReviews({ page: 0, size: 5 }), listChangeRequests({ page: 0, size: 100 }),
+    ])
+    stats.value = eventStats
+    reviews.value = reviewPage.content
+    requests.value = requestPage.content
+  } catch (error) { errorMessage.value = error.message }
+}
+
+onMounted(loadDashboard)
 </script>
 
 <template>
@@ -24,6 +71,8 @@ const changeRequests = dashboardChangeRequests
       </div>
     </section>
 
+    <p v-if="errorMessage" class="console-card" style="padding:14px;color:var(--console-danger);margin-bottom:16px">{{ errorMessage }}</p>
+
     <!-- =====================================================
          Statistics
     ====================================================== -->
@@ -37,15 +86,15 @@ const changeRequests = dashboardChangeRequests
 
         <div class="stat-content">
           <div class="stat-label">
-            Total Users
+            Published Events
           </div>
 
           <div class="stat-value">
-            12,840
+            {{ stats.published.toLocaleString() }}
           </div>
 
           <div class="stat-note success">
-            ↑ +340 this week
+            Visible to participants
           </div>
         </div>
       </article>
@@ -57,15 +106,15 @@ const changeRequests = dashboardChangeRequests
 
         <div class="stat-content">
           <div class="stat-label">
-            Total Admins
+            Draft Events
           </div>
 
           <div class="stat-value">
-            18
+            {{ stats.draft.toLocaleString() }}
           </div>
 
           <div class="stat-note">
-            Active across 3 roles
+            Still being prepared
           </div>
         </div>
       </article>
@@ -81,11 +130,11 @@ const changeRequests = dashboardChangeRequests
           </div>
 
           <div class="stat-value">
-            1,204
+            {{ stats.total.toLocaleString() }}
           </div>
 
           <div class="stat-note">
-            Published to date
+            Across every lifecycle state
           </div>
         </div>
       </article>
@@ -101,7 +150,7 @@ const changeRequests = dashboardChangeRequests
           </div>
 
           <div class="stat-value">
-            9
+            {{ stats.pendingReview.toLocaleString() }}
           </div>
 
           <div class="stat-note warning">
@@ -127,7 +176,7 @@ const changeRequests = dashboardChangeRequests
 
       <div class="dashboard-left">
 
-        <EventsOverviewCard :statuses="eventStatuses" />
+        <EventsOverviewCard :statuses="eventStatuses" :total="stats.total" />
 
       </div>
 
@@ -162,10 +211,12 @@ const changeRequests = dashboardChangeRequests
             >
 
               <img
+                v-if="event.image"
                 :src="event.image"
                 :alt="event.name"
                 class="event-thumbnail"
               />
+              <span v-else class="event-thumbnail event-thumbnail-placeholder"><Icon name="calendar" :size="18" /></span>
 
               <div class="approval-info">
                 <strong>
@@ -536,6 +587,7 @@ const changeRequests = dashboardChangeRequests
 
   border-radius: 7px;
 }
+.event-thumbnail-placeholder { display: inline-flex; align-items: center; justify-content: center; color: var(--console-primary); background: var(--console-primary-soft); }
 
 .approval-info {
   min-width: 0;

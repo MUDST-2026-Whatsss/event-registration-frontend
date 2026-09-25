@@ -1,22 +1,66 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 import EventDetailsModal from './EventApprovalDetailsModal.vue'
-import { pendingApprovalEvents } from './approvalData.js'
+import { approveEventReview, listEventReviews, rejectEventReview } from '../governanceApi.js'
+import { useToast } from '@/shared/composables/useToast.js'
 
 const statusTab = ref('Pending')
 const sortOrder = ref('newest')
 const filtersOpen = ref(false)
 const priorityFilter = ref({ high: true, standard: true })
 const selectedEvent = ref(null)
-const currentPage = ref(1)
+const currentPage = ref(0)
+const totalPages = ref(0)
+const totalElements = ref(0)
+const loading = ref(false)
+const errorMessage = ref('')
+const reviews = ref([])
+const { showToast } = useToast()
 
-const events = ref([...pendingApprovalEvents])
+const formatDate = (value) => value ? new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(value)) : 'TBD'
+const eventLocation = (event) => event.locationName || event.onlineUrl || 'Location not set'
+const mapReview = (review) => ({
+  id: review.reviewId,
+  reviewId: review.reviewId,
+  version: review.event.version,
+  icon: 'calendar',
+  name: review.event.title,
+  category: review.event.category?.nameEn || review.event.category?.nameTh || 'Uncategorized',
+  organizerAvatar: '',
+  organizer: review.submittedBy?.email || 'Unknown',
+  organizerRole: 'Event Admin',
+  date: formatDate(review.event.startAt),
+  dateISO: review.event.startAt,
+  location: eventLocation(review.event),
+  participants: review.event.registrationCount || 0,
+  max: review.event.maximumParticipants || 0,
+  status: review.decision === 'PENDING' ? 'Pending Review' : review.decision[0] + review.decision.slice(1).toLowerCase(),
+  priority: review.priority.toLowerCase(),
+  raw: review,
+})
+
+async function loadReviews() {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const payload = await listEventReviews({
+      decision: statusTab.value === 'Pending' ? 'PENDING' : undefined,
+      page: currentPage.value,
+      size: 10,
+    })
+    reviews.value = payload.content.map(mapReview)
+    totalPages.value = payload.totalPages
+    totalElements.value = payload.totalElements
+  } catch (error) {
+    errorMessage.value = error.message
+  } finally {
+    loading.value = false
+  }
+}
 
 const filtered = computed(() => {
-  let list = events.value.filter((e) =>
-    statusTab.value === 'Pending' ? e.status === 'Pending Review' : true,
-  )
+  let list = reviews.value
   list = list.filter((e) => (e.priority === 'high' ? priorityFilter.value.high : priorityFilter.value.standard))
   list = [...list].sort((a, b) =>
     sortOrder.value === 'newest'
@@ -26,29 +70,25 @@ const filtered = computed(() => {
   return list
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / 10)))
-
-function approve(event) {
-  event.status = 'Approved'
-}
-
-function reject(event) {
-  event.status = 'Rejected'
-}
-
-function approveFromModal(event) {
-  approve(event)
-  selectedEvent.value = null
-}
-
-function rejectFromModal(event) {
-  reject(event)
-  selectedEvent.value = null
+async function decide(event, decision, comment = '') {
+  try {
+    if (decision === 'approve') await approveEventReview(event.reviewId, event.version, comment)
+    else await rejectEventReview(event.reviewId, event.version, comment)
+    selectedEvent.value = null
+    showToast({ title: `Event ${decision === 'approve' ? 'approved' : 'rejected'} successfully.`, variant: 'success' })
+    await loadReviews()
+  } catch (error) {
+    showToast({ title: error.message, variant: 'danger' })
+  }
 }
 
 function toggleSort() {
   sortOrder.value = sortOrder.value === 'newest' ? 'oldest' : 'newest'
 }
+
+watch(statusTab, () => { currentPage.value = 0; loadReviews() })
+watch(currentPage, loadReviews)
+onMounted(loadReviews)
 </script>
 
 <template>
@@ -57,7 +97,7 @@ function toggleSort() {
     <div class="console-heading-row">
       <div class="console-page-heading">
         <h1>Review Queue</h1>
-        <p>Found {{ filtered.length }} events awaiting your final approval.</p>
+        <p>Found {{ totalElements }} events awaiting your final approval.</p>
       </div>
       <div class="console-segmented">
         <button type="button" :class="{ active: statusTab === 'Pending' }" @click="statusTab = 'Pending'">
@@ -163,7 +203,7 @@ function toggleSort() {
                     type="button"
                     class="console-icon-btn success"
                     :disabled="event.status !== 'Pending Review'"
-                    @click="approve(event)"
+                  @click="decide(event, 'approve')"
                   >
                     <Icon name="check" :size="15" />
                   </button>
@@ -171,14 +211,15 @@ function toggleSort() {
                     type="button"
                     class="console-icon-btn reject"
                     :disabled="event.status !== 'Pending Review'"
-                    @click="reject(event)"
+                    @click="selectedEvent = event"
                   >
                     <Icon name="x" :size="15" />
                   </button>
                 </div>
               </td>
             </tr>
-            <tr v-if="!filtered.length">
+            <tr v-if="loading"><td colspan="6" style="text-align:center;padding:32px">Loading reviews...</td></tr>
+            <tr v-else-if="!filtered.length">
               <td colspan="6" style="text-align: center; color: var(--console-text-muted); padding: 32px">
                 No events to review.
               </td>
@@ -189,13 +230,13 @@ function toggleSort() {
     </div>
 
     <div class="console-pagination">
-      <span>Showing 1 to {{ filtered.length }} of {{ filtered.length }} pending events</span>
+      <span>Showing {{ filtered.length }} of {{ totalElements }} events</span>
       <div class="console-pagination-controls">
-        <button type="button" class="console-icon-btn" :disabled="currentPage <= 1" @click="currentPage--">
+        <button type="button" class="console-icon-btn" :disabled="currentPage <= 0" @click="currentPage--">
           <Icon name="chevron-left" :size="15" />
         </button>
-        <button type="button" class="console-page-num active">{{ currentPage }}</button>
-        <button type="button" class="console-icon-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
+        <button type="button" class="console-page-num active">{{ currentPage + 1 }}</button>
+        <button type="button" class="console-icon-btn" :disabled="currentPage + 1 >= totalPages" @click="currentPage++">
           <Icon name="chevron-right" :size="15" />
         </button>
       </div>
@@ -205,8 +246,8 @@ function toggleSort() {
   <EventDetailsModal
     :event="selectedEvent"
     @close="selectedEvent = null"
-    @approve="approveFromModal"
-    @reject="rejectFromModal"
+    @approve="(event, comment) => decide(event, 'approve', comment)"
+    @reject="(event, comment) => decide(event, 'reject', comment)"
   />
 </template>
 

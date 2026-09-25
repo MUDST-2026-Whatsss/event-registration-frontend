@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch } from 'vue'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 
 const props = defineProps({
@@ -6,6 +7,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'approve', 'reject'])
+const comment = ref('')
+watch(() => props.event, () => { comment.value = '' })
 </script>
 
 <template>
@@ -28,7 +31,7 @@ const emit = defineEmits(['close', 'approve', 'reject'])
         <div class="console-details-row">
           <span class="console-field-label">Organizer</span>
           <div class="console-event-cell">
-            <img :src="event.organizerAvatar" :alt="event.organizer" class="console-avatar" style="width: 30px; height: 30px" />
+            <span class="organizer-avatar" aria-hidden="true">{{ event.organizer.slice(0, 1).toUpperCase() }}</span>
             <div>
               <div style="font-weight: 600">{{ event.organizer }}</div>
               <div class="console-muted-sm">{{ event.organizerRole }}</div>
@@ -46,6 +49,11 @@ const emit = defineEmits(['close', 'approve', 'reject'])
             <div>{{ event.location }}</div>
           </div>
         </div>
+
+        <label>
+          <span class="console-field-label">Decision comment</span>
+          <textarea v-model="comment" class="console-input decision-comment" placeholder="Required when rejecting" />
+        </label>
 
         <div>
           <span class="console-field-label">Participants</span>
@@ -85,8 +93,8 @@ const emit = defineEmits(['close', 'approve', 'reject'])
           type="button"
           class="console-btn console-btn-outline"
           style="flex: 1; justify-content: center; color: var(--console-danger); border-color: #fbcaca"
-          :disabled="event.status !== 'Pending Review'"
-          @click="emit('reject', event)"
+          :disabled="event.status !== 'Pending Review' || !comment.trim()"
+          @click="emit('reject', event, comment)"
         >
           Reject
         </button>
@@ -95,7 +103,7 @@ const emit = defineEmits(['close', 'approve', 'reject'])
           class="console-btn console-btn-primary"
           style="flex: 1; justify-content: center"
           :disabled="event.status !== 'Pending Review'"
-          @click="emit('approve', event)"
+          @click="emit('approve', event, comment)"
         >
           Approve
         </button>
@@ -140,6 +148,7 @@ const emit = defineEmits(['close', 'approve', 'reject'])
   font-size: var(--console-fs-lg);
   flex-shrink: 0;
 }
+.organizer-avatar { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 50%; color: var(--console-primary); background: var(--console-primary-soft); font-weight: 700; }
 
 .console-muted-sm {
   font-size: var(--console-fs-sm);
@@ -189,6 +198,8 @@ const emit = defineEmits(['close', 'approve', 'reject'])
   padding: 16px 20px 20px;
   border-top: 1px solid var(--console-border-soft);
 }
+
+.decision-comment { width: 100%; min-height: 76px; margin-top: 6px; resize: vertical; }
 
 @media (max-width: 480px) {
   .console-details-grid {

@@ -88,10 +88,7 @@ defineEmits(['close', 'save', 'toggle'])
 
             <!-- KEEP ORIGINAL AVATAR -->
 
-            <img
-              :src="admin.avatar"
-              :alt="admin.name"
-            />
+            <span class="admin-avatar" aria-hidden="true">{{ admin.name.slice(0, 1).toUpperCase() }}</span>
 
 
             <div class="admin-info">
@@ -142,16 +139,14 @@ defineEmits(['close', 'save', 'toggle'])
               :checked="
                 selectedIds.includes(admin.id)
               "
+              :disabled="admin.owner"
               @change="$emit('toggle', admin.id)"
             />
 
 
             <!-- KEEP ORIGINAL AVATAR -->
 
-            <img
-              :src="admin.avatar"
-              :alt="admin.name"
-            />
+            <span class="admin-avatar" aria-hidden="true">{{ admin.name.slice(0, 1).toUpperCase() }}</span>
 
 
             <span class="admin-option-info">
@@ -252,6 +247,7 @@ defineEmits(['close', 'save', 'toggle'])
 
   border-radius: 50%;
 }
+.admin-avatar { width: 30px; height: 30px; flex-shrink: 0; display: inline-grid; place-items: center; border-radius: 50%; color: var(--console-primary); background: var(--console-primary-soft); font-weight: 700; }
 .no-admins {
   padding: 13px;
 
