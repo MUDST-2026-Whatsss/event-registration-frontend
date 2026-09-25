@@ -1,32 +1,33 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PageTopbar from '../../components/super_admin/PageTopbar.vue'
 import UserMenu from '../../components/super_admin/UserMenu.vue'
 import Icon from '../../components/super_admin/Icon.vue'
 import ManageRoleModal from '../../components/super_admin/ManageRoleModal.vue'
+import { eventsApi } from '@/api/events.js'
 
 const router = useRouter()
 const search = ref('')
 
-const admins = ref([
-  {
-    id: 'ADM-0042',
-    avatar: 'https://i.pravatar.cc/72?img=47',
-    name: 'Sarah Jenkins',
-    role: 'Admin',
-    permissions: ['Events: All', 'Reg: Full'],
-    status: 'Active',
-  },
-  {
-    id: 'ADM-0056',
-    avatar: 'https://i.pravatar.cc/72?img=68',
-    name: "Liam O'Connor",
-    role: 'User',
-    permissions: [],
-    status: 'Disabled',
-  },
-])
+const admins = ref([])
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const data = await eventsApi.users()
+    admins.value = data.map(u => ({
+      id: u.userId,
+      avatar: `https://i.pravatar.cc/72?u=${u.userId}`,
+      name: u.email,
+      role: u.role === 'SUPER_ADMIN' ? 'Super Admin' : u.role === 'ADMIN' ? 'Admin' : 'User',
+      permissions: [],
+      status: u.status === 'ACTIVE' ? 'Active' : 'Disabled',
+    }))
+  } finally {
+    loading.value = false
+  }
+})
 
 const filtered = computed(() =>
   admins.value.filter((a) => a.name.toLowerCase().includes(search.value.toLowerCase())),

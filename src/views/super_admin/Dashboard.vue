@@ -1,45 +1,67 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import PageTopbar from '../../components/super_admin/PageTopbar.vue'
 import UserMenu from '../../components/super_admin/UserMenu.vue'
 import Icon from '../../components/super_admin/Icon.vue'
+import { eventsApi } from '@/api/events.js'
 
 /* =========================================================
    Dashboard data
 ========================================================= */
 
-const eventStatuses = [
-  {
-    label: 'Published',
-    count: 842,
-    percent: 69.9,
-    color: '#5878f2',
-  },
-  {
-    label: 'Pending Approval',
-    count: 156,
-    percent: 13.0,
-    color: '#36b9b5',
-  },
-  {
-    label: 'Draft',
-    count: 98,
-    percent: 8.1,
-    color: '#f5a623',
-  },
-  {
-    label: 'Rejected',
-    count: 67,
-    percent: 5.6,
-    color: '#ef5350',
-  },
-  {
-    label: 'Completed',
-    count: 41,
-    percent: 3.4,
-    color: '#9aa5b5',
-  },
-]
+const statsData = ref({
+  totalEvents: 0,
+  publishedEvents: 0,
+  pendingEvents: 0,
+  draftEvents: 0,
+  rejectedEvents: 0,
+  totalUsers: 0,
+})
+
+onMounted(async () => {
+  try {
+    const data = await eventsApi.stats()
+    statsData.value = data
+  } catch {
+    // keep default zeros on error
+  }
+})
+
+const eventStatuses = computed(() => {
+  const total = statsData.value.totalEvents || 1
+  return [
+    {
+      label: 'Published',
+      count: statsData.value.publishedEvents,
+      percent: Math.round((statsData.value.publishedEvents / total) * 1000) / 10,
+      color: '#5878f2',
+    },
+    {
+      label: 'Pending Approval',
+      count: statsData.value.pendingEvents,
+      percent: Math.round((statsData.value.pendingEvents / total) * 1000) / 10,
+      color: '#36b9b5',
+    },
+    {
+      label: 'Draft',
+      count: statsData.value.draftEvents,
+      percent: Math.round((statsData.value.draftEvents / total) * 1000) / 10,
+      color: '#f5a623',
+    },
+    {
+      label: 'Rejected',
+      count: statsData.value.rejectedEvents,
+      percent: Math.round((statsData.value.rejectedEvents / total) * 1000) / 10,
+      color: '#ef5350',
+    },
+    {
+      label: 'Completed',
+      count: 0,
+      percent: 0,
+      color: '#9aa5b5',
+    },
+  ]
+})
 
 const recentApprovals = [
   {
@@ -165,7 +187,7 @@ const describeArc = (startAngle, endAngle) => {
 const donutSegments = computed(() => {
   let currentAngle = 0
 
-  return eventStatuses.map((status) => {
+  return eventStatuses.value.map((status) => {
     const startAngle = currentAngle
     const endAngle =
       currentAngle + (status.percent / 100) * 360
@@ -253,7 +275,7 @@ const getSegmentTransform = (segment) => {
           </div>
 
           <div class="stat-value">
-            12,840
+            {{ statsData.totalUsers.toLocaleString() }}
           </div>
 
           <div class="stat-note success">
@@ -293,7 +315,7 @@ const getSegmentTransform = (segment) => {
           </div>
 
           <div class="stat-value">
-            1,204
+            {{ statsData.totalEvents.toLocaleString() }}
           </div>
 
           <div class="stat-note">
@@ -313,7 +335,7 @@ const getSegmentTransform = (segment) => {
           </div>
 
           <div class="stat-value">
-            9
+            {{ statsData.pendingEvents }}
           </div>
 
           <div class="stat-note warning">
@@ -394,7 +416,7 @@ const getSegmentTransform = (segment) => {
 
                 <!-- Center -->
                 <div class="donut-center">
-                  <strong>1,204</strong>
+                  <strong>{{ statsData.totalEvents.toLocaleString() }}</strong>
                   <span>Total Events</span>
                 </div>
 

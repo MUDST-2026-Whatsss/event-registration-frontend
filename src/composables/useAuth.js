@@ -1,117 +1,77 @@
 import { readonly, ref } from 'vue'
+import { api } from '@/api/client.js'
 
 const STORAGE_KEY = 'eventsss_mock_authenticated'
-const PASSWORD_KEY = 'eventsss_mock_password'
 const ROLE_KEY = 'eventsss_mock_role'
 
 export const USER_ROLE = 'user'
 export const SUPER_ADMIN_ROLE = 'super-admin'
 export const ADMIN_ROLE = 'admin'
 
-export const MOCK_CREDENTIALS = Object.freeze({
-  email: 'demo@eventsss.com',
-  password: 'password123',
-})
+function mapRole(backendRole) {
+  if (backendRole === 'SUPER_ADMIN') return SUPER_ADMIN_ROLE
+  if (backendRole === 'ADMIN') return ADMIN_ROLE
+  return USER_ROLE
+}
 
-export const ADMIN_CREDENTIALS = Object.freeze({
-  email: 'admin@eventsss.com',
-  password: 'admin123',
-})
-
-export const SUPER_ADMIN_CREDENTIALS = Object.freeze({
-  email: 'superadmin@eventsss.com',
-  password: 'admin123',
-})
-
-const hasStoredSession = () => (
+const isAuthenticated = ref(
   window.localStorage.getItem(STORAGE_KEY) === 'true'
-  || window.sessionStorage.getItem(STORAGE_KEY) === 'true'
+)
+const currentRole = ref(
+  isAuthenticated.value ? (window.localStorage.getItem(ROLE_KEY) ?? USER_ROLE) : null
 )
 
-const isAuthenticated = ref(hasStoredSession())
-const currentRole = ref(isAuthenticated.value ? window.localStorage.getItem(ROLE_KEY) ?? USER_ROLE : null)
+function setSession(role) {
+  window.localStorage.setItem(STORAGE_KEY, 'true')
+  window.localStorage.setItem(ROLE_KEY, role)
+  isAuthenticated.value = true
+  currentRole.value = role
+}
 
-window.addEventListener('storage', (event) => {
-  if (event.key === STORAGE_KEY) {
-    isAuthenticated.value = event.newValue === 'true'
-    currentRole.value = isAuthenticated.value ? window.localStorage.getItem(ROLE_KEY) ?? USER_ROLE : null
-  }
-
-  if (event.key === ROLE_KEY) {
-    currentRole.value = event.newValue
-  }
-})
+function clearSession() {
+  window.localStorage.removeItem(STORAGE_KEY)
+  window.localStorage.removeItem(ROLE_KEY)
+  isAuthenticated.value = false
+  currentRole.value = null
+}
 
 export function useAuth() {
-  function verifyPassword(password) {
-    const activePassword = window.localStorage.getItem(PASSWORD_KEY) ?? MOCK_CREDENTIALS.password
-    return password === activePassword
-  }
-
-  function login(email, password) {
-    const activePassword = window.localStorage.getItem(PASSWORD_KEY) ?? MOCK_CREDENTIALS.password
-    const normalizedEmail = email.trim().toLowerCase()
-    let role = null
-
-    if (normalizedEmail === MOCK_CREDENTIALS.email && password === activePassword) {
-      role = USER_ROLE
-    } else if (
-      normalizedEmail === SUPER_ADMIN_CREDENTIALS.email
-      && password === SUPER_ADMIN_CREDENTIALS.password
-    ) {
-      role = SUPER_ADMIN_ROLE
-    }
-    else if (
-      normalizedEmail === ADMIN_CREDENTIALS.email
-      && password === ADMIN_CREDENTIALS.password
-    ) {
-      role = ADMIN_ROLE
-    }
-
-    if (role) {
-      window.localStorage.setItem(STORAGE_KEY, 'true')
-      window.localStorage.setItem(ROLE_KEY, role)
-      window.sessionStorage.removeItem(STORAGE_KEY)
-      isAuthenticated.value = true
-      currentRole.value = role
-    }
-
+  async function login(email, password) {
+    const data = await api.post('/api/v1/auth/login', { email, password })
+    const role = mapRole(data.user.role)
+    setSession(role)
     return role
   }
 
-  function logout() {
-    window.localStorage.removeItem(STORAGE_KEY)
-    window.localStorage.removeItem(ROLE_KEY)
-    window.sessionStorage.removeItem(STORAGE_KEY)
-    isAuthenticated.value = false
-    currentRole.value = null
+  async function logout() {
+    await api.post('/api/v1/auth/logout').catch(() => {})
+    clearSession()
   }
 
-  function changePassword(currentPassword, newPassword) {
-    const activePassword = window.localStorage.getItem(PASSWORD_KEY) ?? MOCK_CREDENTIALS.password
-    if (currentPassword !== activePassword) return false
-    window.localStorage.setItem(PASSWORD_KEY, newPassword)
-    return true
+  async function register(payload) {
+    return api.post('/api/v1/auth/register', payload)
   }
 
   function syncAuth() {
-    isAuthenticated.value = hasStoredSession()
-    currentRole.value = isAuthenticated.value ? window.localStorage.getItem(ROLE_KEY) ?? USER_ROLE : null
-
-    if (isAuthenticated.value && window.localStorage.getItem(STORAGE_KEY) !== 'true') {
-      window.localStorage.setItem(STORAGE_KEY, 'true')
-      window.localStorage.setItem(ROLE_KEY, currentRole.value)
-      window.sessionStorage.removeItem(STORAGE_KEY)
-    }
+    isAuthenticated.value =
+      window.localStorage.getItem(STORAGE_KEY) === 'true' ||
+      window.sessionStorage.getItem(STORAGE_KEY) === 'true'
+    currentRole.value = isAuthenticated.value
+      ? window.localStorage.getItem(ROLE_KEY) ?? USER_ROLE
+      : null
   }
+
+  function verifyPassword() { return false }
+  function changePassword() { return false }
 
   return {
     isAuthenticated: readonly(isAuthenticated),
     currentRole: readonly(currentRole),
     login,
     logout,
-    changePassword,
-    verifyPassword,
+    register,
     syncAuth,
+    verifyPassword,
+    changePassword,
   }
 }

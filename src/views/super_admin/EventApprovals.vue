@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import PageTopbar from '../../components/super_admin/PageTopbar.vue'
 import UserMenu from '../../components/super_admin/UserMenu.vue'
 import Icon from '../../components/super_admin/Icon.vue'
 import EventDetailsModal from '../../components/super_admin/EventDetailsModal.vue'
+import { eventsApi } from '@/api/events.js'
 
 const statusTab = ref('Pending')
 const sortOrder = ref('newest')
@@ -12,40 +13,32 @@ const priorityFilter = ref({ high: true, standard: true })
 const selectedEvent = ref(null)
 const currentPage = ref(1)
 
-const events = ref([
-  {
-    id: 1,
-    icon: '🎵',
-    name: 'Summer Music Festival 2026',
-    category: 'Entertainment & Arts',
-    organizerAvatar: 'https://i.pravatar.cc/64?img=5',
-    organizer: 'Dana Whitfield',
-    organizerRole: 'Event Admin',
-    date: 'Aug 14, 2026',
-    dateISO: '2026-08-14',
-    location: 'Central Park, NYC',
-    participants: 6200,
-    max: 8000,
-    status: 'Pending Review',
-    priority: 'high',
-  },
-  {
-    id: 2,
-    icon: '⚙️',
-    name: 'AI & Future of Work Summit',
-    category: 'Technology',
-    organizerAvatar: 'https://i.pravatar.cc/64?img=9',
-    organizer: 'Priya Nair',
-    organizerRole: 'Sr. Coordinator',
-    date: 'Sep 03, 2026',
-    dateISO: '2026-09-03',
-    location: 'Moscone Center, SF',
-    participants: 1150,
-    max: 2400,
-    status: 'Pending Review',
-    priority: 'standard',
-  },
-])
+const events = ref([])
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const data = await eventsApi.listAdmin()
+    events.value = data.map(e => ({
+      id: e.eventId,
+      icon: '📅',
+      name: e.title,
+      category: e.category?.nameEn ?? '',
+      organizerAvatar: 'https://i.pravatar.cc/64?u=' + e.eventId,
+      organizer: '',
+      organizerRole: '',
+      date: e.startAt ? new Date(e.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD',
+      dateISO: e.startAt ? new Date(e.startAt).toISOString().slice(0, 10) : '1970-01-01',
+      location: e.locationName ?? '',
+      participants: 0,
+      max: e.maximumParticipants ?? 0,
+      status: e.status === 'PENDING_REVIEW' ? 'Pending Review' : e.status === 'PUBLISHED' ? 'Approved' : e.status === 'REJECTED' ? 'Rejected' : e.status ?? 'Draft',
+      priority: 'standard',
+    }))
+  } finally {
+    loading.value = false
+  }
+})
 
 const filtered = computed(() => {
   let list = events.value.filter((e) =>
@@ -62,21 +55,31 @@ const filtered = computed(() => {
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / 10)))
 
-function approve(event) {
-  event.status = 'Approved'
+async function approve(event) {
+  try {
+    await eventsApi.publish(event.id)
+    event.status = 'Approved'
+  } catch {
+    // keep current status on error
+  }
 }
 
-function reject(event) {
-  event.status = 'Rejected'
+async function reject(event) {
+  try {
+    await eventsApi.reject(event.id)
+    event.status = 'Rejected'
+  } catch {
+    // keep current status on error
+  }
 }
 
-function approveFromModal(event) {
-  approve(event)
+async function approveFromModal(event) {
+  await approve(event)
   selectedEvent.value = null
 }
 
-function rejectFromModal(event) {
-  reject(event)
+async function rejectFromModal(event) {
+  await reject(event)
   selectedEvent.value = null
 }
 

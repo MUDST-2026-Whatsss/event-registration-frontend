@@ -6,6 +6,7 @@ import Icon from '../../components/super_admin/Icon.vue'
 
 /* =========================================================
    Change Request Data
+   NOTE: Mock data — no change request backend service exists yet.
 ========================================================= */
 
 const changeRequests = ref([

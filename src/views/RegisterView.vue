@@ -1,7 +1,12 @@
 <script setup>
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AuthInput from '@/components/AuthInput.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
+import { useAuth } from '@/composables/useAuth.js'
+
+const router = useRouter()
+const { register } = useAuth()
 
 const form = reactive({
   firstName: '',
@@ -78,6 +83,11 @@ const validatePassword = () => {
     return false
   }
 
+  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(form.password)) {
+    errors.password = 'Password must include a lowercase letter, an uppercase letter and a number.'
+    return false
+  }
+
   errors.password = ''
   return true
 }
@@ -97,7 +107,7 @@ const validateConfirmPassword = () => {
   return true
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   formStatus.value = ''
   const validationResults = [
     validateRequired('firstName', 'first name'),
@@ -108,8 +118,19 @@ const handleSubmit = () => {
     validateConfirmPassword(),
   ]
 
-  if (validationResults.every(Boolean)) {
-    formStatus.value = 'Your account information is ready to submit.'
+  if (!validationResults.every(Boolean)) return
+
+  try {
+    await register({
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      phoneNumber: form.phone.replace(/[\s-]/g, ''),
+      email: form.email.trim(),
+      password: form.password,
+    })
+    router.push('/login?registered=1')
+  } catch (err) {
+    formStatus.value = err.message ?? 'Registration failed. Please try again.'
   }
 }
 </script>

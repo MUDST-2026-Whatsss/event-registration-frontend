@@ -1,9 +1,10 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageTopbar from '../../components/super_admin/PageTopbar.vue'
 import UserMenu from '../../components/super_admin/UserMenu.vue'
 import Icon from '../../components/super_admin/Icon.vue'
+import { eventsApi } from '@/api/events.js'
 
 const router = useRouter()
 
@@ -16,54 +17,36 @@ const availableAdmins = [
 ]
 const getAdmin = id => availableAdmins.find(admin => admin.id === id)
 
+function mapStatus(s) {
+  const m = { DRAFT: 'Draft', PENDING_REVIEW: 'Pending', PUBLISHED: 'Published', REJECTED: 'Rejected', CANCELLED: 'Rejected', COMPLETED: 'Completed' }
+  return m[s] ?? s
+}
+
 // Events
-const events = ref([
-  {
-    id: 1, name: 'Global Tech Innovators Summit 2024', venue: 'Convention Center, Hall A',
-    date: 'Nov 15, 2024', time: '09:00 AM - 05:00 PM', registrations: 450, capacity: 500,
-    status: 'Published', category: 'Seminar',
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=160&q=80',
-    admins: [getAdmin(1), getAdmin(2)],
-    participants: [
-      { id: 1, name: 'aunyamanee keawching', email: 'aunyama@gmail.com', tel: '095-870-4545', payment: 'Paid' },
-      { id: 2, name: 'borbeer sudlhorr', email: 'test@gmail.com', tel: '095-453-4355', payment: 'Paid' },
-      { id: 3, name: 'somsak jaidee', email: 'test888@gmail.com', tel: '095-453-4355', payment: 'Pending' },
-      { id: 4, name: 'sompong jaidee', email: 'test888@gmail.com', tel: '095-453-4355', payment: 'Paid' },
-      { id: 5, name: 'sudjai fongsri', email: 'sudjai@gmail.com', tel: '095-123-4567', payment: 'Pending' },
-    ],
-  },
-  {
-    id: 2, name: 'Urban Beats Outdoor Festival', venue: 'Central Park West',
-    date: 'Dec 02, 2024', time: '04:00 PM - 11:00 PM', registrations: 320, capacity: 800,
-    status: 'Pending', category: 'Music',
-    image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=160&q=80',
-    admins: [getAdmin(3)],
-    participants: [
-      { id: 1, name: 'john smith', email: 'john@gmail.com', tel: '095-111-2222', payment: 'Paid' },
-      { id: 2, name: 'maria lee', email: 'maria@gmail.com', tel: '095-222-3333', payment: 'Pending' },
-    ],
-  },
-  {
-    id: 3, name: 'Advanced UI Design Workshop', venue: 'Creative Hub Room 4',
-    date: 'Nov 28, 2024', time: '10:00 AM - 04:00 PM', registrations: 75, capacity: 100,
-    status: 'Rejected', category: 'Workshop',
-    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=160&q=80',
-    admins: [getAdmin(4)], participants: [],
-  },
-  {
-    id: 4, name: 'Internal Marketing Strategy Day', venue: 'HQ Main Boardroom',
-    date: 'TBD', time: 'Unset', registrations: 0, capacity: 0,
-    status: 'Draft', category: 'Others', image: null,
-    admins: [getAdmin(1)], participants: [],
-  },
-  {
-    id: 5, name: 'Digital Future Conference 2025', venue: 'Innovation Center',
-    date: 'Jan 18, 2025', time: '09:00 AM - 06:00 PM', registrations: 620, capacity: 700,
-    status: 'Published', category: 'Seminar',
-    image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=160&q=80',
-    admins: [getAdmin(3)], participants: [],
-  },
-])
+const events = ref([])
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    const data = await eventsApi.listAdmin()
+    events.value = data.map(e => ({
+      id: e.eventId,
+      name: e.title,
+      venue: e.locationName ?? '',
+      date: e.startAt ? new Date(e.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD',
+      time: '',
+      registrations: 0,
+      capacity: e.maximumParticipants ?? 0,
+      status: mapStatus(e.status ?? 'DRAFT'),
+      category: e.category?.nameEn ?? 'Others',
+      image: e.imageUrl ?? null,
+      admins: [],
+      participants: [],
+    }))
+  } finally {
+    loading.value = false
+  }
+})
 
 // Filter
 const searchQuery = ref('')

@@ -13,7 +13,7 @@ const { login } = useAuth()
 const { showToast } = useToast()
 const email = ref('')
 const password = ref('')
-const formStatus = ref('')
+const formStatus = ref(route.query.registered ? 'Account created! Please sign in.' : '')
 
 const errors = reactive({
   email: '',
@@ -52,45 +52,43 @@ const validatePassword = () => {
   return true
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   formStatus.value = ''
   const isEmailValid = validateEmail()
   const isPasswordValid = validatePassword()
 
-  if (isEmailValid && isPasswordValid) {
-    const authenticatedRole = login(email.value, password.value)
+  if (!isEmailValid || !isPasswordValid) return
 
-    if (authenticatedRole) {
-      const roleHome = {
-        [SUPER_ADMIN_ROLE]: '/super-admin',
-        [ADMIN_ROLE]: '/admin/dashboard',
-      }
-      const defaultRoute = roleHome[authenticatedRole] ?? '/'
-      const requestedRedirect =
-        typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  try {
+    const authenticatedRole = await login(email.value, password.value)
 
-      // Only honour the requested redirect if it belongs to this role's area,
-      // so a stale link (e.g. admin arriving on ?redirect=/super-admin/...)
-      // doesn't bounce off the route guard back to login.
-      const areaFor = (path) =>
-        path.startsWith('/admin') ? ADMIN_ROLE
-        : path.startsWith('/super-admin') ? SUPER_ADMIN_ROLE
-        : null
-      const redirectArea = areaFor(requestedRedirect)
-      const redirect =
-        requestedRedirect && (redirectArea === null || redirectArea === authenticatedRole)
-          ? requestedRedirect
-          : defaultRoute
-      showToast({
-        variant: 'success',
-        title: 'Signed in successfully',
-        message: 'Welcome back to Eventsss.',
-      })
-      router.push(redirect)
-      return
+    const roleHome = {
+      [SUPER_ADMIN_ROLE]: '/super-admin',
+      [ADMIN_ROLE]: '/admin/dashboard',
     }
+    const defaultRoute = roleHome[authenticatedRole] ?? '/'
+    const requestedRedirect =
+      typeof route.query.redirect === 'string' ? route.query.redirect : ''
 
-    formStatus.value = 'Incorrect email or password.'
+    const areaFor = (path) =>
+      path.startsWith('/admin') ? ADMIN_ROLE
+      : path.startsWith('/super-admin') ? SUPER_ADMIN_ROLE
+      : null
+    const redirectArea = areaFor(requestedRedirect)
+    const redirect =
+      requestedRedirect && (redirectArea === null || redirectArea === authenticatedRole)
+        ? requestedRedirect
+        : defaultRoute
+    showToast({
+      variant: 'success',
+      title: 'Signed in successfully',
+      message: 'Welcome back to Eventsss.',
+    })
+    router.push(redirect)
+  } catch (err) {
+    formStatus.value = err.status === 401
+      ? 'Incorrect email or password.'
+      : 'Something went wrong. Please try again.'
   }
 }
 </script>
