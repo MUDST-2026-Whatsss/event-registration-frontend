@@ -19,9 +19,26 @@ Vite serves the application at `http://localhost:5173` by default.
 ## Available Commands
 
 ```sh
-npm run dev      # Start the development server
-npm run build    # Create the production build in dist/
-npm run preview  # Preview the production build locally
+npm run dev        # Start the development server
+npm run build      # Create the production build in dist/
+npm run preview    # Preview the production build locally
+npm run test         # Run unit tests (Vitest)
+npm run test:e2e     # Run end-to-end tests headlessly (Cypress)
+npm run test:e2e:open# Open interactive Cypress test runner UI
+```
+
+## Running with Docker
+
+### Using Docker Compose (Recommended)
+```sh
+docker compose up --build
+```
+Access the application at `http://localhost:8080`.
+
+### Using Docker CLI
+```sh
+docker build -t eventsss-frontend .
+docker run -d -p 8080:80 --name eventsss-frontend eventsss-frontend
 ```
 
 ## Project Structure
