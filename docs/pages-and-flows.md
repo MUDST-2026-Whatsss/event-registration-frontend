@@ -13,22 +13,22 @@ unfinished API work. Update it whenever a route or vertical flow changes.
 
 | Page | Route | Access | Feature owner | Current state | Next backend integration |
 | --- | --- | --- | --- | --- | --- |
-| Home | `/` | Public | `features/events` | Prototype event catalogue | Public event highlights |
-| Events | `/events` | Public | `features/events` | Prototype catalogue and filters | Paginated event search |
-| Event detail | `/events/:id` | Public | `features/events` | Prototype detail and availability | Event detail and authoritative availability |
+| Home | `/` | Public | `features/events` | **Live API**: published highlights grouped by registration period | Server ranking/featured-event policy remains |
+| Events | `/events` | Public | `features/events` | **Live API**: published catalogue, search, and lifecycle filters | Server pagination/search for larger catalogues |
+| Event detail | `/events/:slug` | Public | `features/events` | **Live API**: published event detail and registration window | Authoritative remaining-seat count after registration API |
 | Create account | `/register` | Public | `features/auth` | **Live API**: account registration | Complete |
 | Sign in | `/login` | Public | `features/auth` | **Live API**: login, cookie session, refresh, role redirect | Complete |
 | Choose role | `/select-role` | Authenticated multi-role account | `features/auth` | **Live API**: selects one active role and permission scope | Complete |
 | Forgot password | `/forgot-password` | Public | `features/auth` | Prototype browser-only confirmation | Password-reset request API |
 | Reset password | `/reset-password` | Public | `features/auth` | Prototype client validation | Reset-token validation and consumption API |
 | Profile | `/profile` | Authenticated | `features/auth` | **Partial API**: profile fields live; avatar in localStorage | Media upload/removal API |
-| Register for event | `/events/:id/register` | Authenticated | `features/registrations` | Prototype registration and simulated PromptPay | Atomic registration hold plus payment intent |
-| Registration success | `/events/:id/registration-success` | Authenticated | `features/registrations` | Prototype localStorage lookup | Registration/payment detail API |
+| Register for event | `/events/:slug/register` | Authenticated | `features/registrations` | **Partial API**: event context is live; registration and PromptPay are simulated | Atomic registration hold plus payment intent |
+| Registration success | `/events/:slug/registration-success` | Authenticated | `features/registrations` | Prototype localStorage lookup | Registration/payment detail API |
 | My registrations | `/my-registrations` | Authenticated | `features/registrations` | Prototype localStorage list, cancellation, and QR | Current-user registrations, cancellation, and signed QR |
 
-Public event data currently comes from `features/events/data/events.js`. Registration state comes
-from `features/registrations/composables/useRegistrations.js`; it is device-local and is not an
-authoritative reservation.
+Published event data comes from `GET /api/v1/events` and `GET /api/v1/events/{slug}`. Registration
+state still comes from `features/registrations/composables/useRegistrations.js`; it is device-local
+and is not an authoritative reservation.
 
 ## Admin console
 
@@ -65,7 +65,7 @@ The `/super-admin/**` parent route uses the same console shell and requires the 
 
 ### Guest browsing and authentication
 
-1. Guests can browse `/`, `/events`, and `/events/:id` without waiting for auth initialization.
+1. Guests can browse `/`, `/events`, and `/events/:slug` without waiting for auth initialization.
 2. Opening a protected route runs the global guard in `app/router/index.js`.
 3. The guard initializes the session with `GET /api/v1/auth/me` and attempts one cookie-based
    refresh when the access session has expired.
@@ -96,7 +96,7 @@ The `/super-admin/**` parent route uses the same console shell and requires the 
 
 ### Event registration and payment prototype
 
-1. A signed-in user opens `/events/:id/register` using prototype event data.
+1. A signed-in user opens `/events/:slug/register`; published event context is loaded from the API.
 2. A free event writes a local registration immediately.
 3. A paid event generates a browser-side QR and timers simulate payment checking and success.
 4. The success and My Registrations screens read the same localStorage record.

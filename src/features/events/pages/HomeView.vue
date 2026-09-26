@@ -1,21 +1,23 @@
 <script setup>
-import { ArrowRight, MapPin, Search } from '@lucide/vue'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { ArrowRight, CalendarX2, MapPin, RefreshCw, Search } from '@lucide/vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import halloweenImage from '@/assets/events/halloween.jpg'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import EventCard from '../components/EventCard.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
-import { eventGroups } from '../data/events.js'
+import { groupPublicEvents, usePublicEvents } from '../public.js'
 
 const router = useRouter()
 const searchQuery = ref('')
 const locationQuery = ref('')
 const now = ref(Date.now())
 const countdownTimer = window.setInterval(() => { now.value = Date.now() }, 1000)
+const { events, loading, error, loadEvents } = usePublicEvents()
+const eventGroups = computed(() => groupPublicEvents(events.value, { includeClosed: false }))
+const featuredEvent = computed(() => events.value.find((event) => new Date(event.startAt).getTime() > now.value) ?? null)
 
 const countdown = computed(() => {
-  const target = new Date('2026-10-31T09:00:00+07:00').getTime()
+  const target = featuredEvent.value ? new Date(featuredEvent.value.startAt).getTime() : now.value
   const difference = Math.max(0, target - now.value)
   return [
     { label: 'days', value: Math.floor(difference / 86400000) },
@@ -31,6 +33,7 @@ function searchEvents() {
 }
 
 onBeforeUnmount(() => window.clearInterval(countdownTimer))
+onMounted(() => loadEvents().catch(() => {}))
 </script>
 
 <template>
@@ -59,19 +62,35 @@ onBeforeUnmount(() => window.clearInterval(countdownTimer))
         </div>
       </section>
 
-      <RouterLink class="countdown" to="/events/7" :style="{ backgroundImage: `url(${halloweenImage})` }">
+      <RouterLink v-if="featuredEvent" class="countdown" :to="`/events/${featuredEvent.slug}`" :style="{ backgroundImage: `url(${featuredEvent.image})` }">
         <span class="countdown__overlay"></span>
         <span class="countdown__content">
           <strong>Don&rsquo;t Miss Out!</strong>
-          <span class="countdown__event">Halloween Event</span>
-          <span class="countdown__meta">ICT Floor 1 &bull; 31 October 2026</span>
-          <span class="countdown__timer" aria-label="Time remaining until Halloween Event">
+          <span class="countdown__event">{{ featuredEvent.title }}</span>
+          <span class="countdown__meta">{{ featuredEvent.location }} &bull; {{ featuredEvent.date }}</span>
+          <span class="countdown__timer" :aria-label="`Time remaining until ${featuredEvent.title}`">
             <span v-for="unit in countdown" :key="unit.label"><b>{{ unit.value }}</b><small>{{ unit.label }}</small></span>
           </span>
         </span>
       </RouterLink>
 
       <div class="home-events">
+        <div v-if="loading && !events.length" class="home-state" aria-live="polite">
+          <RefreshCw :size="28" class="home-state__spinner" />
+          <h2>Loading events</h2>
+          <p>Fetching the latest published events.</p>
+        </div>
+        <div v-else-if="error && !events.length" class="home-state" role="alert">
+          <CalendarX2 :size="30" />
+          <h2>Events could not be loaded</h2>
+          <p>{{ error }}</p>
+          <button type="button" @click="loadEvents(true).catch(() => {})">Try again</button>
+        </div>
+        <div v-else-if="!eventGroups.length" class="home-state">
+          <CalendarX2 :size="30" />
+          <h2>No upcoming events yet</h2>
+          <p>Published events will appear here.</p>
+        </div>
         <section v-for="group in eventGroups" :key="group.id" class="home-event-group" :aria-labelledby="`home-${group.id}`">
           <div class="home-event-group__heading">
             <h2 :id="`home-${group.id}`">{{ group.title }}</h2>
@@ -117,6 +136,13 @@ onBeforeUnmount(() => window.clearInterval(countdownTimer))
 .home-event-group h2 { margin: 0; font-size: 1.375rem; font-weight: 600; }
 .home-event-group__heading a { display: inline-flex; align-items: center; gap: 3px; color: #1850d8; font-size: .8125rem; text-decoration: none; }
 .home-event-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.home-state { display: grid; min-height: 260px; padding: 42px 20px; place-items: center; align-content: center; gap: 8px; color: var(--neutral-600); background: #fafaff; border: 1px dashed var(--neutral-300); border-radius: 8px; text-align: center; }
+.home-state h2, .home-state p { margin: 0; }
+.home-state h2 { color: #20263a; font-size: 1.25rem; }
+.home-state button { margin-top: 8px; padding: 10px 18px; color: #fff; background: #2455db; border-radius: 6px; cursor: pointer; }
+.home-state__spinner { animation: home-spin .9s linear infinite; }
+@keyframes home-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .home-state__spinner { animation-duration: 1.8s; } }
 @media (max-width: 900px) { .home-event-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) {
   .home-hero { min-height: 430px; }

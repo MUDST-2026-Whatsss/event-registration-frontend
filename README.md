@@ -11,13 +11,13 @@ Connected to the Spring Boot API:
 - Cookie/CSRF request handling
 - Participant profile text fields and password change
 - Role-aware navigation for USER, ADMIN, and SUPER_ADMIN
+- Published event catalogue, event search/filtering, and event detail
+- Admin event lifecycle and Super Admin governance/access-control screens
 
 Still backed by mock JavaScript data or `localStorage`:
 
-- Public event catalogue/detail
 - Registrations, cancellation, and QR tickets
-- Admin/super-admin events, participants, approvals, change requests, users, roles, audit logs, and
-  dashboards
+- Super Admin participant operations
 - Profile avatar
 - Forgot/reset password submission
 

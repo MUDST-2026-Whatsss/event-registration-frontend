@@ -1,35 +1,40 @@
 <script setup>
-import { ArrowRight, ListFilter, Search } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { ArrowRight, CalendarX2, ListFilter, RefreshCw, Search } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import heroImage from '@/assets/events/hero.jpg'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import EventCard from '../components/EventCard.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
-import { eventGroups } from '../data/events.js'
+import { groupPublicEvents, usePublicEvents } from '../public.js'
 
 const route = useRoute()
 const searchQuery = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const selectedStatus = ref('all')
+const { events, loading, error, loadEvents } = usePublicEvents()
+const eventGroups = computed(() => groupPublicEvents(events.value))
 const selectedGroup = computed(() => {
   const group = typeof route.query.group === 'string' ? route.query.group : ''
-  return eventGroups.some((item) => item.id === group) ? group : ''
+  return eventGroups.value.some((item) => item.id === group) ? group : ''
 })
-const pageTitle = computed(() => eventGroups.find((group) => group.id === selectedGroup.value)?.title ?? 'Our Events')
+const pageTitle = computed(() => eventGroups.value.find((group) => group.id === selectedGroup.value)?.title ?? 'Our Events')
 const pageSubtitle = computed(() => selectedGroup.value ? `Explore all ${pageTitle.value.toLowerCase()}` : 'All of My Events Now')
 const filterOptions = [
   { value: 'all', label: 'All events' }, { value: 'open', label: 'Open' },
-  { value: 'almost-full', label: 'Almost full' }, { value: 'upcoming', label: 'Upcoming' },
-  { value: 'closed', label: 'Closed' },
+  { value: 'upcoming', label: 'Upcoming' }, { value: 'closed', label: 'Closed' },
 ]
 const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
-  const visibleGroups = selectedGroup.value ? eventGroups.filter((group) => group.id === selectedGroup.value) : eventGroups
+  const visibleGroups = selectedGroup.value ? eventGroups.value.filter((group) => group.id === selectedGroup.value) : eventGroups.value
   return visibleGroups.map((group) => ({ ...group, events: group.events.filter((event) => {
     const matchesQuery = !query || `${event.title} ${event.location}`.toLocaleLowerCase().includes(query)
     return matchesQuery && (selectedStatus.value === 'all' || event.status === selectedStatus.value)
   }) }))
 })
+
+const visibleEventCount = computed(() => filteredGroups.value.reduce((total, group) => total + group.events.length, 0))
+
+onMounted(() => loadEvents().catch(() => {}))
 </script>
 
 <template>
@@ -41,6 +46,10 @@ const filteredGroups = computed(() => {
         <div class="hero__content"><h1 id="hero-title">{{ pageTitle }}</h1><p>{{ pageSubtitle }}</p></div>
       </section>
       <div id="events" class="events-shell">
+        <div v-if="loading && !events.length" class="events-state" aria-live="polite"><RefreshCw :size="28" class="events-state__spinner" /><h2>Loading events</h2><p>Fetching the latest published events.</p></div>
+        <div v-else-if="error && !events.length" class="events-state" role="alert"><CalendarX2 :size="30" /><h2>Events could not be loaded</h2><p>{{ error }}</p><button type="button" @click="loadEvents(true).catch(() => {})">Try again</button></div>
+        <div v-else-if="!events.length" class="events-state"><CalendarX2 :size="30" /><h2>No published events</h2><p>Published events will appear here.</p></div>
+        <template v-else>
         <section class="event-tools" aria-label="Event search and filters">
           <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
           <label class="event-tools__filter"><ListFilter :size="17" /><span class="sr-only">Filter by status</span><select v-model="selectedStatus"><option v-for="option in filterOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
@@ -54,6 +63,8 @@ const filteredGroups = computed(() => {
           <div v-if="group.events.length" class="event-grid"><EventCard v-for="event in group.events" :key="event.id" :event="event" /></div>
           <p v-else class="event-group__empty">No events match your search.</p>
         </section>
+        <div v-if="!visibleEventCount" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
+        </template>
       </div>
     </main>
     <AppFooter />
@@ -83,6 +94,13 @@ const filteredGroups = computed(() => {
 .event-group__heading a:hover { text-decoration: underline; }
 .event-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
 .event-group__empty { min-height: 120px; margin: 0; padding: 42px 16px; color: var(--neutral-600); background: #fafaff; border: 1px dashed var(--neutral-300); border-radius: 6px; text-align: center; }
+.events-state { display: grid; min-height: 260px; padding: 42px 20px; place-items: center; align-content: center; gap: 8px; color: var(--neutral-600); background: #fafaff; border: 1px dashed var(--neutral-300); border-radius: 8px; text-align: center; }
+.events-state h2, .events-state p { margin: 0; }
+.events-state h2 { color: #20263a; font-size: 1.25rem; }
+.events-state button { margin-top: 8px; padding: 10px 18px; color: #fff; background: #2455db; border-radius: 6px; cursor: pointer; }
+.events-state__spinner { animation: events-spin .9s linear infinite; }
+@keyframes events-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .events-state__spinner { animation-duration: 1.8s; } }
 @media (max-width: 900px) { .event-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) {
   .hero { min-height: 235px; }

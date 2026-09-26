@@ -4,7 +4,7 @@ const MyRegistrationsView = () => import('./pages/MyRegistrationsView.vue')
 
 export const registrationRoutes = [
   {
-    path: '/events/:id/register',
+    path: '/events/:slug/register',
     name: 'event-registration',
     component: EventRegistrationView,
     meta: {
@@ -13,7 +13,7 @@ export const registrationRoutes = [
     },
   },
   {
-    path: '/events/:id/registration-success',
+    path: '/events/:slug/registration-success',
     name: 'registration-success',
     component: RegistrationSuccessView,
     meta: {

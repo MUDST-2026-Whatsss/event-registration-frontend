@@ -16,7 +16,7 @@ export const eventRoutes = [
     meta: { title: 'Events | Eventsss' },
   },
   {
-    path: '/events/:id',
+    path: '/events/:slug',
     name: 'event-detail',
     component: EventDetailView,
     meta: { title: 'Event details | Eventsss' },

@@ -1,24 +1,32 @@
 <script setup>
 import { CalendarDays, Check, MapPin, ReceiptText } from '@lucide/vue'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
-import { eventGroups } from '@/features/events/public.js'
+import { usePublicEvents } from '@/features/events/public.js'
 
 const route = useRoute()
 const router = useRouter()
 const { registrations } = useRegistrations()
-const allEvents = eventGroups.flatMap((group) => group.events)
-const event = computed(() => allEvents.find((item) => item.id === Number(route.params.id)))
-const registration = computed(() => registrations.value.find((item) => item.eventId === Number(route.params.id)))
-const registrationId = computed(() => `EVT-2026-${String(route.params.id).padStart(4, '0')}`)
+const { findEvent, loadEvent } = usePublicEvents()
+const ready = ref(false)
+const event = computed(() => findEvent(String(route.params.slug || '')))
+const registration = computed(() => registrations.value.find((item) => item.eventId === String(route.params.slug)))
+const registrationId = computed(() => `EVT-${String(event.value?.eventId || route.params.slug).slice(0, 8).toUpperCase()}`)
 const transactionId = computed(() => registration.value?.transactionId ?? route.query.transaction ?? 'TXN-PENDING')
 const amount = computed(() => registration.value?.amount ?? event.value?.price ?? 0)
 const isFree = computed(() => amount.value === 0)
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    await loadEvent(String(route.params.slug || ''))
+  } catch {
+    router.replace('/events')
+    return
+  }
+  ready.value = true
   if (!event.value || !['paid', 'not-required'].includes(registration.value?.paymentStatus)) {
     router.replace(event.value ? `/events/${event.value.id}` : '/events')
   }
@@ -29,7 +37,7 @@ onMounted(() => {
   <div class="success-page">
     <PublicHeader />
     <main class="success-shell">
-      <section v-if="event" class="success-card">
+      <section v-if="ready && event" class="success-card">
         <div class="success-icon"><Check :size="38" stroke-width="2.5" /></div>
         <p class="success-eyebrow">{{ isFree ? 'Registration confirmed' : 'Payment confirmed' }}</p>
         <h1>Registration successful!</h1>

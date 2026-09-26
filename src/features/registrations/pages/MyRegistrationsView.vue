@@ -7,12 +7,13 @@ import AppFooter from '@/shared/ui/AppFooter.vue'
 import AppToast from '@/shared/ui/AppToast.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
-import { eventGroups } from '@/features/events/public.js'
+import { usePublicEvents } from '@/features/events/public.js'
 
 const searchQuery = ref('')
 const route = useRoute()
 const activeFilter = ref('upcoming')
 const { registrations, register, cancel } = useRegistrations()
+const { events, loadEvents } = usePublicEvents()
 const pendingCancellation = ref(null)
 const cancellationToast = ref(null)
 const cancelDialog = ref(null)
@@ -20,7 +21,6 @@ const qrDialog = ref(null)
 const qrEvent = ref(null)
 const qrDataUrl = ref('')
 const qrError = ref(false)
-const allEvents = eventGroups.flatMap((group) => group.events)
 const filters = [
   { value: 'upcoming', label: 'Upcoming' },
   { value: 'past', label: 'Past' },
@@ -28,14 +28,14 @@ const filters = [
 ]
 
 const registeredEvents = computed(() => registrations.value.map((registration) => {
-  const event = allEvents.find((item) => item.id === registration.eventId)
+  const event = events.value.find((item) => item.id === registration.eventId)
   return event ? { ...event, registrationStatus: registration.status, registeredAt: registration.registeredAt } : null
 }).filter(Boolean))
 
 const visibleEvents = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   return registeredEvents.value.filter((event) => {
-    const isPast = event.id === 4
+    const isPast = event.status === 'closed'
     const matchesFilter = activeFilter.value === 'cancelled'
       ? event.registrationStatus === 'cancelled'
       : event.registrationStatus === 'registered' && (activeFilter.value === 'past' ? isPast : !isPast)
@@ -107,7 +107,10 @@ function handleKeydown(event) {
   else if (pendingCancellation.value) closeCancellation()
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  loadEvents().catch(() => {})
+})
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
@@ -144,7 +147,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <div class="registration-card__actions">
             <RouterLink :to="{ path: `/events/${event.id}`, query: { from: route.fullPath } }"><Eye :size="17" aria-hidden="true" />View</RouterLink>
             <button v-if="event.registrationStatus === 'registered'" class="qr" type="button" @click="openQrCode(event)"><QrCode :size="17" aria-hidden="true" />QR Code</button>
-            <button v-if="event.registrationStatus === 'registered' && event.id !== 4" class="cancel" type="button" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
+            <button v-if="event.registrationStatus === 'registered' && event.status !== 'closed'" class="cancel" type="button" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
           </div>
         </article>
       </div>

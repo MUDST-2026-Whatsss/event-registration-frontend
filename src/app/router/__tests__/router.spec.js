@@ -50,7 +50,7 @@ describe('application router authentication guard', () => {
     await router.push('/events/server-event-id/register')
 
     expect(router.currentRoute.value.name).toBe('event-registration')
-    expect(router.currentRoute.value.params.id).toBe('server-event-id')
+    expect(router.currentRoute.value.params.slug).toBe('server-event-id')
   })
 
   it('sends a multi-role session to role selection before a protected area', async () => {

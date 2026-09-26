@@ -1,1 +1,2 @@
-export { canRegisterForEvent, eventGroups } from './data/events.js'
+export { usePublicEvents } from './composables/usePublicEvents.js'
+export { canRegisterForEvent, groupPublicEvents, mapPublicEvent } from './lib/publicEvent.js'

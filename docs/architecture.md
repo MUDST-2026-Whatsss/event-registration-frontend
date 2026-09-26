@@ -48,7 +48,7 @@ number of files makes the flat form harder to scan. Do not create directories pr
 
 | Feature | Routes | Access |
 | --- | --- | --- |
-| Events | `/`, `/events`, `/events/:id` | Guest |
+| Events | `/`, `/events`, `/events/:slug` | Guest |
 | Auth/profile | auth recovery pages and `/profile` | Guest or authenticated user |
 | Registrations | registration, success, `/my-registrations` | Authenticated user |
 | Admin console | `/admin/**` | ADMIN |

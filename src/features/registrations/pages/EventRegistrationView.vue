@@ -1,20 +1,22 @@
 <script setup>
 import { ArrowRight, CalendarDays, Check, Clock3, Mail, MapPin, Phone, QrCode, UserRound, X } from '@lucide/vue'
 import QRCode from 'qrcode'
-import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
-import { canRegisterForEvent, eventGroups } from '@/features/events/public.js'
+import { canRegisterForEvent, usePublicEvents } from '@/features/events/public.js'
 import { useAuth } from '@/features/auth/public.js'
 
 const route = useRoute()
 const router = useRouter()
 const { register } = useRegistrations()
 const { currentUser } = useAuth()
-const allEvents = eventGroups.flatMap((group) => group.events)
-const event = computed(() => allEvents.find((item) => item.id === Number(route.params.id)) ?? allEvents[0])
+const { findEvent, loadEvent } = usePublicEvents()
+const eventLoading = ref(true)
+const eventError = ref('')
+const event = computed(() => findEvent(String(route.params.slug || '')))
 const paymentModal = ref(null)
 const paymentOpen = ref(false)
 const paymentState = ref('idle')
@@ -32,6 +34,16 @@ const form = reactive({
   phone: currentUser.value?.phoneNumber ?? '',
   email: currentUser.value?.email ?? '',
   consent: false,
+})
+
+onMounted(async () => {
+  try {
+    await loadEvent(String(route.params.slug || ''))
+  } catch (cause) {
+    eventError.value = cause?.message || 'Unable to load this event.'
+  } finally {
+    eventLoading.value = false
+  }
 })
 
 function formatPrice(price) {
@@ -63,7 +75,7 @@ function finishPayment(runId) {
   timers.push(window.setTimeout(() => {
     router.replace({
       name: 'registration-success',
-      params: { id: event.value.id },
+      params: { slug: event.value.id },
       query: { transaction: transactionId },
     })
   }, 1200))
@@ -86,7 +98,7 @@ async function confirmRegistration() {
       paymentMethod: 'Free',
       paymentStatus: 'not-required',
     })
-    router.replace({ name: 'registration-success', params: { id: event.value.id } })
+    router.replace({ name: 'registration-success', params: { slug: event.value.id } })
     return
   }
 
@@ -141,6 +153,9 @@ onBeforeUnmount(clearPaymentTimers)
   <div class="registration-page">
     <PublicHeader />
     <main class="registration-shell">
+      <div v-if="eventLoading" class="registration-load">Loading event information...</div>
+      <div v-else-if="eventError || !event" class="registration-load error"><strong>Event unavailable</strong><span>{{ eventError || 'This event could not be found.' }}</span><RouterLink to="/events">Back to events</RouterLink></div>
+      <template v-else>
       <div class="registration-breadcrumb"><RouterLink :to="detailTarget">&larr; Back to event details</RouterLink><span>&bull;</span><span>Confirm registration</span></div>
 
       <div class="registration-heading">
@@ -156,8 +171,8 @@ onBeforeUnmount(clearPaymentTimers)
             <span>Selected event</span>
             <h2>{{ event.title }}</h2>
             <dl>
-              <div><dt><CalendarDays :size="18" /></dt><dd><strong>{{ event.date }}</strong><span>9:00 AM - 5:00 PM</span></dd></div>
-              <div><dt><MapPin :size="18" /></dt><dd><strong>{{ event.location }}</strong><span>Mahidol University</span></dd></div>
+              <div><dt><CalendarDays :size="18" /></dt><dd><strong>{{ event.date }}</strong><span>{{ event.time }}</span></dd></div>
+              <div><dt><MapPin :size="18" /></dt><dd><strong>{{ event.location }}</strong><span v-if="event.address">{{ event.address }}</span></dd></div>
             </dl>
             <div class="event-review__price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           </div>
@@ -185,6 +200,7 @@ onBeforeUnmount(clearPaymentTimers)
           <p class="registration-note">The PromptPay QR and payment status will be processed automatically.</p>
         </form>
       </div>
+      </template>
     </main>
     <AppFooter />
 
@@ -222,6 +238,9 @@ onBeforeUnmount(clearPaymentTimers)
 .registration-page { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; color: #20263a; }
 .registration-page main { flex: 1; }
 .registration-shell { width: min(100% - 48px, 1080px); margin-inline: auto; padding-block: 34px 84px; }
+.registration-load { display: flex; min-height: 420px; align-items: center; justify-content: center; gap: 8px; color: var(--neutral-600); flex-direction: column; text-align: center; }
+.registration-load.error strong { color: #20263a; font-size: 1.25rem; }
+.registration-load a { margin-top: 8px; color: #2455db; }
 .registration-breadcrumb { display: flex; align-items: center; gap: 9px; color: var(--neutral-600); font-size: .8rem; }
 .registration-breadcrumb a { color: #28314a; text-decoration: none; }
 .registration-heading { margin-top: 32px; }
