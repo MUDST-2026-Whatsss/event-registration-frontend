@@ -29,7 +29,7 @@ const loading = ref(true)
 onMounted(async () => {
   try {
     const data = await eventsApi.listAdmin()
-    events.value = data.map(e => ({
+    events.value = (data.content ?? data).map(e => ({
       id: e.eventId,
       name: e.title,
       venue: e.locationName ?? '',

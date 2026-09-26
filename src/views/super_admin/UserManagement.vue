@@ -16,12 +16,13 @@ const loading = ref(true)
 onMounted(async () => {
   try {
     const data = await eventsApi.users()
-    admins.value = data.map(u => ({
+    admins.value = (data.content ?? data).map(u => ({
       id: u.userId,
       avatar: `https://i.pravatar.cc/72?u=${u.userId}`,
-      name: u.email,
-      role: u.role === 'SUPER_ADMIN' ? 'Super Admin' : u.role === 'ADMIN' ? 'Admin' : 'User',
-      permissions: [],
+      name: u.displayName ?? u.email,
+      email: u.email,
+      role: u.roles?.[0]?.code === 'SUPER_ADMIN' ? 'Super Admin' : u.roles?.[0]?.code === 'ADMIN' ? 'Admin' : 'User',
+      permissions: u.permissions ?? [],
       status: u.status === 'ACTIVE' ? 'Active' : 'Disabled',
     }))
   } finally {

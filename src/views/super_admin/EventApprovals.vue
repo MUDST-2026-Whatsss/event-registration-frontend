@@ -18,21 +18,23 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const data = await eventsApi.listAdmin()
-    events.value = data.map(e => ({
-      id: e.eventId,
+    const data = await eventsApi.listReviews()
+    events.value = (data.content ?? data).map(r => ({
+      id: r.event?.eventId ?? r.reviewId,
+      reviewId: r.reviewId,
+      reviewVersion: r.eventVersion,
       icon: '📅',
-      name: e.title,
-      category: e.category?.nameEn ?? '',
-      organizerAvatar: 'https://i.pravatar.cc/64?u=' + e.eventId,
-      organizer: '',
+      name: r.event?.title ?? '',
+      category: r.event?.category?.nameEn ?? '',
+      organizerAvatar: 'https://i.pravatar.cc/64?u=' + r.reviewId,
+      organizer: r.submittedBy?.email ?? '',
       organizerRole: '',
-      date: e.startAt ? new Date(e.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD',
-      dateISO: e.startAt ? new Date(e.startAt).toISOString().slice(0, 10) : '1970-01-01',
-      location: e.locationName ?? '',
+      date: r.event?.startAt ? new Date(r.event.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD',
+      dateISO: r.event?.startAt ? new Date(r.event.startAt).toISOString().slice(0, 10) : '1970-01-01',
+      location: r.event?.locationName ?? '',
       participants: 0,
-      max: e.maximumParticipants ?? 0,
-      status: e.status === 'PENDING_REVIEW' ? 'Pending Review' : e.status === 'PUBLISHED' ? 'Approved' : e.status === 'REJECTED' ? 'Rejected' : e.status ?? 'Draft',
+      max: r.event?.maximumParticipants ?? 0,
+      status: r.decision === 'APPROVED' ? 'Approved' : r.decision === 'REJECTED' ? 'Rejected' : 'Pending Review',
       priority: 'standard',
     }))
   } finally {
@@ -57,7 +59,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / 
 
 async function approve(event) {
   try {
-    await eventsApi.publish(event.id)
+    await eventsApi.approveReview(event.reviewId, event.reviewVersion)
     event.status = 'Approved'
   } catch {
     // keep current status on error
@@ -66,7 +68,7 @@ async function approve(event) {
 
 async function reject(event) {
   try {
-    await eventsApi.reject(event.id)
+    await eventsApi.rejectReview(event.reviewId, event.reviewVersion)
     event.status = 'Rejected'
   } catch {
     // keep current status on error
