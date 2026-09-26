@@ -9,7 +9,7 @@ import { useToast } from '@/shared/composables/useToast.js'
 const menuOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
-const { isAuthenticated, logout } = useAuth()
+const { isAuthenticated, isInitialized, logout } = useAuth()
 const { profile } = useProfile()
 const { showToast } = useToast()
 async function handleLogout() {
@@ -44,10 +44,13 @@ async function handleLogout() {
           <RouterLink to="/events" :class="{ active: route.path.startsWith('/events') }" @click="menuOpen = false">Events</RouterLink>
           <RouterLink v-if="isAuthenticated" to="/my-registrations" @click="menuOpen = false">My Registrations</RouterLink>
         </nav>
-        <div class="public-header__actions">
+        <div class="public-header__actions" :aria-busy="!isInitialized">
+          <span v-if="!isInitialized" class="public-header__session-placeholder" aria-label="Checking session" />
           <template v-if="!isAuthenticated">
-            <RouterLink class="public-header__login" to="/login">Login</RouterLink>
-            <RouterLink class="public-header__register" to="/register">Register</RouterLink>
+            <template v-if="isInitialized">
+              <RouterLink class="public-header__login" to="/login">Login</RouterLink>
+              <RouterLink class="public-header__register" to="/register">Register</RouterLink>
+            </template>
           </template>
           <template v-else>
             <RouterLink class="public-header__profile" to="/profile" aria-label="Profile" title="Profile" @click="menuOpen = false"><img v-if="profile.avatar" :src="profile.avatar" alt="" /><UserRound v-else :size="18" /><span>{{ profile.firstName }}</span></RouterLink>
@@ -72,6 +75,7 @@ async function handleLogout() {
 .public-header__profile { display: inline-flex; max-width: 130px; height: 38px; padding-inline: 9px; align-items: center; gap: 7px; color: #33405f; background: #f4f5fc; border: 1px solid var(--color-border); border-radius: 6px; text-decoration: none; }
 .public-header__profile img { width: 24px; height: 24px; flex: 0 0 24px; object-fit: cover; border-radius: 50%; }
 .public-header__profile span { overflow: hidden; font-size: .78rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.public-header__session-placeholder { width: 116px; height: 38px; background: #f1f3f8; border-radius: 6px; }
 .public-header__profile:hover, .public-header__profile.router-link-active { color: #2455db; border-color: var(--brand-blue); }
 .public-header__register:hover, .public-header__account:hover { background: #183fae; }
 .public-header__menu-button { display: none; width: 40px; height: 40px; margin-left: auto; align-items: center; justify-content: center; color: var(--neutral-950); background: transparent; cursor: pointer; }

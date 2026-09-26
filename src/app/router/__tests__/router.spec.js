@@ -43,6 +43,30 @@ describe('application router authentication guard', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/profile')
   })
 
+  it('redirects an authenticated cookie session away from login after a hard refresh', async () => {
+    fetch.mockResolvedValueOnce(apiResponse(user))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/login')
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/auth/me', expect.objectContaining({
+      credentials: 'include',
+    }))
+  })
+
+  it('allows the login page when no cookie session can be restored', async () => {
+    fetch
+      .mockResolvedValueOnce(apiResponse({ code: 'UNAUTHENTICATED' }, 401))
+      .mockResolvedValueOnce(apiResponse({ token: 'csrf-token' }))
+      .mockResolvedValueOnce(apiResponse({ code: 'INVALID_REFRESH_TOKEN' }, 401))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/login')
+
+    expect(router.currentRoute.value.name).toBe('login')
+  })
+
   it('lets the API-backed registration page decide event eligibility', async () => {
     fetch.mockResolvedValueOnce(apiResponse(user))
 

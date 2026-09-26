@@ -24,7 +24,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const { isAuthenticated, currentRole, availableRoles, initializeAuth } = useAuth()
 
-  if (!to.meta.requiresAuth) return true
+  if (!to.meta.requiresAuth && !to.meta.guestOnly) return true
 
   const signInRedirect = {
     path: '/login',
@@ -34,7 +34,17 @@ router.beforeEach(async (to) => {
   try {
     await initializeAuth()
   } catch {
-    return signInRedirect
+    return to.meta.requiresAuth ? signInRedirect : true
+  }
+
+  if (to.meta.guestOnly) {
+    if (!isAuthenticated.value) return true
+    if (!currentRole.value && availableRoles.value.length > 1) return '/select-role'
+    return currentRole.value === 'super-admin'
+      ? '/super-admin/dashboard'
+      : currentRole.value === 'admin'
+        ? '/admin/dashboard'
+        : '/'
   }
 
   if (!isAuthenticated.value) return signInRedirect

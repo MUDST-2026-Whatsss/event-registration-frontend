@@ -10,13 +10,13 @@ export const authRoutes = [
     path: '/login',
     name: 'login',
     component: LoginView,
-    meta: { title: 'Sign in | Eventsss' },
+    meta: { title: 'Sign in | Eventsss', guestOnly: true },
   },
   {
     path: '/register',
     name: 'register',
     component: RegisterView,
-    meta: { title: 'Create account | Eventsss' },
+    meta: { title: 'Create account | Eventsss', guestOnly: true },
   },
   {
     path: '/forgot-password',
