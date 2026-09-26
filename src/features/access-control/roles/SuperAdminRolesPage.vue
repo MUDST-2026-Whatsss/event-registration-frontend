@@ -2,12 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { useAuth } from '@/features/auth/public.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import RoleEditorModal from './RoleEditorModal.vue'
 import { listPermissions, listRoles, replaceRolePermissions, updateRole } from './rolesApi.js'
 
 const router = useRouter()
 const { showToast } = useToast()
+const { syncAuth } = useAuth()
 const search = ref('')
 const roles = ref([])
 const permissions = ref([])
@@ -20,7 +22,7 @@ const roleBeingManaged = ref(null)
 const filteredRoles = computed(() => {
   const query = search.value.trim().toLowerCase()
   if (!query) return roles.value
-  return roles.value.filter((role) => `${role.name} ${role.code}`.toLowerCase().includes(query))
+  return roles.value.filter((role) => role.name.toLowerCase().includes(query))
 })
 
 async function load() {
@@ -51,7 +53,12 @@ async function saveRole(values) {
       scopeType: values.scopeType,
       status: values.status,
     })
-    await replaceRolePermissions(roleBeingManaged.value.roleId, values.permissionCodes)
+    const previousPermissions = [...roleBeingManaged.value.permissions].sort()
+    const nextPermissions = [...values.permissionCodes].sort()
+    if (previousPermissions.join('\u0000') !== nextPermissions.join('\u0000')) {
+      await replaceRolePermissions(roleBeingManaged.value.roleId, values.permissionCodes)
+    }
+    await syncAuth({ force: true })
     modalOpen.value = false
     showToast({ title: 'Role updated.', variant: 'success' })
     await load()
@@ -86,7 +93,7 @@ onMounted(load)
           <thead><tr><th>Role</th><th>Scope</th><th>Permissions</th><th>Assigned Users</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
           <tbody>
             <tr v-for="role in filteredRoles" :key="role.roleId">
-              <td><div class="role-name"><strong>{{ role.name }}</strong><span>{{ role.code }}<small v-if="role.system">System</small></span></div></td>
+              <td><div class="role-name"><strong>{{ role.name }}</strong><span v-if="role.system"><small>System role</small></span></div></td>
               <td>{{ role.scopeType.replaceAll('_', ' ') }}</td>
               <td><span class="permission-count">{{ role.permissions.length }}</span> permissions</td>
               <td>{{ role.userCount.toLocaleString() }}</td>
@@ -111,7 +118,7 @@ onMounted(load)
 .role-header p { margin: 0; color: var(--console-text-muted); font-size: var(--console-fs-sm); }
 .role-name { display: grid; gap: 4px; }
 .role-name > span { color: var(--console-text-muted); font-size: var(--console-fs-xs); }
-.role-name small { margin-left: 7px; padding: 2px 6px; border-radius: 999px; background: var(--console-gray-bg); }
+.role-name small { padding: 2px 6px; border-radius: 999px; background: var(--console-gray-bg); }
 .permission-count { font-weight: 750; color: var(--console-primary-text); }
 .actions { display: flex; justify-content: flex-end; }
 .empty { text-align: center; color: var(--console-text-muted); padding: 32px; }

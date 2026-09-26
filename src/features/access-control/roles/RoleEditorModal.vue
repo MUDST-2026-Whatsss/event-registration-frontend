@@ -31,8 +31,6 @@ function submit() {
     <div class="console-modal role-modal">
       <div class="console-modal-header">Manage {{ role?.name }}</div>
       <div class="console-modal-body">
-        <label class="console-field-label">Role code</label>
-        <input class="console-input" :value="role?.code" disabled />
         <label class="console-field-label">Display name</label>
         <input v-model="form.name" class="console-input" />
         <label class="console-field-label">Description</label>
@@ -61,6 +59,11 @@ function submit() {
             <span><strong>{{ permission.code }}</strong><small>{{ permission.description }}</small></span>
           </label>
         </div>
+      </div>
+      <div class="role-modal-footer">
+        <button type="button" class="console-btn console-btn-ghost" :disabled="saving" @click="emit('close')">
+          Cancel
+        </button>
         <button class="console-btn console-btn-primary" :disabled="saving || !selectedPermissions.length" @click="submit">
           {{ saving ? 'Saving...' : 'Save role' }}
         </button>
@@ -70,14 +73,34 @@ function submit() {
 </template>
 
 <style scoped>
-.role-modal { width: min(680px, calc(100vw - 32px)); }
+.role-modal {
+  display: flex;
+  width: min(680px, calc(100vw - 32px));
+  max-width: 680px;
+  max-height: calc(100dvh - 40px);
+  flex-direction: column;
+}
+.role-modal .console-modal-header { flex: 0 0 auto; }
+.role-modal .console-modal-body { min-height: 0; overflow-y: auto; }
 .description { min-height: 74px; resize: vertical; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.permission-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 260px; overflow-y: auto; }
+.permission-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .permission-option { display: flex; gap: 8px; align-items: flex-start; padding: 9px; border: 1px solid var(--console-border); border-radius: var(--console-radius-sm); }
 .permission-option input { margin-top: 3px; }
 .permission-option span { display: grid; gap: 2px; min-width: 0; }
 .permission-option strong { font-size: var(--console-fs-xs); overflow-wrap: anywhere; }
 .permission-option small { color: var(--console-text-muted); }
-@media (max-width: 620px) { .form-row, .permission-list { grid-template-columns: 1fr; } }
+.role-modal-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+  border-top: 1px solid var(--console-border-soft);
+  background: #fff;
+}
+@media (max-width: 620px) {
+  .role-modal { max-height: calc(100dvh - 24px); }
+  .form-row, .permission-list { grid-template-columns: 1fr; }
+}
 </style>

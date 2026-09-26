@@ -13,7 +13,9 @@ const user = {
   name: 'Demo User',
   phoneNumber: '0812345678',
   role: 'USER',
+  roleName: 'Attendee',
   roles: ['USER'],
+  roleNames: { USER: 'Attendee' },
   permissions: [],
   status: 'ACTIVE',
 }
@@ -38,6 +40,7 @@ describe('auth feature API session', () => {
     expect(role).toBe(USER_ROLE)
     expect(auth.isAuthenticated.value).toBe(true)
     expect(auth.currentUser.value.email).toBe(user.email)
+    expect(auth.currentUser.value.title).toBe('Attendee')
     expect(fetch).toHaveBeenNthCalledWith(1, '/api/v1/auth/csrf', expect.objectContaining({ credentials: 'include' }))
     expect(fetch).toHaveBeenNthCalledWith(2, '/api/v1/auth/login', expect.objectContaining({
       credentials: 'include',
@@ -46,8 +49,15 @@ describe('auth feature API session', () => {
   })
 
   it('requires an explicit selection and scopes a multi-role account', async () => {
-    const pendingUser = { ...user, role: null, roles: ['ADMIN', 'USER'], permissions: [] }
-    const adminUser = { ...pendingUser, role: 'ADMIN', permissions: ['EVENT_CREATE'] }
+    const pendingUser = {
+      ...user,
+      role: null,
+      roleName: null,
+      roles: ['ADMIN', 'USER'],
+      roleNames: { ADMIN: 'Event Manager', USER: 'Attendee' },
+      permissions: [],
+    }
+    const adminUser = { ...pendingUser, role: 'ADMIN', roleName: 'Event Manager', permissions: ['EVENT_CREATE'] }
     fetch
       .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'login-csrf' }))
       .mockResolvedValueOnce(apiResponse({ user: pendingUser }))
@@ -63,6 +73,11 @@ describe('auth feature API session', () => {
 
     expect(await auth.selectRole(ADMIN_ROLE)).toBe(ADMIN_ROLE)
     expect(auth.currentRole.value).toBe(ADMIN_ROLE)
+    expect(auth.currentUser.value.title).toBe('Event Manager')
+    expect(auth.availableRoleOptions.value).toEqual([
+      { role: 'admin', name: 'Event Manager' },
+      { role: 'user', name: 'Attendee' },
+    ])
     expect(auth.requiresRoleSelection.value).toBe(false)
     expect(fetch).toHaveBeenNthCalledWith(4, '/api/v1/auth/select-role', expect.objectContaining({
       body: JSON.stringify({ role: 'ADMIN' }),

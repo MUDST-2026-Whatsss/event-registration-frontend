@@ -14,36 +14,33 @@ import { useToast } from '@/shared/composables/useToast.js'
 
 const router = useRouter()
 const route = useRoute()
-const { availableRoles, currentRole, logout, selectRole } = useAuth()
+const { availableRoleOptions, currentRole, logout, selectRole } = useAuth()
 const { showToast } = useToast()
 const selecting = ref('')
 const errorMessage = ref('')
 
 const ROLE_DETAILS = Object.freeze({
   [USER_ROLE]: {
-    title: 'Participant',
     description: 'Browse events and manage your own registrations.',
     icon: UserRound,
     home: '/',
   },
   [ADMIN_ROLE]: {
-    title: 'Event Admin',
     description: 'Create events and manage the events assigned to you.',
     icon: CalendarCog,
     home: '/admin/dashboard',
   },
   [SUPER_ADMIN_ROLE]: {
-    title: 'Super Admin',
     description: 'Review events and manage platform access and governance.',
     icon: ShieldCheck,
     home: '/super-admin/dashboard',
   },
 })
 
-const options = computed(() => availableRoles.value.map((role) => ({
+const options = computed(() => availableRoleOptions.value.map(({ role, name }) => ({
   role,
+  title: name,
   ...(ROLE_DETAILS[role] ?? {
-    title: role.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
     description: 'Continue with the permissions assigned to this role.',
     icon: ShieldCheck,
     home: '/',

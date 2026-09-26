@@ -11,7 +11,9 @@ const firstUser = {
   firstName: 'First',
   lastName: 'User',
   role: 'USER',
+  roleName: 'Attendee',
   roles: ['USER'],
+  roleNames: { USER: 'Attendee' },
 }
 
 const secondUser = {
@@ -44,6 +46,7 @@ describe('auth feature profile', () => {
     const profileState = useProfile()
 
     await auth.login(firstUser.email, 'Password123')
+    expect(profileState.profile.role).toBe('Attendee')
     profileState.setAvatar('data:image/png;base64,first-user')
 
     expect(window.localStorage.getItem(`eventsss_profile_avatar:${firstUser.userId}`))

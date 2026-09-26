@@ -24,16 +24,8 @@ function resetProfile() {
   Object.assign(profile, EMPTY_PROFILE)
 }
 
-function roleLabel(role) {
-  return {
-    user: 'User',
-    admin: 'Admin',
-    'super-admin': 'Super Admin',
-  }[role] ?? ''
-}
-
 export function useProfile() {
-  const { currentUser, currentRole, updateCurrentUser } = useAuth()
+  const { currentUser, updateCurrentUser } = useAuth()
 
   watch(currentUser, (user) => {
     if (!user?.userId) {
@@ -47,7 +39,7 @@ export function useProfile() {
       lastName: user.lastName ?? '',
       email: user.email ?? '',
       phone: user.phoneNumber ?? '',
-      role: roleLabel(currentRole.value),
+      role: user.title ?? '',
       avatar: getStorage()?.getItem(activeAvatarKey) ?? '',
     })
   }, { immediate: true })

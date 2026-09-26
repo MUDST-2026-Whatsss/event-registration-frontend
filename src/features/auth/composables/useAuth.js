@@ -5,12 +5,6 @@ export const USER_ROLE = 'user'
 export const SUPER_ADMIN_ROLE = 'super-admin'
 export const ADMIN_ROLE = 'admin'
 
-const ROLE_TITLE = Object.freeze({
-  [USER_ROLE]: 'Participant',
-  [ADMIN_ROLE]: 'Event Admin',
-  [SUPER_ADMIN_ROLE]: 'Super Admin',
-})
-
 const BACKEND_ROLE = Object.freeze({
   USER: USER_ROLE,
   ADMIN: ADMIN_ROLE,
@@ -36,14 +30,18 @@ const currentUser = computed(() => {
   if (!authUser.value) return null
   return {
     ...authUser.value,
-    title: ROLE_TITLE[currentRole.value]
-      ?? authUser.value.role?.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
-      ?? 'User',
+    title: authUser.value.roleName
+      ?? authUser.value.roleNames?.[authUser.value.role]
+      ?? humanizeRoleCode(authUser.value.role),
     avatar: '',
   }
 })
 
-const availableRoles = computed(() => (authUser.value?.roles ?? []).map(toClientRole))
+const availableRoleOptions = computed(() => (authUser.value?.roles ?? []).map((backendRole) => ({
+  role: toClientRole(backendRole),
+  name: authUser.value?.roleNames?.[backendRole] ?? humanizeRoleCode(backendRole),
+})))
+const availableRoles = computed(() => availableRoleOptions.value.map(({ role }) => role))
 const requiresRoleSelection = computed(() => (
   isAuthenticated.value && availableRoles.value.length > 1 && !currentRole.value
 ))
@@ -58,6 +56,12 @@ function toClientRole(role) {
 
 function toBackendRole(role) {
   return CLIENT_ROLE[role] ?? role.toUpperCase().replaceAll('-', '_')
+}
+
+function humanizeRoleCode(role) {
+  if (!role) return 'User'
+  return role.replaceAll('_', ' ').replaceAll('-', ' ').toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function storedRole() {
@@ -242,6 +246,7 @@ export function useAuth() {
     currentRole: readonly(currentRole),
     currentUser,
     availableRoles,
+    availableRoleOptions,
     requiresRoleSelection,
     isInitializing: readonly(isInitializing),
     isInitialized: readonly(isInitialized),

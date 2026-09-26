@@ -57,7 +57,7 @@ onMounted(loadPermissions)
         <div class="console-card-body form-stack">
           <div class="form-row">
             <div><label class="console-field-label">Display name *</label><input v-model="form.name" class="console-input" placeholder="e.g. Registration Reviewer" /></div>
-            <div><label class="console-field-label">Role code *</label><input v-model="form.code" class="console-input" placeholder="REGISTRATION_REVIEWER" @input="codeEdited = true" /></div>
+            <div><label class="console-field-label">Role code (system identifier) *</label><input v-model="form.code" class="console-input" placeholder="REGISTRATION_REVIEWER" aria-describedby="new-role-code-help" @input="codeEdited = true" /><small id="new-role-code-help" class="field-help">Generated from the name. It cannot be changed after creation.</small></div>
           </div>
           <div><label class="console-field-label">Description</label><textarea v-model="form.description" class="console-input description" placeholder="What this role is responsible for" /></div>
           <div class="form-row">
@@ -87,6 +87,7 @@ onMounted(loadPermissions)
 .form-stack { gap: 16px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .description { min-height: 84px; resize: vertical; }
+.field-help { display: block; margin-top: 6px; color: var(--console-text-muted); }
 .console-card-header p { margin: 2px 0 0; color: var(--console-text-muted); font-size: var(--console-fs-sm); }
 .permission-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .permission-option { display: flex; gap: 9px; align-items: flex-start; padding: 11px; border: 1px solid var(--console-border); border-radius: var(--console-radius-sm); cursor: pointer; }
