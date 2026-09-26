@@ -5,7 +5,7 @@ import { useAuth } from '@/features/auth/public.js'
 import Icon from './ConsoleIcon.vue'
 
 const router = useRouter()
-const { logout, currentUser } = useAuth()
+const { logout, currentUser, availableRoles } = useAuth()
 
 // The signed-in user drives the menu; props stay as escape hatches only.
 const props = defineProps({
@@ -17,6 +17,11 @@ const props = defineProps({
 const displayName = computed(() => props.name || currentUser.value?.name || 'Signed out')
 const displayRole = computed(() => props.role || currentUser.value?.title || '')
 const displayAvatar = computed(() => props.avatar || currentUser.value?.avatar || '')
+const canSwitchRole = computed(() => availableRoles.value.length > 1)
+
+async function switchRole() {
+  await router.push('/select-role')
+}
 
 async function signOut() {
   try {
@@ -35,6 +40,16 @@ async function signOut() {
       <span class="console-user-name">{{ displayName }}</span>
       <span v-if="displayRole" class="console-user-role">{{ displayRole }}</span>
     </span>
+    <button
+      v-if="canSwitchRole"
+      type="button"
+      class="console-switch-role"
+      title="Switch role"
+      aria-label="Switch role"
+      @click="switchRole"
+    >
+      <Icon name="repeat" :size="15" />
+    </button>
     <button type="button" class="console-sign-out" title="Sign out" aria-label="Sign out" @click="signOut">
       <Icon name="log-out" :size="16" />
     </button>
@@ -53,7 +68,8 @@ async function signOut() {
   font-family: inherit;
 }
 
-.console-sign-out {
+.console-sign-out,
+.console-switch-role {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -65,6 +81,12 @@ async function signOut() {
   border: 1px solid var(--console-border);
   border-radius: var(--console-radius-sm);
   cursor: pointer;
+}
+
+.console-switch-role:hover {
+  color: var(--console-primary);
+  background: var(--console-primary-soft);
+  border-color: #c9c4ff;
 }
 
 .console-sign-out:hover {

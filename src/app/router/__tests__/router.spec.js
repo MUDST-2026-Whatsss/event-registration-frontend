@@ -17,6 +17,7 @@ describe('application router authentication guard', () => {
     vi.resetModules()
     vi.restoreAllMocks()
     vi.stubGlobal('fetch', vi.fn())
+    sessionStorage.clear()
     window.history.replaceState({}, '', '/')
   })
 
@@ -50,5 +51,15 @@ describe('application router authentication guard', () => {
 
     expect(router.currentRoute.value.name).toBe('event-registration')
     expect(router.currentRoute.value.params.id).toBe('server-event-id')
+  })
+
+  it('sends a multi-role session to role selection before a protected area', async () => {
+    fetch.mockResolvedValueOnce(apiResponse({ ...user, role: null, roles: ['ADMIN', 'USER'] }))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/admin/dashboard')
+
+    expect(router.currentRoute.value.name).toBe('select-role')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/dashboard')
   })
 })

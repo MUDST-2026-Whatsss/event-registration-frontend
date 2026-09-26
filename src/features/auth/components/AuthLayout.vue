@@ -14,7 +14,7 @@ defineProps({
   variant: {
     type: String,
     default: 'login',
-    validator: (value) => ['login', 'register', 'forgot-password', 'reset-password'].includes(value),
+    validator: (value) => ['login', 'register', 'forgot-password', 'reset-password', 'role-selection'].includes(value),
   },
 })
 </script>
@@ -84,6 +84,10 @@ defineProps({
 
 .auth-panel--reset-password {
   min-height: 410px;
+}
+
+.auth-panel--role-selection {
+  max-width: 620px;
 }
 
 .auth-panel__heading {

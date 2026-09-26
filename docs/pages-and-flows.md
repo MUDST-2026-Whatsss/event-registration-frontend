@@ -18,6 +18,7 @@ unfinished API work. Update it whenever a route or vertical flow changes.
 | Event detail | `/events/:id` | Public | `features/events` | Prototype detail and availability | Event detail and authoritative availability |
 | Create account | `/register` | Public | `features/auth` | **Live API**: account registration | Complete |
 | Sign in | `/login` | Public | `features/auth` | **Live API**: login, cookie session, refresh, role redirect | Complete |
+| Choose role | `/select-role` | Authenticated multi-role account | `features/auth` | **Live API**: selects one active role and permission scope | Complete |
 | Forgot password | `/forgot-password` | Public | `features/auth` | Prototype browser-only confirmation | Password-reset request API |
 | Reset password | `/reset-password` | Public | `features/auth` | Prototype client validation | Reset-token validation and consumption API |
 | Profile | `/profile` | Authenticated | `features/auth` | **Partial API**: profile fields live; avatar in localStorage | Media upload/removal API |
@@ -69,8 +70,14 @@ The `/super-admin/**` parent route uses the same console shell and requires the 
 3. The guard initializes the session with `GET /api/v1/auth/me` and attempts one cookie-based
    refresh when the access session has expired.
 4. An unauthenticated visitor is sent to `/login?redirect=<original-route>`.
-5. After login, the app accepts that redirect only when it belongs to the authenticated role's
-   area; otherwise it sends the user to the correct role home.
+5. A single-role account continues directly. A multi-role account is sent to `/select-role` and
+   must choose one role before entering a protected area.
+6. Role selection issues a new access cookie containing only that role and its permissions. The
+   selected role is kept in tab-scoped session storage only to preserve scope during refresh; auth
+   tokens remain HttpOnly cookies.
+7. The app accepts the original redirect only when it belongs to the selected role's area;
+   otherwise it sends the user to the correct role home. Multi-role console users can switch role
+   from the header without signing out.
 
 ### Account creation
 

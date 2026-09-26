@@ -23,6 +23,7 @@ describe('auth feature API session', () => {
     vi.resetModules()
     vi.restoreAllMocks()
     vi.stubGlobal('fetch', vi.fn())
+    sessionStorage.clear()
   })
 
   it('logs in through CSRF-protected API and maps the backend role', async () => {
@@ -41,6 +42,30 @@ describe('auth feature API session', () => {
     expect(fetch).toHaveBeenNthCalledWith(2, '/api/v1/auth/login', expect.objectContaining({
       credentials: 'include',
       body: JSON.stringify({ email: user.email, password: 'Password123' }),
+    }))
+  })
+
+  it('requires an explicit selection and scopes a multi-role account', async () => {
+    const pendingUser = { ...user, role: null, roles: ['ADMIN', 'USER'], permissions: [] }
+    const adminUser = { ...pendingUser, role: 'ADMIN', permissions: ['EVENT_CREATE'] }
+    fetch
+      .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'login-csrf' }))
+      .mockResolvedValueOnce(apiResponse({ user: pendingUser }))
+      .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'role-csrf' }))
+      .mockResolvedValueOnce(apiResponse({ user: adminUser }))
+
+    const { ADMIN_ROLE, useAuth } = await import('../useAuth.js')
+    const auth = useAuth()
+
+    expect(await auth.login(user.email, 'Password123')).toBeNull()
+    expect(auth.isAuthenticated.value).toBe(true)
+    expect(auth.requiresRoleSelection.value).toBe(true)
+
+    expect(await auth.selectRole(ADMIN_ROLE)).toBe(ADMIN_ROLE)
+    expect(auth.currentRole.value).toBe(ADMIN_ROLE)
+    expect(auth.requiresRoleSelection.value).toBe(false)
+    expect(fetch).toHaveBeenNthCalledWith(4, '/api/v1/auth/select-role', expect.objectContaining({
+      body: JSON.stringify({ role: 'ADMIN' }),
     }))
   })
 

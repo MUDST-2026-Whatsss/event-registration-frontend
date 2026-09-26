@@ -22,7 +22,7 @@ const router = createRouter({
 
 // Navigation only — the API remains responsible for authorizing every request.
 router.beforeEach(async (to) => {
-  const { isAuthenticated, currentRole, initializeAuth } = useAuth()
+  const { isAuthenticated, currentRole, availableRoles, initializeAuth } = useAuth()
 
   if (!to.meta.requiresAuth) return true
 
@@ -39,8 +39,23 @@ router.beforeEach(async (to) => {
 
   if (!isAuthenticated.value) return signInRedirect
 
+  if (to.name === 'select-role') return true
+
+  if (!currentRole.value && availableRoles.value.length > 1) {
+    return { path: '/select-role', query: { redirect: to.fullPath } }
+  }
+
   const requiredRole = to.meta.requiredRole
-  if (requiredRole && currentRole.value !== requiredRole) return signInRedirect
+  if (requiredRole && currentRole.value !== requiredRole) {
+    if (availableRoles.value.includes(requiredRole)) {
+      return { path: '/select-role', query: { redirect: to.fullPath } }
+    }
+    return currentRole.value === 'super-admin'
+      ? '/super-admin/dashboard'
+      : currentRole.value === 'admin'
+        ? '/admin/dashboard'
+        : '/'
+  }
 
   return true
 })

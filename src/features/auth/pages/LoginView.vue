@@ -81,6 +81,15 @@ const handleSubmit = async () => {
     try {
       const authenticatedRole = await login(email.value, password.value)
 
+      if (!authenticatedRole) {
+        const requestedRedirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+        await router.push({
+          path: '/select-role',
+          query: requestedRedirect ? { redirect: requestedRedirect } : {},
+        })
+        return
+      }
+
       if (authenticatedRole) {
         const roleHome = {
           [SUPER_ADMIN_ROLE]: '/super-admin',

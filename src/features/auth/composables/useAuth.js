@@ -11,6 +11,18 @@ const ROLE_TITLE = Object.freeze({
   [SUPER_ADMIN_ROLE]: 'Super Admin',
 })
 
+const BACKEND_ROLE = Object.freeze({
+  USER: USER_ROLE,
+  ADMIN: ADMIN_ROLE,
+  SUPER_ADMIN: SUPER_ADMIN_ROLE,
+})
+const CLIENT_ROLE = Object.freeze({
+  [USER_ROLE]: 'USER',
+  [ADMIN_ROLE]: 'ADMIN',
+  [SUPER_ADMIN_ROLE]: 'SUPER_ADMIN',
+})
+const ACTIVE_ROLE_KEY = 'eventsss_active_role'
+
 const isAuthenticated = ref(false)
 const currentRole = ref(null)
 const authUser = ref(null)
@@ -24,22 +36,52 @@ const currentUser = computed(() => {
   if (!authUser.value) return null
   return {
     ...authUser.value,
-    title: ROLE_TITLE[currentRole.value] ?? 'User',
+    title: ROLE_TITLE[currentRole.value]
+      ?? authUser.value.role?.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
+      ?? 'User',
     avatar: '',
   }
 })
 
+const availableRoles = computed(() => (authUser.value?.roles ?? []).map(toClientRole))
+const requiresRoleSelection = computed(() => (
+  isAuthenticated.value && availableRoles.value.length > 1 && !currentRole.value
+))
+
 function normalizeRole(user) {
-  const candidates = [user?.role, ...(user?.roles ?? [])]
-  if (candidates.includes('SUPER_ADMIN')) return SUPER_ADMIN_ROLE
-  if (candidates.includes('ADMIN')) return ADMIN_ROLE
-  return candidates.includes('USER') ? USER_ROLE : null
+  return user?.role ? toClientRole(user.role) : null
+}
+
+function toClientRole(role) {
+  return BACKEND_ROLE[role] ?? role.toLowerCase().replaceAll('_', '-')
+}
+
+function toBackendRole(role) {
+  return CLIENT_ROLE[role] ?? role.toUpperCase().replaceAll('-', '_')
+}
+
+function storedRole() {
+  try {
+    return sessionStorage.getItem(ACTIVE_ROLE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function rememberRole(role) {
+  try {
+    if (role) sessionStorage.setItem(ACTIVE_ROLE_KEY, role)
+    else sessionStorage.removeItem(ACTIVE_ROLE_KEY)
+  } catch {
+    // In-memory authentication still works if storage is unavailable.
+  }
 }
 
 function applyUser(user) {
   authUser.value = user
   currentRole.value = normalizeRole(user)
-  isAuthenticated.value = Boolean(user && currentRole.value)
+  isAuthenticated.value = Boolean(user)
+  rememberRole(user?.role ?? null)
   sessionExpired.value = false
 }
 
@@ -47,13 +89,25 @@ function clearUser() {
   authUser.value = null
   currentRole.value = null
   isAuthenticated.value = false
+  rememberRole(null)
 }
 
 async function refreshSession() {
   if (refreshRequest) return refreshRequest
 
   refreshRequest = (async () => {
-    const payload = await apiRequest('/auth/refresh', { method: 'POST' })
+    const activeRole = storedRole()
+    let payload
+    try {
+      payload = await apiRequest('/auth/refresh', {
+        method: 'POST',
+        body: activeRole ? { role: activeRole } : undefined,
+      })
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 403 || !activeRole) throw error
+      rememberRole(null)
+      payload = await apiRequest('/auth/refresh', { method: 'POST' })
+    }
     applyUser(payload.user)
     resetCsrfToken()
     return payload.user
@@ -129,6 +183,17 @@ export function useAuth() {
     return currentRole.value
   }
 
+  async function selectRole(role) {
+    const backendRole = toBackendRole(role)
+    const payload = await apiRequest('/auth/select-role', {
+      method: 'POST',
+      body: { role: backendRole },
+    })
+    applyUser(payload.user)
+    resetCsrfToken()
+    return currentRole.value
+  }
+
   async function register(values) {
     return apiRequest('/auth/register', {
       method: 'POST',
@@ -176,10 +241,13 @@ export function useAuth() {
     isAuthenticated: readonly(isAuthenticated),
     currentRole: readonly(currentRole),
     currentUser,
+    availableRoles,
+    requiresRoleSelection,
     isInitializing: readonly(isInitializing),
     isInitialized: readonly(isInitialized),
     sessionExpired: readonly(sessionExpired),
     login,
+    selectRole,
     register,
     logout,
     changePassword,

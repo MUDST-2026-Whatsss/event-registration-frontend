@@ -3,6 +3,7 @@ const RegisterView = () => import('./pages/RegisterView.vue')
 const ForgotPasswordView = () => import('./pages/ForgotPasswordView.vue')
 const ResetPasswordView = () => import('./pages/ResetPasswordView.vue')
 const ProfileView = () => import('./pages/ProfileView.vue')
+const RoleSelectionView = () => import('./pages/RoleSelectionView.vue')
 
 export const authRoutes = [
   {
@@ -28,6 +29,15 @@ export const authRoutes = [
     name: 'reset-password',
     component: ResetPasswordView,
     meta: { title: 'Reset password | Eventsss' },
+  },
+  {
+    path: '/select-role',
+    name: 'select-role',
+    component: RoleSelectionView,
+    meta: {
+      title: 'Choose role | Eventsss',
+      requiresAuth: true,
+    },
   },
   {
     path: '/profile',

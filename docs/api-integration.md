@@ -33,6 +33,8 @@ prefix.
 4. Tokens stay in HTTP-only cookies and never enter Vue state or localStorage.
 5. Public routes render without waiting for auth initialization; protected routes await it.
 6. On final 401, clear user state and redirect protected navigation to login.
+7. Multi-role accounts call `POST /auth/select-role`; the API scopes the JWT to one role. Refresh
+   sends the tab's selected role so the backend can validate and preserve that scope.
 
 ## Error handling
 
