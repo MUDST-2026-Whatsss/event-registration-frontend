@@ -49,6 +49,22 @@ npm run build
 npm run preview
 ```
 
+## Docker
+
+The production image builds the Vite application and serves it with Nginx. Nginx also proxies
+same-origin `/api` requests to the Compose service named `api`.
+
+When this repository is cloned beside the backend repository, start the complete local stack from
+the backend directory:
+
+```bash
+docker compose --env-file .env.local up -d --build
+```
+
+Open `http://localhost:5173`. Set `FRONTEND_PORT` in the backend environment file when another host
+port is required. `npm run dev` remains the recommended workflow while actively editing frontend
+code because it provides Vite hot reload.
+
 ## Structure
 
 | Directory | Responsibility |
