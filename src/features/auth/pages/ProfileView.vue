@@ -133,6 +133,7 @@ async function savePassword() {
   if (!isPasswordFormValid.value) return
 
   isChangingPassword.value = true
+  const accountEmail = profile.email
   try {
     await changePassword(passwordForm.current, passwordForm.next)
   } catch (error) {
@@ -149,7 +150,10 @@ async function savePassword() {
   securityOpen.value = false
   showPasswords.value = false
   isChangingPassword.value = false
-  await router.push('/login')
+  await router.push({
+    path: '/login',
+    query: { passwordChanged: 'true', email: accountEmail },
+  })
 }
 
 async function openSecurity() {

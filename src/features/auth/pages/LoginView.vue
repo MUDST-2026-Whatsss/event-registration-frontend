@@ -26,6 +26,15 @@ if (route.query.registered === 'true') {
   })
 }
 
+if (route.query.passwordChanged === 'true') {
+  email.value = typeof route.query.email === 'string' ? route.query.email : ''
+  showToast({
+    variant: 'success',
+    title: 'Password updated',
+    message: 'Sign in with the account whose password you just changed.',
+  })
+}
+
 if (route.query.reason === 'session-expired') {
   showToast({
     variant: 'warning',
