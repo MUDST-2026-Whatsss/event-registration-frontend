@@ -45,6 +45,16 @@ function registrationStatus(event, now = Date.now()) {
   return 'open'
 }
 
+function capacityLabel(event, status) {
+  if (status === 'upcoming') return 'Registration opens soon'
+  if (status === 'closed') return 'Registration closed'
+  if (event.full) return 'Fully booked'
+  if (event.remainingSeats !== null && event.remainingSeats !== undefined) {
+    return `${event.remainingSeats} of ${event.maximumParticipants} spots left`
+  }
+  return 'Registration open'
+}
+
 function locationLabel(event) {
   if (event.locationType === 'ONLINE') return 'Online event'
   if (event.locationType === 'HYBRID') return event.locationName ? `${event.locationName} · Online` : 'Hybrid event'
@@ -66,8 +76,9 @@ export function mapPublicEvent(event, now = Date.now()) {
     time: formatTimeRange(event.startAt, event.endAt, timezone),
     location: locationLabel(event),
     status,
-    badge: status === 'open' ? 'Open' : status === 'upcoming' ? 'Upcoming' : 'Closed',
-    capacity: status === 'open' ? 'Registration open' : status === 'upcoming' ? 'Registration opens soon' : 'Registration closed',
+    full: Boolean(event.full),
+    badge: status === 'open' ? (event.full ? 'Full' : 'Open') : status === 'upcoming' ? 'Upcoming' : 'Closed',
+    capacity: capacityLabel(event, status),
   }
 }
 
@@ -88,5 +99,5 @@ export function groupPublicEvents(events, { includeClosed = true } = {}) {
 }
 
 export function canRegisterForEvent(event) {
-  return event?.status === 'open'
+  return event?.status === 'open' && !event.full
 }

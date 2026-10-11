@@ -39,6 +39,27 @@ describe('public event model', () => {
     expect(canRegisterForEvent(event)).toBe(false)
   })
 
+  it('shows remaining seats from the API', () => {
+    const event = mapPublicEvent(
+      { ...baseEvent, maximumParticipants: 50, remainingSeats: 12, full: false },
+      new Date('2026-09-26T00:00:00Z').getTime(),
+    )
+
+    expect(event.capacity).toBe('12 of 50 spots left')
+    expect(canRegisterForEvent(event)).toBe(true)
+  })
+
+  it('blocks registration when the event is full', () => {
+    const event = mapPublicEvent(
+      { ...baseEvent, maximumParticipants: 50, remainingSeats: 0, full: true },
+      new Date('2026-09-26T00:00:00Z').getTime(),
+    )
+
+    expect(event.badge).toBe('Full')
+    expect(event.capacity).toBe('Fully booked')
+    expect(canRegisterForEvent(event)).toBe(false)
+  })
+
   it('groups events by their registration lifecycle', () => {
     const grouped = groupPublicEvents([
       { id: 'one', status: 'open' },

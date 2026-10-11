@@ -503,6 +503,19 @@ onMounted(loadEvents)
 
                 <div class="event-actions">
 
+                  <!-- Participants -->
+
+                  <RouterLink
+                    class="icon-action"
+                    title="View participants"
+                    :to="{ name: 'sa-event-participants', params: { id: event.id } }"
+                  >
+                    <Icon
+                      name="users"
+                      :size="15"
+                    />
+                  </RouterLink>
+
 
                   <!-- Manage Admins -->
 

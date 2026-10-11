@@ -53,6 +53,12 @@ defineEmits(['edit', 'cancel', 'withdraw'])
 
     <!-- Actions -->
     <div class="actions">
+      <RouterLink
+        v-if="['PUBLISHED', 'CANCELLED', 'COMPLETED'].includes(event.status)"
+        :to="{ name: 'admin-event-participants', params: { id: event.eventId } }"
+        title="View participants"
+        aria-label="View participants"
+      ><Icon name="users" :size="17" /></RouterLink>
       <button
         v-if="['DRAFT', 'REJECTED', 'PUBLISHED'].includes(event.status)"
         type="button"
@@ -147,7 +153,7 @@ defineEmits(['edit', 'cancel', 'withdraw'])
   gap: 10px;
 }
 
-.actions button {
+.actions button, .actions a {
   display: inline-grid;
   width: 34px;
   height: 34px;
@@ -159,7 +165,7 @@ defineEmits(['edit', 'cancel', 'withdraw'])
   cursor: pointer;
   transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
-.actions button:hover { color: var(--console-primary); background: var(--console-primary-soft); border-color: var(--console-border); }
+.actions button:hover, .actions a:hover { color: var(--console-primary); background: var(--console-primary-soft); border-color: var(--console-border); }
 
 @media (max-width: 768px) {
   .row {
