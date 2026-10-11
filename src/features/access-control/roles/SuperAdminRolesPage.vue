@@ -5,7 +5,7 @@ import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 import { useAuth } from '@/features/auth/public.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import RoleEditorModal from './RoleEditorModal.vue'
-import { listPermissions, listRoles, replaceRolePermissions, updateRole } from './rolesApi.js'
+import { deleteRole, listPermissions, listRoles, replaceRolePermissions, updateRole } from './rolesApi.js'
 
 const router = useRouter()
 const { showToast } = useToast()
@@ -15,6 +15,7 @@ const roles = ref([])
 const permissions = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
 const errorMessage = ref('')
 const modalOpen = ref(false)
 const roleBeingManaged = ref(null)
@@ -69,6 +70,22 @@ async function saveRole(values) {
   }
 }
 
+async function removeRole() {
+  deleting.value = true
+  try {
+    await deleteRole(roleBeingManaged.value.roleId)
+    // The current account may have held the deleted role, so refresh its permissions too.
+    await syncAuth({ force: true })
+    modalOpen.value = false
+    showToast({ title: 'Role deleted.', variant: 'success' })
+    await load()
+  } catch (error) {
+    showToast({ title: error.message, variant: 'danger' })
+  } finally {
+    deleting.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -108,7 +125,7 @@ onMounted(load)
     </div>
   </div>
 
-  <RoleEditorModal :open="modalOpen" :role="roleBeingManaged" :permissions="permissions" :saving="saving" @close="modalOpen = false" @save="saveRole" />
+  <RoleEditorModal :open="modalOpen" :role="roleBeingManaged" :permissions="permissions" :saving="saving" :deleting="deleting" @close="modalOpen = false" @save="saveRole" @delete="removeRole" />
 </template>
 
 <style scoped>

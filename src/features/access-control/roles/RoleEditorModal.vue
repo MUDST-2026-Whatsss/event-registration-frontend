@@ -1,17 +1,21 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
   role: { type: Object, default: null },
   permissions: { type: Array, default: () => [] },
   saving: { type: Boolean, default: false },
+  deleting: { type: Boolean, default: false },
 })
-const emit = defineEmits(['close', 'save'])
+const emit = defineEmits(['close', 'save', 'delete'])
 const form = reactive({ name: '', description: '', scopeType: 'ASSIGNED_EVENTS', status: 'ACTIVE' })
 const selectedPermissions = ref([])
+const confirmingDelete = ref(false)
+const busy = computed(() => props.saving || props.deleting)
 
 watch(() => props.open, (open) => {
+  confirmingDelete.value = false
   if (!open || !props.role) return
   form.name = props.role.name
   form.description = props.role.description ?? ''
@@ -60,13 +64,42 @@ function submit() {
           </label>
         </div>
       </div>
-      <div class="role-modal-footer">
-        <button type="button" class="console-btn console-btn-ghost" :disabled="saving" @click="emit('close')">
-          Cancel
+      <div v-if="confirmingDelete" class="role-modal-footer delete-confirm">
+        <p class="delete-message">
+          <strong>Delete role "{{ role?.name }}"?</strong>
+          <span v-if="role?.userCount">
+            {{ role.userCount.toLocaleString() }} {{ role.userCount === 1 ? 'user has' : 'users have' }} this role.
+            It will be removed from them and they will be signed out.
+          </span>
+          <span>This cannot be undone.</span>
+        </p>
+        <div class="footer-actions">
+          <button type="button" class="console-btn console-btn-ghost" :disabled="deleting" @click="confirmingDelete = false">
+            Cancel
+          </button>
+          <button type="button" class="console-btn btn-danger" :disabled="deleting" @click="emit('delete')">
+            {{ deleting ? 'Deleting...' : 'Delete role' }}
+          </button>
+        </div>
+      </div>
+      <div v-else class="role-modal-footer">
+        <button
+          v-if="role && !role.system"
+          type="button"
+          class="console-btn btn-danger-outline"
+          :disabled="busy"
+          @click="confirmingDelete = true"
+        >
+          Delete role
         </button>
-        <button class="console-btn console-btn-primary" :disabled="saving || !selectedPermissions.length" @click="submit">
-          {{ saving ? 'Saving...' : 'Save role' }}
-        </button>
+        <div class="footer-actions">
+          <button type="button" class="console-btn console-btn-ghost" :disabled="busy" @click="emit('close')">
+            Cancel
+          </button>
+          <button class="console-btn console-btn-primary" :disabled="busy || !selectedPermissions.length" @click="submit">
+            {{ saving ? 'Saving...' : 'Save role' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -93,14 +126,22 @@ function submit() {
 .role-modal-footer {
   display: flex;
   flex: 0 0 auto;
-  justify-content: flex-end;
+  align-items: center;
   gap: 10px;
   padding: 14px 20px 20px;
   border-top: 1px solid var(--console-border-soft);
   background: #fff;
 }
+.footer-actions { display: flex; gap: 10px; margin-left: auto; }
+.btn-danger-outline { color: var(--console-danger-text); border: 1px solid #fecaca; background: #fff; }
+.btn-danger-outline:hover:not(:disabled) { background: var(--console-danger-bg); }
+.btn-danger { color: #fff; background: var(--console-danger); }
+.btn-danger:hover:not(:disabled) { background: var(--console-danger-text); }
+.delete-confirm { background: #fef2f2; }
+.delete-message { display: grid; gap: 2px; margin: 0; color: var(--console-danger-text); font-size: var(--console-fs-sm); }
 @media (max-width: 620px) {
   .role-modal { max-height: calc(100dvh - 24px); }
   .form-row, .permission-list { grid-template-columns: 1fr; }
+  .delete-confirm { flex-direction: column; align-items: stretch; }
 }
 </style>

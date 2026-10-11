@@ -16,6 +16,10 @@ export function updateRole(roleId, values) {
   return authenticatedApiRequest(`/admin/roles/${roleId}`, { method: 'PATCH', body: values })
 }
 
+export function deleteRole(roleId) {
+  return authenticatedApiRequest(`/admin/roles/${roleId}`, { method: 'DELETE' })
+}
+
 export function replaceRolePermissions(roleId, permissionCodes) {
   return authenticatedApiRequest(`/admin/roles/${roleId}/permissions`, {
     method: 'PUT', body: { permissionCodes },
