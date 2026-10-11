@@ -211,6 +211,20 @@ export function useAuth() {
     })
   }
 
+  async function requestPasswordReset(email) {
+    return apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: { email: email.trim().toLowerCase() },
+    })
+  }
+
+  async function resetPassword(token, newPassword) {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: { token, newPassword },
+    })
+  }
+
   async function logout() {
     try {
       await apiRequest('/auth/logout', { method: 'POST' })
@@ -254,6 +268,8 @@ export function useAuth() {
     login,
     selectRole,
     register,
+    requestPasswordReset,
+    resetPassword,
     logout,
     changePassword,
     updateCurrentUser,

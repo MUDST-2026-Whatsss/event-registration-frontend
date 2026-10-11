@@ -1,13 +1,18 @@
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AuthInput from '../components/AuthInput.vue'
 import AuthLayout from '../components/AuthLayout.vue'
+import { useAuth } from '../composables/useAuth.js'
+import { ApiError } from '@/shared/lib/apiClient.js'
 
 const route = useRoute()
+const router = useRouter()
+const { resetPassword } = useAuth()
 const password = ref('')
 const confirmPassword = ref('')
 const formStatus = ref('')
+const isSubmitting = ref(false)
 
 const errors = reactive({
   password: '',
@@ -20,8 +25,8 @@ const validatePassword = () => {
     return false
   }
 
-  if (password.value.length < 8) {
-    errors.password = 'Password must be at least 8 characters.'
+  if (password.value.length < 8 || !/[a-z]/.test(password.value) || !/[A-Z]/.test(password.value) || !/\d/.test(password.value)) {
+    errors.password = 'Use 8+ characters with uppercase, lowercase, and a number.'
     return false
   }
 
@@ -44,7 +49,7 @@ const validateConfirmPassword = () => {
   return true
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   formStatus.value = ''
   const isPasswordValid = validatePassword()
   const isConfirmPasswordValid = validateConfirmPassword()
@@ -53,12 +58,23 @@ const handleSubmit = () => {
     return
   }
 
-  if (!route.query.token) {
+  const token = typeof route.query.token === 'string' ? route.query.token : ''
+  if (!token) {
     formStatus.value = 'This password reset link is invalid or has expired.'
     return
   }
 
-  formStatus.value = 'Your new password has been validated.'
+  isSubmitting.value = true
+  try {
+    await resetPassword(token, password.value)
+    await router.push({ path: '/login', query: { passwordReset: 'true' } })
+  } catch (error) {
+    formStatus.value = error instanceof ApiError
+      ? error.message
+      : 'Unable to reset your password. Please try again.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -97,8 +113,10 @@ const handleSubmit = () => {
         @input="errors.confirmPassword = ''"
       />
 
-      <button class="submit-button" type="submit">Reset password</button>
-      <p v-if="formStatus" class="form-status" aria-live="polite">{{ formStatus }}</p>
+      <button class="submit-button" type="submit" :disabled="isSubmitting">
+        {{ isSubmitting ? 'Resetting…' : 'Reset password' }}
+      </button>
+      <p v-if="formStatus" class="form-status" role="alert">{{ formStatus }}</p>
     </form>
 
     <p class="login-prompt">
@@ -139,6 +157,12 @@ const handleSubmit = () => {
 .submit-button:active {
   box-shadow: 0 5px 12px rgb(177 151 252 / 24%);
   transform: translateY(0);
+}
+
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
 }
 
 .form-status {

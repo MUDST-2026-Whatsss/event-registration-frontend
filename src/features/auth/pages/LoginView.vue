@@ -35,6 +35,14 @@ if (route.query.passwordChanged === 'true') {
   })
 }
 
+if (route.query.passwordReset === 'true') {
+  showToast({
+    variant: 'success',
+    title: 'Password reset successfully',
+    message: 'Sign in with your new password.',
+  })
+}
+
 if (route.query.reason === 'session-expired') {
   showToast({
     variant: 'warning',

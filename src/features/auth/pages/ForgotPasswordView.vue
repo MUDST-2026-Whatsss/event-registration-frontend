@@ -1,11 +1,17 @@
 <script setup>
+import { ArrowLeft } from '@lucide/vue'
 import { ref } from 'vue'
 import AuthInput from '../components/AuthInput.vue'
 import AuthLayout from '../components/AuthLayout.vue'
+import { useAuth } from '../composables/useAuth.js'
+import { ApiError } from '@/shared/lib/apiClient.js'
 
 const email = ref('')
 const emailError = ref('')
 const formStatus = ref('')
+const formError = ref('')
+const isSubmitting = ref(false)
+const { requestPasswordReset } = useAuth()
 
 const validateEmail = () => {
   const value = email.value.trim()
@@ -24,11 +30,22 @@ const validateEmail = () => {
   return true
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   formStatus.value = ''
+  formError.value = ''
 
   if (validateEmail()) {
-    formStatus.value = "If an account exists for this email, we'll send a password reset link."
+    isSubmitting.value = true
+    try {
+      const response = await requestPasswordReset(email.value)
+      formStatus.value = response.message
+    } catch (error) {
+      formError.value = error instanceof ApiError
+        ? error.message
+        : 'Unable to request a password reset. Please try again.'
+    } finally {
+      isSubmitting.value = false
+    }
   }
 }
 </script>
@@ -55,10 +72,16 @@ const handleSubmit = () => {
         @input="emailError = ''"
       />
 
-      <RouterLink class="login-link" to="/login">Back to sign in</RouterLink>
-
-      <button class="submit-button" type="submit">Send reset link</button>
+      <button class="submit-button" type="submit" :disabled="isSubmitting">
+        {{ isSubmitting ? 'Sending…' : 'Send reset link' }}
+      </button>
       <p v-if="formStatus" class="request-status" aria-live="polite">{{ formStatus }}</p>
+      <p v-if="formError" class="request-error" role="alert">{{ formError }}</p>
+
+      <RouterLink class="login-link" to="/login">
+        <ArrowLeft :size="14" aria-hidden="true" />
+        <span>Back to sign in</span>
+      </RouterLink>
     </form>
 
     <p class="register-prompt">
@@ -79,14 +102,20 @@ const handleSubmit = () => {
 .login-link {
   display: inline-flex;
   align-items: center;
-  min-height: 18px;
-  margin-top: 11px;
+  gap: 6px;
+  min-height: 24px;
+  margin-top: 14px;
   padding: 0;
-  justify-self: end;
+  justify-self: center;
   color: var(--brand-blue-strong);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .submit-button {
@@ -113,6 +142,12 @@ const handleSubmit = () => {
   transform: translateY(0);
 }
 
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
 .register-prompt {
   margin: 22px 0 0;
   color: #9aa4bd;
@@ -123,6 +158,14 @@ const handleSubmit = () => {
 .request-status {
   margin: 12px 0 0;
   color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.request-error {
+  margin: 12px 0 0;
+  color: var(--color-danger, #c53030);
   font-size: 0.75rem;
   line-height: 1.4;
   text-align: center;

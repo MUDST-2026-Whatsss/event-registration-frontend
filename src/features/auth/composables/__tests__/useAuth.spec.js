@@ -171,6 +171,28 @@ describe('auth feature API session', () => {
     expect(auth.isAuthenticated.value).toBe(false)
   })
 
+  it('requests and completes password recovery through the API', async () => {
+    fetch
+      .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'forgot-csrf' }))
+      .mockResolvedValueOnce(apiResponse({ message: 'Reset link sent.' }))
+      .mockResolvedValueOnce(apiResponse({ message: 'Password reset successfully.' }))
+
+    const { useAuth } = await import('../useAuth.js')
+    const auth = useAuth()
+
+    await auth.requestPasswordReset('  USER@EXAMPLE.TEST ')
+    await auth.resetPassword('reset-token', 'Changed123')
+
+    expect(fetch).toHaveBeenNthCalledWith(2, '/api/v1/auth/forgot-password', expect.objectContaining({
+      credentials: 'include',
+      body: JSON.stringify({ email: user.email }),
+    }))
+    expect(fetch).toHaveBeenNthCalledWith(3, '/api/v1/auth/reset-password', expect.objectContaining({
+      credentials: 'include',
+      body: JSON.stringify({ token: 'reset-token', newPassword: 'Changed123' }),
+    }))
+  })
+
   it('fetches a rotated CSRF token before logout and clears the user state', async () => {
     fetch
       .mockResolvedValueOnce(apiResponse({ headerName: 'X-XSRF-TOKEN', token: 'login-csrf' }))
