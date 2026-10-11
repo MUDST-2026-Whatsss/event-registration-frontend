@@ -16,6 +16,8 @@ const { currentUser } = useAuth()
 const { findEvent, loadEvent } = usePublicEvents()
 const eventLoading = ref(true)
 const eventError = ref('')
+const submitError = ref('')
+const submitting = ref(false)
 const event = computed(() => findEvent(String(route.params.slug || '')))
 const paymentModal = ref(null)
 const paymentOpen = ref(false)
@@ -54,22 +56,18 @@ function clearPaymentTimers() {
   while (timers.length) window.clearTimeout(timers.pop())
 }
 
-function finishPayment(runId) {
+async function finishPayment(runId) {
   if (runId !== paymentRunId) return
   const transactionId = `TXN-${Date.now().toString().slice(-10)}`
 
-  register(event.value.id, {
-    attendee: {
-      fullName: form.fullName,
-      phone: form.phone,
-      email: form.email,
-    },
-    amount: event.value.price ?? 0,
-    paymentMethod: 'PromptPay',
-    paymentStatus: 'paid',
-    transactionId,
-    paidAt: new Date().toISOString(),
-  })
+  try {
+    await register(event.value, attendee())
+  } catch (cause) {
+    paymentOpen.value = false
+    paymentState.value = 'idle'
+    submitError.value = cause?.message || 'Unable to complete your registration.'
+    return
+  }
   paymentState.value = 'success'
 
   timers.push(window.setTimeout(() => {
@@ -81,24 +79,27 @@ function finishPayment(runId) {
   }, 1200))
 }
 
+function attendee() {
+  return { fullName: form.fullName, phone: form.phone, email: form.email }
+}
+
 async function confirmRegistration() {
   if (!canRegisterForEvent(event.value)) {
     router.replace(`/events/${event.value.id}`)
     return
   }
 
+  submitError.value = ''
   if (!event.value.price) {
-    register(event.value.id, {
-      attendee: {
-        fullName: form.fullName,
-        phone: form.phone,
-        email: form.email,
-      },
-      amount: 0,
-      paymentMethod: 'Free',
-      paymentStatus: 'not-required',
-    })
-    router.replace({ name: 'registration-success', params: { slug: event.value.id } })
+    submitting.value = true
+    try {
+      await register(event.value, attendee())
+      router.replace({ name: 'registration-success', params: { slug: event.value.id } })
+    } catch (cause) {
+      submitError.value = cause?.message || 'Unable to complete your registration.'
+    } finally {
+      submitting.value = false
+    }
     return
   }
 
@@ -187,11 +188,12 @@ onBeforeUnmount(clearPaymentTimers)
           </div>
           <label class="registration-consent"><input v-model="form.consent" type="checkbox" required /><span>I confirm that the attendee information is correct and agree to the event terms and privacy policy.</span></label>
           <div class="registration-form__summary"><span>Total</span><strong>{{ formatPrice(event.price) }}</strong></div>
+          <p v-if="submitError" class="registration-error" role="alert">{{ submitError }}</p>
           <button
             class="registration-confirm"
             :class="{ ready: form.consent }"
             type="submit"
-            :disabled="paymentOpen || !form.consent"
+            :disabled="paymentOpen || submitting || !form.consent"
           >
             <span>{{ form.consent ? 'Confirm registration' : 'Accept the terms to continue' }}</span>
             <Check v-if="form.consent" :size="18" />
@@ -241,6 +243,7 @@ onBeforeUnmount(clearPaymentTimers)
 .registration-load { display: flex; min-height: 420px; align-items: center; justify-content: center; gap: 8px; color: var(--neutral-600); flex-direction: column; text-align: center; }
 .registration-load.error strong { color: #20263a; font-size: 1.25rem; }
 .registration-load a { margin-top: 8px; color: #2455db; }
+.registration-error { margin: 0; color: #b42318; font-size: .85rem; }
 .registration-breadcrumb { display: flex; align-items: center; gap: 9px; color: var(--neutral-600); font-size: .8rem; }
 .registration-breadcrumb a { color: #28314a; text-decoration: none; }
 .registration-heading { margin-top: 32px; }

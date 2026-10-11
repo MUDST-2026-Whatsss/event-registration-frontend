@@ -8,7 +8,7 @@ import {
   adminEventRoutes,
   superAdminEventRoutes,
 } from '@/features/events/routes.js'
-import { superAdminRegistrationRoutes } from '@/features/registrations/routes.js'
+import { adminRegistrationRoutes, superAdminRegistrationRoutes } from '@/features/registrations/routes.js'
 import { superAdminGovernanceRoutes } from '@/features/governance/routes.js'
 import { superAdminAccessControlRoutes } from '@/features/access-control/routes.js'
 
@@ -25,6 +25,7 @@ export const consoleRoutes = [
       { path: '', redirect: '/admin/dashboard' },
       ...adminDashboardRoutes,
       ...adminEventRoutes,
+      ...adminRegistrationRoutes,
     ],
   },
   {

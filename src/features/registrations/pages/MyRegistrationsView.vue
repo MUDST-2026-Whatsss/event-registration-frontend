@@ -12,10 +12,11 @@ import { usePublicEvents } from '@/features/events/public.js'
 const searchQuery = ref('')
 const route = useRoute()
 const activeFilter = ref('upcoming')
-const { registrations, register, cancel } = useRegistrations()
+const { registrations, loadRegistrations, register, cancel } = useRegistrations()
 const { events, loadEvents } = usePublicEvents()
 const pendingCancellation = ref(null)
 const cancellationToast = ref(null)
+const actionError = ref('')
 const cancelDialog = ref(null)
 const qrDialog = ref(null)
 const qrEvent = ref(null)
@@ -28,8 +29,15 @@ const filters = [
 ]
 
 const registeredEvents = computed(() => registrations.value.map((registration) => {
-  const event = events.value.find((item) => item.id === registration.eventId)
-  return event ? { ...event, registrationStatus: registration.status, registeredAt: registration.registeredAt } : null
+  const event = events.value.find((item) => item.id === registration.eventId) || registration.event
+  return event ? {
+    ...event,
+    registrationId: registration.id,
+    registrationNumber: registration.registrationNumber,
+    registrationStatus: registration.status,
+    registeredAt: registration.registeredAt,
+    cancellable: registration.cancellable,
+  } : null
 }).filter(Boolean))
 
 const visibleEvents = computed(() => {
@@ -53,22 +61,31 @@ function closeCancellation() {
   pendingCancellation.value = null
 }
 
-function confirmCancellation() {
+async function confirmCancellation() {
   if (!pendingCancellation.value) return
   const event = pendingCancellation.value
-  cancel(event.id)
-  cancellationToast.value = { id: event.id, title: event.title }
   closeCancellation()
+  try {
+    await cancel(event.registrationId)
+    cancellationToast.value = { event, title: event.title }
+  } catch (cause) {
+    actionError.value = cause?.message || 'Unable to cancel this registration.'
+  }
 }
 
-function undoCancellation() {
+async function undoCancellation() {
   if (!cancellationToast.value) return
-  register(cancellationToast.value.id)
+  const { event } = cancellationToast.value
   cancellationToast.value = null
+  try {
+    await register(event)
+  } catch (cause) {
+    actionError.value = cause?.message || 'Unable to register again.'
+  }
 }
 
 function registrationId(event) {
-  return `EVT-2026-${String(event.id).padStart(4, '0')}`
+  return event.registrationNumber
 }
 
 async function openQrCode(event) {
@@ -110,6 +127,9 @@ function handleKeydown(event) {
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   loadEvents().catch(() => {})
+  loadRegistrations(true).catch((cause) => {
+    actionError.value = cause?.message || 'Unable to load your registrations.'
+  })
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
@@ -147,7 +167,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <div class="registration-card__actions">
             <RouterLink :to="{ path: `/events/${event.id}`, query: { from: route.fullPath } }"><Eye :size="17" aria-hidden="true" />View</RouterLink>
             <button v-if="event.registrationStatus === 'registered'" class="qr" type="button" @click="openQrCode(event)"><QrCode :size="17" aria-hidden="true" />QR Code</button>
-            <button v-if="event.registrationStatus === 'registered' && event.status !== 'closed'" class="cancel" type="button" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
+            <button v-if="event.registrationStatus === 'registered' && event.cancellable" class="cancel" type="button" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
           </div>
         </article>
       </div>
@@ -187,6 +207,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       </section>
     </div>
 
+    <AppToast v-if="actionError" variant="warning" title="Something went wrong" :message="actionError" @close="actionError = ''" />
     <AppToast v-if="cancellationToast" variant="danger" title="Registration cancelled" :message="cancellationToast.title" @close="cancellationToast = null">
       <template #action><button class="toast-undo" type="button" @click="undoCancellation"><RotateCcw :size="16" />Undo</button></template>
     </AppToast>

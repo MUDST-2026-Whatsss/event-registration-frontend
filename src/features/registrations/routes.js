@@ -32,6 +32,15 @@ export const registrationRoutes = [
   },
 ]
 
+export const adminRegistrationRoutes = [
+  {
+    path: 'events/:id/participants',
+    name: 'admin-event-participants',
+    component: () => import('./management/SuperAdminParticipantsPage.vue'),
+    meta: { heading: 'All Events' },
+  },
+]
+
 export const superAdminRegistrationRoutes = [
   {
     path: 'all-events/:id/participants',

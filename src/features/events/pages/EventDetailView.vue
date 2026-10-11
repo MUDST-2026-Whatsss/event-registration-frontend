@@ -11,7 +11,7 @@ import { canRegisterForEvent, usePublicEvents } from '../public.js'
 const route = useRoute()
 const router = useRouter()
 const { isAuthenticated } = useAuth()
-const { isRegistered } = useRegistrations()
+const { isRegistered, loadRegistrations } = useRegistrations()
 const { loadEvent } = usePublicEvents()
 const event = ref(null)
 const loading = ref(true)
@@ -33,13 +33,15 @@ const registrationMessage = computed(() => {
   if (event.value.status === 'closed') return 'Registration is closed for this event.'
   if (!isAuthenticated.value) return 'Please log in or sign up before registering for this event.'
   if (registered.value) return 'You are registered for this event.'
+  if (event.value.full) return 'This event is fully booked.'
   return 'Reserve your place before registration closes.'
 })
 const registrationButtonLabel = computed(() => {
   if (event.value.status === 'upcoming') return 'Coming Soon'
   if (event.value.status === 'closed') return 'Registration Closed'
   if (!isAuthenticated.value) return 'Log In / Sign Up'
-  return registered.value ? 'Registered' : 'Register Now'
+  if (registered.value) return 'Registered'
+  return event.value.full ? 'Fully Booked' : 'Register Now'
 })
 
 function formatPrice(price) {
@@ -64,7 +66,9 @@ async function fetchEvent(slug) {
   error.value = ''
   event.value = null
   try {
-    event.value = await loadEvent(slug)
+    // Always reload so the remaining seats are current
+    event.value = await loadEvent(slug, true)
+    if (isAuthenticated.value) await loadRegistrations(true).catch(() => {})
   } catch (cause) {
     error.value = cause?.status === 404
       ? 'This event is unavailable or has not been published.'
@@ -114,7 +118,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
           </dl>
           <div v-if="event.status === 'upcoming'" class="registration-state upcoming"><CalendarClock :size="20" /><span><strong>Registration opens soon</strong><small>The opening date will be announced.</small></span></div>
           <div v-else-if="event.status === 'closed'" class="registration-state closed"><LockKeyhole :size="20" /><span><strong>Registration closed</strong><small>This event is no longer accepting registrations.</small></span></div>
-          <div v-else class="registration-state open"><CalendarClock :size="20" /><span><strong>Registration is open</strong><small>Reserve your place before registration closes.</small></span></div>
+          <div v-else class="registration-state open"><CalendarClock :size="20" /><span><strong>Registration is open</strong><small>{{ event.capacity }}</small></span></div>
           <div class="detail-price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           <p>{{ registrationMessage }}</p>
           <button class="detail-register" type="button" :disabled="registered || !registrationOpen" @click="handleRegistration">{{ registrationButtonLabel }}</button>

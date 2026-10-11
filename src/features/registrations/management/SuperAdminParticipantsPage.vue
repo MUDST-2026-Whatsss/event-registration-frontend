@@ -1,55 +1,68 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { getAdminEvent } from '@/features/events/api/adminEventsApi.js'
+import { listEventRegistrations } from '../api/registrationsApi.js'
 
 const route = useRoute()
 const router = useRouter()
 
-/* =========================================================
-   EVENT
-========================================================= */
-
-const storedEvent = localStorage.getItem('selectedEvent')
-
-const event = ref(
-  storedEvent
-    ? JSON.parse(storedEvent)
-    : {
-        id: Number(route.params.id),
-        name: 'Global Tech Innovators Summit 2024',
-        participants: [],
-      }
-)
-
-const participants = computed(
-  () => event.value.participants || []
-)
-
+const event = ref({ id: route.params.id, name: 'Loading...' })
+const participants = ref([])
+const errorMessage = ref('')
 const currentPage = ref(1)
-const totalPages = computed(() => Math.max(1, Math.ceil(participants.value.length / 10)))
+const totalPages = ref(1)
 
-/* =========================================================
-   ACTIONS
-========================================================= */
+const STATUS_LABELS = {
+  CONFIRMED: 'Confirmed',
+  PENDING_PAYMENT: 'Pending',
+  CHECKED_IN: 'Checked in',
+  CANCELLED_BY_USER: 'Cancelled',
+  CANCELLED_BY_ADMIN: 'Cancelled',
+  CANCELLED_EVENT: 'Cancelled',
+}
 
+function mapParticipant(registration) {
+  return {
+    id: registration.registrationId,
+    registrationNumber: registration.registrationNumber,
+    name: registration.attendeeName,
+    email: registration.attendeeEmail,
+    tel: registration.attendeePhone || '-',
+    payment: STATUS_LABELS[registration.status] || registration.status,
+  }
+}
+
+async function loadParticipants() {
+  errorMessage.value = ''
+  try {
+    const payload = await listEventRegistrations(route.params.id, { page: currentPage.value - 1 })
+    participants.value = payload.content.map(mapParticipant)
+    totalPages.value = Math.max(1, payload.totalPages)
+  } catch (cause) {
+    errorMessage.value = cause?.message || 'Unable to load participants.'
+  }
+}
+
+function changePage(page) {
+  currentPage.value = page
+  loadParticipants()
+}
+
+// The same page is used by admins and super admins
 const goBack = () => {
   router.push({
-    name: 'sa-all-events',
+    name: route.name === 'admin-event-participants' ? 'admin-all-events' : 'sa-all-events',
   })
 }
 
-const deleteParticipant = id => {
-  event.value.participants =
-    event.value.participants.filter(
-      participant => participant.id !== id
-    )
-
-  localStorage.setItem(
-    'selectedEvent',
-    JSON.stringify(event.value)
-  )
-}
+onMounted(async () => {
+  getAdminEvent(route.params.id)
+    .then((payload) => { event.value = { id: payload.eventId, name: payload.title } })
+    .catch(() => { event.value = { id: route.params.id, name: 'Event' } })
+  await loadParticipants()
+})
 </script>
 
 <template>
@@ -102,6 +115,8 @@ const deleteParticipant = id => {
         Showing {{ participants.length }} users
       </div>
 
+      <p v-if="errorMessage" class="participants-error" role="alert">{{ errorMessage }}</p>
+
 
       <!-- TABLE -->
       <div class="table-wrapper">
@@ -124,11 +139,11 @@ const deleteParticipant = id => {
               </th>
 
               <th>
-                PAYMENT STATUS
+                STATUS
               </th>
 
               <th>
-                ACTIONS
+                REGISTRATION NO.
               </th>
 
             </tr>
@@ -178,36 +193,7 @@ const deleteParticipant = id => {
 
               <td>
 
-                <div class="event-actions">
-
-                  <!-- EDIT -->
-                  <button
-                    class="icon-action"
-                    title="Edit participant"
-                  >
-                    <Icon
-                      name="edit"
-                      :size="15"
-                    />
-                  </button>
-
-                  <!-- DELETE -->
-                  <button
-                    class="icon-action danger"
-                    title="Delete participant"
-                    @click="
-                      deleteParticipant(
-                        participant.id
-                      )
-                    "
-                  >
-                    <Icon
-                      name="trash"
-                      :size="15"
-                    />
-                  </button>
-
-                </div>
+                {{ participant.registrationNumber }}
 
               </td>
 
@@ -256,11 +242,11 @@ const deleteParticipant = id => {
     <div class="console-pagination">
       <span>Showing 1 to {{ participants.length }} of {{ participants.length }} users</span>
       <div class="console-pagination-controls">
-        <button type="button" class="console-icon-btn" :disabled="currentPage <= 1" @click="currentPage--">
+        <button type="button" class="console-icon-btn" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">
           <Icon name="chevron-left" :size="15" />
         </button>
         <button type="button" class="console-page-num active">{{ currentPage }}</button>
-        <button type="button" class="console-icon-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
+        <button type="button" class="console-icon-btn" :disabled="currentPage >= totalPages" @click="changePage(currentPage + 1)">
           <Icon name="chevron-right" :size="15" />
         </button>
       </div>
@@ -502,4 +488,5 @@ const deleteParticipant = id => {
     min-width: 750px;
   }
 }
+.participants-error { margin: 0 0 12px; color: #b42318; font-size: .85rem; }
 </style>

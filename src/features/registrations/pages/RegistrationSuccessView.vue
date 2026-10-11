@@ -9,25 +9,25 @@ import { usePublicEvents } from '@/features/events/public.js'
 
 const route = useRoute()
 const router = useRouter()
-const { registrations } = useRegistrations()
+const { findRegistration, loadRegistrations } = useRegistrations()
 const { findEvent, loadEvent } = usePublicEvents()
 const ready = ref(false)
 const event = computed(() => findEvent(String(route.params.slug || '')))
-const registration = computed(() => registrations.value.find((item) => item.eventId === String(route.params.slug)))
-const registrationId = computed(() => `EVT-${String(event.value?.eventId || route.params.slug).slice(0, 8).toUpperCase()}`)
-const transactionId = computed(() => registration.value?.transactionId ?? route.query.transaction ?? 'TXN-PENDING')
-const amount = computed(() => registration.value?.amount ?? event.value?.price ?? 0)
+const registration = computed(() => findRegistration(String(route.params.slug || '')))
+const registrationId = computed(() => registration.value?.registrationNumber ?? '')
+const transactionId = computed(() => route.query.transaction ?? 'TXN-PENDING')
+const amount = computed(() => event.value?.price ?? 0)
 const isFree = computed(() => amount.value === 0)
 
 onMounted(async () => {
   try {
-    await loadEvent(String(route.params.slug || ''))
+    await Promise.all([loadEvent(String(route.params.slug || ''), true), loadRegistrations(true)])
   } catch {
     router.replace('/events')
     return
   }
   ready.value = true
-  if (!event.value || !['paid', 'not-required'].includes(registration.value?.paymentStatus)) {
+  if (!event.value || registration.value?.status !== 'registered') {
     router.replace(event.value ? `/events/${event.value.id}` : '/events')
   }
 })
