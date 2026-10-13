@@ -5,6 +5,8 @@ import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 const props = defineProps({
   statuses: { type: Array, default: () => [] },
   total: { type: Number, default: 0 },
+  to: { type: [String, Object], default: '/super-admin/all-events' },
+  compact: { type: Boolean, default: false },
 })
 
 const eventStatuses = computed(() => props.statuses)
@@ -107,7 +109,7 @@ const getSegmentTransform = (segment) => {
 </script>
 
 <template>
-<article class="console-card overview-card">
+<article class="console-card overview-card" :class="{ compact }">
 
   <div class="console-card-header">
     <h2>Events Overview</h2>
@@ -226,7 +228,7 @@ const getSegmentTransform = (segment) => {
   </div>
 
   <RouterLink
-    to="/super-admin/all-events"
+    :to="to"
     class="card-link"
   >
     <span>
@@ -317,6 +319,19 @@ const getSegmentTransform = (segment) => {
   display: flex;
   flex-direction: column;
 }
+.overview-card.compact { min-height: 0; }
+.overview-card.compact .overview-content {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 18px 20px;
+}
+.overview-card.compact .donut-wrapper,
+.overview-card.compact .donut-chart {
+  width: 190px;
+  height: 190px;
+}
+.overview-card.compact .status-list { gap: 5px; }
+.overview-card.compact .status-row { padding-block: 5px; }
 .donut-area {
   display: flex;
 
@@ -490,4 +505,18 @@ const getSegmentTransform = (segment) => {
 
   font-weight: 600;
 }
+.card-link {
+  min-height: 42px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--console-primary);
+  font-size: var(--console-fs-2xs);
+  font-weight: 600;
+  text-decoration: none;
+  border-top: 1px solid var(--console-border-soft);
+  transition: background .15s ease;
+}
+.card-link:hover { background: var(--console-gray-bg); }
 </style>

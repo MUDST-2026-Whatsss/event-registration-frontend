@@ -29,8 +29,8 @@ export function rejectEventReview(reviewId, version, comment) {
   })
 }
 
-export function listChangeRequests({ status, page = 0, size = 20 } = {}) {
-  return authenticatedApiRequest(`/admin/change-requests${queryString({ status, page, size, sort: 'createdAt,desc' })}`)
+export function listChangeRequests({ status, query, page = 0, size = 20 } = {}) {
+  return authenticatedApiRequest(`/admin/change-requests${queryString({ status, query, page, size, sort: 'createdAt,desc' })}`)
 }
 
 export function getChangeRequest(requestId) {

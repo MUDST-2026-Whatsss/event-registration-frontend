@@ -1,6 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import {
+  ConsoleIcon as Icon,
+  ConsolePageHeader,
+  ConsolePagination,
+} from '@/features/console-shell/public.js'
 import { useAuth } from '@/features/auth/public.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import UserRolesModal from './UserRolesModal.vue'
@@ -15,6 +19,7 @@ const users = ref([])
 const roles = ref([])
 const stats = ref({ activeAdministrators: 0, totalUsers: 0, disabledAccounts: 0 })
 const page = ref(0)
+const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
 const loading = ref(false)
@@ -28,15 +33,20 @@ const roleOptions = computed(() => roles.value.map((role) => ({
   ...role,
   permissions: role.permissions ?? [],
 })))
-const pageStart = computed(() => totalElements.value ? (page.value * 20) + 1 : 0)
-const pageEnd = computed(() => Math.min((page.value + 1) * 20, totalElements.value))
-
 function initials(name) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
 }
 
 function readableStatus(status) {
   return status.split('_').map((word) => word[0] + word.slice(1).toLowerCase()).join(' ')
+}
+
+function disableRestriction(user) {
+  if (user.userId === currentUser.value?.userId) return 'You cannot disable your own account'
+  if (user.roles.some((role) => role.code === 'SUPER_ADMIN')) {
+    return 'Super Admin accounts cannot be disabled'
+  }
+  return ''
 }
 
 function formatLastLogin(value) {
@@ -51,7 +61,7 @@ async function loadUsers() {
   try {
     const result = await listUsers({
       query: search.value.trim(), status: statusFilter.value, role: roleFilter.value,
-      page: page.value, size: 20,
+      page: page.value, size: pageSize.value,
     })
     users.value = result.content
     totalPages.value = result.totalPages
@@ -114,26 +124,41 @@ watch(search, () => {
   searchTimer = window.setTimeout(() => { page.value = 0; loadUsers() }, 300)
 })
 watch([statusFilter, roleFilter], () => { page.value = 0; loadUsers() })
-watch(page, loadUsers)
+watch([page, pageSize], loadUsers)
 onBeforeUnmount(() => window.clearTimeout(searchTimer))
 onMounted(() => Promise.all([loadUsers(), loadSummary()]))
 </script>
 
 <template>
   <div class="console-body">
+    <ConsolePageHeader
+      eyebrow="Access control"
+      title="User Management"
+      description="Manage system accounts, administrator access, roles, and account status."
+    />
+
     <div v-if="errorMessage" class="console-alert console-alert-danger">{{ errorMessage }}</div>
 
     <div class="console-stat-grid">
       <div class="console-stat">
-        <div class="label">Active Administrators</div>
-        <div class="value">{{ stats.activeAdministrators.toLocaleString() }}</div>
-      </div>
-      <div class="console-stat">
-        <div class="label">System Users</div>
+        <div class="stat-copy">
+          <div class="label">Total System Users</div>
+          <div class="stat-hint">All accounts in the system</div>
+        </div>
         <div class="value">{{ stats.totalUsers.toLocaleString() }}</div>
       </div>
       <div class="console-stat">
-        <div class="label">Disabled Accounts</div>
+        <div class="stat-copy">
+          <div class="label">Active Administrators</div>
+          <div class="stat-hint">Admin and Super Admin accounts</div>
+        </div>
+        <div class="value">{{ stats.activeAdministrators.toLocaleString() }}</div>
+      </div>
+      <div class="console-stat">
+        <div class="stat-copy">
+          <div class="label">Disabled Accounts</div>
+          <div class="stat-hint">Accounts without sign-in access</div>
+        </div>
         <div class="value danger">{{ stats.disabledAccounts.toLocaleString() }}</div>
       </div>
     </div>
@@ -205,8 +230,8 @@ onMounted(() => Promise.all([loadUsers(), loadSummary()]))
                     v-if="user.status === 'ACTIVE'"
                     type="button"
                     class="console-btn console-btn-outline console-btn-sm danger-action"
-                    :disabled="saving || user.userId === currentUser?.userId"
-                    :title="user.userId === currentUser?.userId ? 'You cannot disable your own account' : 'Disable account'"
+                    :disabled="saving || Boolean(disableRestriction(user))"
+                    :title="disableRestriction(user) || 'Disable account'"
                     @click="setStatus(user, 'DISABLED')"
                   >Disable</button>
                   <button v-else type="button" class="console-btn console-btn-primary console-btn-sm" :disabled="saving" @click="setStatus(user, 'ACTIVE')">Enable</button>
@@ -219,14 +244,16 @@ onMounted(() => Promise.all([loadUsers(), loadSummary()]))
         </table>
       </div>
 
-      <div class="console-pagination">
-        <span>Showing {{ pageStart }}–{{ pageEnd }} of {{ totalElements.toLocaleString() }} users</span>
-        <div class="console-pagination-controls">
-          <button class="console-page-num" :disabled="page === 0 || loading" @click="page--"><Icon name="chevron-left" :size="14" /></button>
-          <button class="console-page-num active">{{ totalPages ? page + 1 : 0 }}</button>
-          <button class="console-page-num" :disabled="page + 1 >= totalPages || loading" @click="page++"><Icon name="chevron-right" :size="14" /></button>
-        </div>
-      </div>
+      <ConsolePagination
+        :page="page"
+        :page-size="pageSize"
+        :total-elements="totalElements"
+        :total-pages="totalPages"
+        :loading="loading"
+        item-label="users"
+        @page="page = $event"
+        @page-size="pageSize = $event; page = 0"
+      />
     </div>
   </div>
 
@@ -241,7 +268,13 @@ onMounted(() => Promise.all([loadUsers(), loadSummary()]))
 </template>
 
 <style scoped>
+.console-page-header { margin-bottom: 20px; }
 .console-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.console-stat { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.stat-copy { min-width: 0; }
+.console-stat .label { margin-bottom: 0; }
+.console-stat .value { flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.stat-hint { margin-top: 4px; color: var(--console-text-muted); font-size: var(--console-fs-xs); }
 .users-card { margin-top: 20px; }
 .users-header { gap: 16px; flex-wrap: wrap; }
 .users-header h2 { margin-bottom: 3px; }
@@ -256,8 +289,7 @@ onMounted(() => Promise.all([loadUsers(), loadSummary()]))
 .console-muted-sm { font-size: var(--console-fs-sm); color: var(--console-text-muted); margin-top: 2px; }
 .empty-state { text-align: center; color: var(--console-text-muted); padding: 32px; }
 .last-login { color: var(--console-text-secondary); white-space: nowrap; font-size: var(--console-fs-sm); }
-.users-card .console-pagination { padding: 14px 22px; border-top: 1px solid var(--console-border-soft); }
-.users-card .console-pagination-controls { gap: 6px; }
+.users-card :deep(.console-pagination) { padding: 14px 22px; border-top: 1px solid var(--console-border-soft); }
 .console-alert { margin-bottom: 16px; border: 1px solid #fecaca; border-radius: var(--console-radius); padding: 12px 14px; background: #fef2f2; color: #b91c1c; }
 .danger-action { color: #b91c1c; border-color: #fecaca; }
 @media (max-width: 720px) {

@@ -65,13 +65,15 @@ export function resetCsrfToken() {
 }
 
 export async function apiRequest(path, options = {}) {
-  const { refreshCsrf = false, ...requestOptions } = options
+  const { refreshCsrf = false, responseType = 'json', ...requestOptions } = options
   const method = (requestOptions.method ?? 'GET').toUpperCase()
   const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method)
   const headers = new Headers(requestOptions.headers)
   const isFormData = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData
 
-  headers.set('Accept', 'application/json')
+  headers.set('Accept', responseType === 'blob'
+    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    : 'application/json')
   if (requestOptions.body !== undefined && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
@@ -96,7 +98,9 @@ export async function apiRequest(path, options = {}) {
     throw new ApiError('Unable to connect to the server. Please try again.', { code: 'NETWORK_ERROR' })
   }
 
-  const payload = await parseResponse(response)
+  const payload = response.ok && responseType === 'blob'
+    ? await response.blob()
+    : await parseResponse(response)
 
   if (
     response.status === 403

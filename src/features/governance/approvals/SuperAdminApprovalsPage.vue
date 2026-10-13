@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import EventDetailsModal from './EventApprovalDetailsModal.vue'
 import { approveEventReview, listEventReviews, rejectEventReview } from '../governanceApi.js'
 import { useToast } from '@/shared/composables/useToast.js'
@@ -11,6 +11,7 @@ const filtersOpen = ref(false)
 const priorityFilter = ref({ high: true, standard: true })
 const selectedEvent = ref(null)
 const currentPage = ref(0)
+const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
 const loading = ref(false)
@@ -47,7 +48,7 @@ async function loadReviews() {
     const payload = await listEventReviews({
       decision: statusTab.value === 'Pending' ? 'PENDING' : undefined,
       page: currentPage.value,
-      size: 10,
+      size: pageSize.value,
     })
     reviews.value = payload.content.map(mapReview)
     totalPages.value = payload.totalPages
@@ -87,7 +88,7 @@ function toggleSort() {
 }
 
 watch(statusTab, () => { currentPage.value = 0; loadReviews() })
-watch(currentPage, loadReviews)
+watch([currentPage, pageSize], loadReviews)
 onMounted(loadReviews)
 </script>
 
@@ -229,18 +230,16 @@ onMounted(loadReviews)
       </div>
     </div>
 
-    <div class="console-pagination">
-      <span>Showing {{ filtered.length }} of {{ totalElements }} events</span>
-      <div class="console-pagination-controls">
-        <button type="button" class="console-icon-btn" :disabled="currentPage <= 0" @click="currentPage--">
-          <Icon name="chevron-left" :size="15" />
-        </button>
-        <button type="button" class="console-page-num active">{{ currentPage + 1 }}</button>
-        <button type="button" class="console-icon-btn" :disabled="currentPage + 1 >= totalPages" @click="currentPage++">
-          <Icon name="chevron-right" :size="15" />
-        </button>
-      </div>
-    </div>
+    <ConsolePagination
+      :page="currentPage"
+      :page-size="pageSize"
+      :total-elements="totalElements"
+      :total-pages="totalPages"
+      :loading="loading"
+      item-label="events"
+      @page="currentPage = $event"
+      @page-size="pageSize = $event; currentPage = 0"
+    />
   </div>
 
   <EventDetailsModal

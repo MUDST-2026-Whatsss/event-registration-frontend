@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Icon from './ConsoleIcon.vue'
+import UserMenu from './UserMenu.vue'
 import { ADMIN_ROLE, SUPER_ADMIN_ROLE } from '@/features/auth/public.js'
 
 const props = defineProps({
@@ -159,6 +160,8 @@ function isActive(to) {
         <span v-if="showLabels">{{ item.label }}</span>
       </RouterLink>
     </nav>
+
+    <UserMenu sidebar :compact="!showLabels" />
   </aside>
 </template>
 

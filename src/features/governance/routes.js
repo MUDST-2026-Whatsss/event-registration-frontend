@@ -15,6 +15,6 @@ export const superAdminGovernanceRoutes = [
     path: 'audit-logs',
     name: 'sa-audit-logs',
     component: () => import('./audit/SuperAdminAuditLogsPage.vue'),
-    meta: { heading: 'Audit Logs' },
+    meta: { heading: 'Audit Logs', ownTopbar: true },
   },
 ]

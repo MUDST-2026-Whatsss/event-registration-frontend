@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ConsoleIcon as Icon, PageTopbar, UserMenu } from '@/features/console-shell/public.js'
+import { ConsoleIcon as Icon, PageTopbar } from '@/features/console-shell/public.js'
 import { ApiError } from '@/shared/lib/apiClient.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import {
@@ -268,9 +268,6 @@ onMounted(async () => {
             <Icon name="search" :size="15" />
             <input class="console-input" type="search" placeholder="Search events…" aria-label="Search" />
           </div>
-        </template>
-        <template #actions>
-          <UserMenu />
         </template>
       </PageTopbar>
 

@@ -3,7 +3,7 @@ export const superAdminAccessControlRoutes = [
     path: 'user-management',
     name: 'sa-user-management',
     component: () => import('./users/SuperAdminUsersPage.vue'),
-    meta: { heading: 'User Management' },
+    meta: { heading: 'User Management', ownTopbar: true },
   },
   {
     path: 'role-management',

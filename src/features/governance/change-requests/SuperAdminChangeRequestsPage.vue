@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import ChangeRequestReviewModal from './ChangeRequestReviewModal.vue'
 import { approveChangeRequest, listChangeRequests, rejectChangeRequest } from '../governanceApi.js'
 import { useToast } from '@/shared/composables/useToast.js'
@@ -10,6 +10,10 @@ import { useToast } from '@/shared/composables/useToast.js'
 ========================================================= */
 
 const changeRequests = ref([])
+const page = ref(0)
+const pageSize = ref(10)
+const totalPages = ref(0)
+const totalElements = ref(0)
 const loading = ref(false)
 const errorMessage = ref('')
 const { showToast } = useToast()
@@ -42,8 +46,12 @@ async function loadRequests() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const payload = await listChangeRequests({ size: 100 })
+    const payload = await listChangeRequests({
+      query: searchQuery.value.trim(), page: page.value, size: pageSize.value,
+    })
     changeRequests.value = payload.content.map(mapRequest)
+    totalPages.value = payload.totalPages
+    totalElements.value = payload.totalElements
   } catch (error) {
     errorMessage.value = error.message
   } finally {
@@ -57,22 +65,8 @@ async function loadRequests() {
 
 const searchQuery = ref('')
 
-const filteredRequests = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-
-  if (!query) {
-    return changeRequests.value
-  }
-
-  return changeRequests.value.filter((request) => {
-    return (
-      request.eventName.toLowerCase().includes(query) ||
-      request.submittedBy.toLowerCase().includes(query) ||
-      request.changeType.toLowerCase().includes(query) ||
-      request.status.toLowerCase().includes(query)
-    )
-  })
-})
+const filteredRequests = computed(() => changeRequests.value)
+let searchTimer
 
 /* =========================================================
    Review Modal
@@ -122,6 +116,15 @@ async function rejectRequest(comment) {
   } catch (error) { showToast({ title: error.message, variant: 'danger' }) }
 }
 
+watch(searchQuery, () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => {
+    page.value = 0
+    loadRequests()
+  }, 300)
+})
+watch([page, pageSize], loadRequests)
+onBeforeUnmount(() => window.clearTimeout(searchTimer))
 onMounted(loadRequests)
 </script>
 
@@ -170,8 +173,8 @@ onMounted(loadRequests)
         v-if="searchQuery"
         class="search-result-count"
       >
-        {{ filteredRequests.length }}
-        {{ filteredRequests.length === 1 ? 'request' : 'requests' }}
+        {{ totalElements }}
+        {{ totalElements === 1 ? 'request' : 'requests' }}
       </span>
 
     </div>
@@ -345,6 +348,17 @@ onMounted(loadRequests)
       </div>
 
     </section>
+
+    <ConsolePagination
+      :page="page"
+      :page-size="pageSize"
+      :total-elements="totalElements"
+      :total-pages="totalPages"
+      :loading="loading"
+      item-label="requests"
+      @page="page = $event"
+      @page-size="pageSize = $event; page = 0"
+    />
 
     <!-- =====================================================
          Review Modal

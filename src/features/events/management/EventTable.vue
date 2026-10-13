@@ -1,14 +1,18 @@
 <script setup>
 import EventRow from './EventRow.vue'
+import { ConsolePagination } from '@/features/console-shell/public.js'
 
 
 
 defineProps({
   events: { type: Array, default: () => [] },
   page: { type: Number, default: 0 },
+  pageSize: { type: Number, default: 10 },
+  totalElements: { type: Number, default: 0 },
   totalPages: { type: Number, default: 0 },
+  loading: { type: Boolean, default: false },
 })
-defineEmits(['page', 'edit', 'cancel', 'withdraw'])
+defineEmits(['page', 'page-size', 'edit', 'cancel', 'withdraw'])
 </script>
 
 <template>
@@ -32,14 +36,16 @@ defineEmits(['page', 'edit', 'cancel', 'withdraw'])
 
     <div v-if="events.length === 0" class="empty-row">No events found.</div>
 
-    <div class="pagination">
-      <span>Page {{ totalPages ? page + 1 : 0 }} of {{ totalPages }}</span>
-
-      <div class="pages">
-        <button type="button" :disabled="page === 0" @click="$emit('page', page - 1)">Previous</button>
-        <button type="button" :disabled="page + 1 >= totalPages" @click="$emit('page', page + 1)">Next</button>
-      </div>
-    </div>
+    <ConsolePagination
+      :page="page"
+      :page-size="pageSize"
+      :total-elements="totalElements"
+      :total-pages="totalPages"
+      :loading="loading"
+      item-label="events"
+      @page="$emit('page', $event)"
+      @page-size="$emit('page-size', $event)"
+    />
   </div>
 </template>
 
@@ -48,29 +54,19 @@ defineEmits(['page', 'edit', 'cancel', 'withdraw'])
   width: 100%;
   overflow-x: auto;
   background: white;
-  border: 1px solid #e7edf5;
-  border-top: none;
-  border-radius: 0 0 18px 18px;
 }
 .head {
   display: grid;
   grid-template-columns: 2.5fr 1fr 1fr 1fr 120px;
-  padding: 18px 22px;
-  font-size: var(--console-fs-sm);
-  color: #64748b;
+  padding: 13px 18px;
+  color: var(--console-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
   border-bottom: 1px solid #eef2f7;
   min-width: 860px;
 }
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  padding: 18px 22px;
-  min-width: 860px;
-}
-.pages {
-  display: flex;
-  gap: 10px;
-}
+.table :deep(.console-pagination) { min-width: 860px; padding: 13px 18px; }
 .empty-row { padding: 36px 22px; color: #64748b; text-align: center; }
 .active {
   background: #2563eb;
@@ -79,7 +75,7 @@ defineEmits(['page', 'edit', 'cancel', 'withdraw'])
 
 @media (max-width: 768px) {
   .head,
-  .pagination {
+  .table :deep(.console-pagination) {
     padding-inline: 16px;
   }
 }

@@ -1,4 +1,6 @@
 <script setup>
+import PasswordField from './PasswordField.vue'
+
 defineOptions({ inheritAttrs: false })
 
 defineProps({
@@ -38,7 +40,19 @@ const handleInput = (event) => {
 </script>
 
 <template>
-  <div class="auth-field" :class="`auth-field--${size}`">
+  <PasswordField
+    v-if="type === 'password'"
+    v-bind="$attrs"
+    :id="id"
+    :model-value="modelValue"
+    :label="label"
+    :error="error"
+    :size="size"
+    @update:model-value="emit('update:modelValue', $event)"
+    @input="emit('input', $event)"
+    @blur="emit('blur', $event)"
+  />
+  <div v-else class="auth-field" :class="`auth-field--${size}`">
     <label class="sr-only" :for="id">{{ label }}</label>
     <input
       v-bind="$attrs"
