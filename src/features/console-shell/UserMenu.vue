@@ -12,6 +12,8 @@ const props = defineProps({
   name: { type: String, default: '' },
   role: { type: String, default: '' },
   avatar: { type: String, default: '' },
+  sidebar: { type: Boolean, default: false },
+  compact: { type: Boolean, default: false },
 })
 
 const displayName = computed(() => props.name || currentUser.value?.name || 'Signed out')
@@ -34,9 +36,9 @@ async function signOut() {
 </script>
 
 <template>
-  <div class="console-user-menu">
+  <div class="console-user-menu" :class="{ sidebar, compact }">
     <img v-if="displayAvatar" :src="displayAvatar" :alt="displayName" class="console-avatar" />
-    <span class="console-user-info">
+    <span v-if="!compact" class="console-user-info">
       <span class="console-user-name">{{ displayName }}</span>
       <span v-if="displayRole" class="console-user-role">{{ displayRole }}</span>
     </span>
@@ -67,6 +69,28 @@ async function signOut() {
   color: var(--console-text-muted);
   font-family: inherit;
 }
+.console-user-menu.sidebar {
+  width: 100%;
+  margin-top: auto;
+  padding: 16px 2px 0;
+  border-top: 1px solid var(--console-border);
+}
+.console-user-menu.sidebar .console-user-info { min-width: 0; flex: 1; }
+.console-user-menu.sidebar .console-user-name,
+.console-user-menu.sidebar .console-user-role {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.console-user-menu.sidebar.compact {
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+}
+.console-user-menu.sidebar.compact .console-sign-out,
+.console-user-menu.sidebar.compact .console-switch-role { margin-left: 0; }
 
 .console-sign-out,
 .console-switch-role {

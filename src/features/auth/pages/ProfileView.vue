@@ -1,10 +1,11 @@
 <script setup>
-import { Camera, Check, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, Trash2, UserRound, X } from '@lucide/vue'
+import { Camera, Check, Mail, Phone, ShieldCheck, Trash2, UserRound, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import AppToast from '@/shared/ui/AppToast.vue'
+import PasswordField from '../components/PasswordField.vue'
 import { useAuth } from '../composables/useAuth.js'
 import { useProfile } from '../composables/useProfile.js'
 import { ApiError } from '@/shared/lib/apiClient.js'
@@ -12,7 +13,6 @@ import { ApiError } from '@/shared/lib/apiClient.js'
 const { profile, updateProfile, setAvatar, removeAvatar } = useProfile()
 const saved = ref(false)
 const avatarInput = ref(null)
-const showPasswords = ref(false)
 const securityOpen = ref(false)
 const securityDialog = ref(null)
 const passwordStatus = ref(null)
@@ -148,7 +148,6 @@ async function savePassword() {
   passwordSubmitted.value = false
   Object.keys(passwordTouched).forEach((key) => { passwordTouched[key] = false })
   securityOpen.value = false
-  showPasswords.value = false
   isChangingPassword.value = false
   await router.push({
     path: '/login',
@@ -164,7 +163,6 @@ async function openSecurity() {
 
 function closeSecurity() {
   securityOpen.value = false
-  showPasswords.value = false
   passwordForm.current = ''
   passwordForm.next = ''
   passwordForm.confirm = ''
@@ -227,11 +225,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <button class="security-dialog__close" type="button" aria-label="Close" title="Close" @click="closeSecurity"><X :size="20" /></button>
         <div class="security-dialog__heading"><span><ShieldCheck :size="23" /></span><div><h2 id="security-title">Change password</h2><p>Choose a password with at least 8 characters.</p></div></div>
         <div class="security-fields">
-          <label><span>Current password</span><div :class="{ invalid: currentPasswordError }"><LockKeyhole :size="17" /><input v-model="passwordForm.current" :type="showPasswords ? 'text' : 'password'" autocomplete="current-password" :aria-invalid="Boolean(currentPasswordError)" aria-describedby="current-password-error" @blur="passwordTouched.current = true" @input="passwordApiError = ''" /></div><small v-if="currentPasswordError" id="current-password-error" class="security-error">{{ currentPasswordError }}</small></label>
-          <label><span>New password</span><div :class="{ invalid: newPasswordError }"><LockKeyhole :size="17" /><input v-model="passwordForm.next" :type="showPasswords ? 'text' : 'password'" autocomplete="new-password" :aria-invalid="Boolean(newPasswordError)" aria-describedby="new-password-error password-requirements" @blur="passwordTouched.next = true" /></div><small v-if="newPasswordError" id="new-password-error" class="security-error">{{ newPasswordError }}</small><ul id="password-requirements" class="password-requirements"><li :class="{ passed: passwordRules.length }"><Check :size="13" />8+ characters</li><li :class="{ passed: passwordRules.lowercase && passwordRules.uppercase }"><Check :size="13" />Upper &amp; lowercase</li><li :class="{ passed: passwordRules.number }"><Check :size="13" />One number</li></ul></label>
-          <label><span>Confirm new password</span><div :class="{ invalid: confirmPasswordError }"><LockKeyhole :size="17" /><input v-model="passwordForm.confirm" :type="showPasswords ? 'text' : 'password'" autocomplete="new-password" :aria-invalid="Boolean(confirmPasswordError)" aria-describedby="confirm-password-error" @blur="passwordTouched.confirm = true" /></div><small v-if="confirmPasswordError" id="confirm-password-error" class="security-error">{{ confirmPasswordError }}</small></label>
+          <PasswordField id="current-password" v-model="passwordForm.current" variant="profile" label="Current password" autocomplete="current-password" :error="currentPasswordError" @blur="passwordTouched.current = true" @input="passwordApiError = ''" />
+          <div class="security-field-group">
+            <PasswordField id="profile-new-password" v-model="passwordForm.next" variant="profile" label="New password" autocomplete="new-password" :error="newPasswordError" described-by="password-requirements" @blur="passwordTouched.next = true" />
+            <ul id="password-requirements" class="password-requirements"><li :class="{ passed: passwordRules.length }"><Check :size="13" />8+ characters</li><li :class="{ passed: passwordRules.lowercase && passwordRules.uppercase }"><Check :size="13" />Upper &amp; lowercase</li><li :class="{ passed: passwordRules.number }"><Check :size="13" />One number</li></ul>
+          </div>
+          <PasswordField id="confirm-profile-new-password" v-model="passwordForm.confirm" variant="profile" label="Confirm new password" autocomplete="new-password" :error="confirmPasswordError" @blur="passwordTouched.confirm = true" />
         </div>
-        <button class="password-visibility" type="button" :title="showPasswords ? 'Hide passwords' : 'Show passwords'" @click="showPasswords = !showPasswords"><EyeOff v-if="showPasswords" :size="17" /><Eye v-else :size="17" />{{ showPasswords ? 'Hide passwords' : 'Show passwords' }}</button>
         <div class="security-dialog__actions"><button type="button" @click="closeSecurity">Cancel</button><button class="primary" type="submit" :disabled="!isPasswordFormValid || isChangingPassword">{{ isChangingPassword ? 'Updating…' : 'Update password' }}</button></div>
       </form>
     </div>
@@ -291,20 +291,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .security-dialog__heading h2 { margin: 0; font-size: 1.4rem; letter-spacing: 0; }
 .security-dialog__heading p { margin: 2px 0 0; color: var(--neutral-600); font-size: .76rem; }
 .security-fields { display: grid; padding-block: 24px 16px; gap: 14px; }
-.security-fields label { display: grid; gap: 6px; }
-.security-fields label > span { font-size: .78rem; font-weight: 500; }
-.security-fields label > div { display: flex; height: 44px; padding-inline: 12px; align-items: center; gap: 9px; color: var(--neutral-600); background: #fafaff; border: 1px solid #cbd0df; border-radius: 5px; }
-.security-fields label > div:focus-within { color: #2455db; border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgb(91 124 250 / 14%); }
-.security-fields label > div.invalid { color: #b93643; border-color: var(--semantic-error); }
-.security-fields label > div.invalid:focus-within { box-shadow: 0 0 0 3px rgb(243 130 136 / 16%); }
-.security-fields input { width: 100%; min-width: 0; padding: 0; color: #20263a; background: transparent; border: 0; outline: 0; }
-.security-fields small { color: var(--neutral-600); font-size: .68rem; }
-.security-fields small.security-error { color: #b93643; }
+.security-field-group { display: grid; gap: 6px; }
 .password-requirements { display: flex; margin: 2px 0 0; padding: 0; flex-wrap: wrap; gap: 6px 12px; list-style: none; }
 .password-requirements li { display: inline-flex; align-items: center; gap: 3px; color: #8a8e99; font-size: .66rem; }
 .password-requirements li.passed { color: #27885a; }
-.password-visibility { display: inline-flex; height: 32px; padding-inline: 7px; align-items: center; gap: 6px; color: #526078; background: transparent; border-radius: 4px; cursor: pointer; font-size: .75rem; }
-.password-visibility:hover { color: #2455db; background: #f2f4ff; }
 .security-dialog__actions { display: grid; margin-top: 18px; padding-top: 18px; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--neutral-200); }
 .security-dialog__actions button { min-height: 43px; color: #33405f; background: var(--neutral-0); border: 1px solid #cbd0df; border-radius: 5px; cursor: pointer; font-size: .76rem; font-weight: 500; }
 .security-dialog__actions button.primary { color: var(--neutral-0); background: #2455db; border-color: #2455db; }

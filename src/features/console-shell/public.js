@@ -1,4 +1,6 @@
 export { default as ConsoleIcon } from './ConsoleIcon.vue'
 export { default as ConsoleLayout } from './ConsoleLayout.vue'
+export { default as ConsolePageHeader } from './ConsolePageHeader.vue'
+export { default as ConsolePagination } from './ConsolePagination.vue'
 export { default as PageTopbar } from './PageTopbar.vue'
 export { default as UserMenu } from './UserMenu.vue'

@@ -90,21 +90,23 @@ defineEmits(['edit', 'cancel', 'withdraw'])
   display: grid;
   grid-template-columns: 2.5fr 1fr 1fr 1fr 120px;
   align-items: center;
-  padding: 18px 22px;
+  padding: 13px 18px;
   border-bottom: 1px solid #f1f5f9;
   min-width: 860px;
+  transition: background .15s ease;
 }
+.row:hover { background: #fafbff; }
 
 .info {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
 }
 
 .event-image {
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
+  width: 46px;
+  height: 46px;
+  border-radius: 9px;
   background: #f1f5f9;
   display: flex;
   align-items: center;
@@ -114,19 +116,19 @@ defineEmits(['edit', 'cancel', 'withdraw'])
 .event-image img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 
 .info h4 {
-  margin: 0 0 5px;
-  font-size: var(--console-fs-md);
+  margin: 0 0 3px;
+  font-size: var(--console-fs-base);
 }
 
 .info p {
   margin: 0;
   color: #64748b;
-  font-size: var(--console-fs-base);
+  font-size: var(--console-fs-sm);
 }
 
 .date {
   color: #334155;
-  font-size: var(--console-fs-md);
+  font-size: var(--console-fs-sm);
 }
 
 .registration {
@@ -150,7 +152,8 @@ defineEmits(['edit', 'cancel', 'withdraw'])
 
 .actions {
   display: flex;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .actions button, .actions a {

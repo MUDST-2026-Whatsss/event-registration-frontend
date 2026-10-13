@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import { getAdminEvent } from '@/features/events/api/adminEventsApi.js'
 import { listEventRegistrations } from '../api/registrationsApi.js'
 
@@ -11,8 +11,10 @@ const router = useRouter()
 const event = ref({ id: route.params.id, name: 'Loading...' })
 const participants = ref([])
 const errorMessage = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
+const currentPage = ref(0)
+const pageSize = ref(10)
+const totalPages = ref(0)
+const totalElements = ref(0)
 
 const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
@@ -37,9 +39,12 @@ function mapParticipant(registration) {
 async function loadParticipants() {
   errorMessage.value = ''
   try {
-    const payload = await listEventRegistrations(route.params.id, { page: currentPage.value - 1 })
+    const payload = await listEventRegistrations(route.params.id, {
+      page: currentPage.value, size: pageSize.value,
+    })
     participants.value = payload.content.map(mapParticipant)
-    totalPages.value = Math.max(1, payload.totalPages)
+    totalPages.value = payload.totalPages
+    totalElements.value = payload.totalElements
   } catch (cause) {
     errorMessage.value = cause?.message || 'Unable to load participants.'
   }
@@ -47,6 +52,12 @@ async function loadParticipants() {
 
 function changePage(page) {
   currentPage.value = page
+  loadParticipants()
+}
+
+function changePageSize(size) {
+  pageSize.value = size
+  currentPage.value = 0
   loadParticipants()
 }
 
@@ -112,7 +123,7 @@ onMounted(async () => {
 
       <!-- HEADER -->
       <div class="participants-header">
-        Showing {{ participants.length }} users
+        {{ totalElements.toLocaleString() }} registered users
       </div>
 
       <p v-if="errorMessage" class="participants-error" role="alert">{{ errorMessage }}</p>
@@ -239,18 +250,15 @@ onMounted(async () => {
     </section>
 
     <!-- FOOTER -->
-    <div class="console-pagination">
-      <span>Showing 1 to {{ participants.length }} of {{ participants.length }} users</span>
-      <div class="console-pagination-controls">
-        <button type="button" class="console-icon-btn" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">
-          <Icon name="chevron-left" :size="15" />
-        </button>
-        <button type="button" class="console-page-num active">{{ currentPage }}</button>
-        <button type="button" class="console-icon-btn" :disabled="currentPage >= totalPages" @click="changePage(currentPage + 1)">
-          <Icon name="chevron-right" :size="15" />
-        </button>
-      </div>
-    </div>
+    <ConsolePagination
+      :page="currentPage"
+      :page-size="pageSize"
+      :total-elements="totalElements"
+      :total-pages="totalPages"
+      item-label="users"
+      @page="changePage"
+      @page-size="changePageSize"
+    />
 
   </main>
 </template>

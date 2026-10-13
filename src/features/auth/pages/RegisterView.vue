@@ -5,6 +5,15 @@ import AuthLayout from '../components/AuthLayout.vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { ApiError } from '@/shared/lib/apiClient.js'
+import {
+  REGISTER_LIMITS,
+  normalizePhone,
+  validateConfirmPassword as getConfirmPasswordError,
+  validateEmail as getEmailError,
+  validateName,
+  validatePassword as getPasswordError,
+  validatePhone as getPhoneError,
+} from '../lib/registerValidation.js'
 
 const router = useRouter()
 const { register } = useAuth()
@@ -30,85 +39,36 @@ const errors = reactive({
 const formStatus = ref('')
 const isSubmitting = ref(false)
 
-const validateRequired = (field, label) => {
-  if (!form[field].trim()) {
-    errors[field] = `Please enter your ${label}.`
-    return false
-  }
-
-  errors[field] = ''
-  return true
+const validateNameField = (field, label) => {
+  errors[field] = validateName(form[field], label)
+  return !errors[field]
 }
 
 const validatePhone = () => {
-  const normalizedPhone = form.phone.replace(/[\s-]/g, '')
-
-  if (!normalizedPhone) {
-    errors.phone = 'Please enter your phone number.'
-    return false
-  }
-
-  if (!/^0\d{8,9}$/.test(normalizedPhone)) {
-    errors.phone = 'Please enter a valid phone number.'
-    return false
-  }
-
-  errors.phone = ''
-  return true
+  errors.phone = getPhoneError(form.phone)
+  return !errors.phone
 }
 
 const validateEmail = () => {
-  const value = form.email.trim()
-
-  if (!value) {
-    errors.email = 'Please enter your email.'
-    return false
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-    errors.email = 'Please enter a valid email address.'
-    return false
-  }
-
-  errors.email = ''
-  return true
+  errors.email = getEmailError(form.email)
+  return !errors.email
 }
 
 const validatePassword = () => {
-  if (!form.password) {
-    errors.password = 'Please enter your password.'
-    return false
-  }
-
-  if (form.password.length < 8 || !/[a-z]/.test(form.password) || !/[A-Z]/.test(form.password) || !/\d/.test(form.password)) {
-    errors.password = 'Use 8+ characters with uppercase, lowercase, and a number.'
-    return false
-  }
-
-  errors.password = ''
-  return true
+  errors.password = getPasswordError(form.password)
+  return !errors.password
 }
 
 const validateConfirmPassword = () => {
-  if (!form.confirmPassword) {
-    errors.confirmPassword = 'Please confirm your password.'
-    return false
-  }
-
-  if (form.confirmPassword !== form.password) {
-    errors.confirmPassword = 'Passwords do not match.'
-    return false
-  }
-
-  errors.confirmPassword = ''
-  return true
+  errors.confirmPassword = getConfirmPasswordError(form.confirmPassword, form.password)
+  return !errors.confirmPassword
 }
 
 const handleSubmit = async () => {
   formStatus.value = ''
   const validationResults = [
-    validateRequired('firstName', 'first name'),
-    validateRequired('lastName', 'last name'),
+    validateNameField('firstName', 'first name'),
+    validateNameField('lastName', 'last name'),
     validatePhone(),
     validateEmail(),
     validatePassword(),
@@ -120,7 +80,7 @@ const handleSubmit = async () => {
     try {
       await register({
         ...form,
-        phoneNumber: form.phone.replace(/[\s-]/g, ''),
+        phoneNumber: normalizePhone(form.phone),
       })
       await router.push({ path: '/login', query: { registered: 'true', email: form.email.trim() } })
     } catch (error) {
@@ -154,8 +114,9 @@ const handleSubmit = async () => {
         name="firstName"
         autocomplete="given-name"
         placeholder="First name"
+        :maxlength="REGISTER_LIMITS.name"
         :error="errors.firstName"
-        @blur="validateRequired('firstName', 'first name')"
+        @blur="validateNameField('firstName', 'first name')"
         @input="errors.firstName = ''"
       />
 
@@ -166,8 +127,9 @@ const handleSubmit = async () => {
         name="lastName"
         autocomplete="family-name"
         placeholder="Last name"
+        :maxlength="REGISTER_LIMITS.name"
         :error="errors.lastName"
-        @blur="validateRequired('lastName', 'last name')"
+        @blur="validateNameField('lastName', 'last name')"
         @input="errors.lastName = ''"
       />
 
@@ -179,7 +141,8 @@ const handleSubmit = async () => {
         type="tel"
         inputmode="tel"
         autocomplete="tel"
-        placeholder="Phone number"
+        placeholder="e.g. 081-234-5678"
+        :maxlength="REGISTER_LIMITS.phone"
         :error="errors.phone"
         @blur="validatePhone"
         @input="errors.phone = ''"
@@ -193,7 +156,8 @@ const handleSubmit = async () => {
         type="email"
         inputmode="email"
         autocomplete="email"
-        placeholder="Email"
+        placeholder="name@example.com"
+        :maxlength="REGISTER_LIMITS.email"
         :error="errors.email"
         @blur="validateEmail"
         @input="errors.email = ''"
@@ -206,7 +170,8 @@ const handleSubmit = async () => {
         name="password"
         type="password"
         autocomplete="new-password"
-        placeholder="Password"
+        placeholder="8–128 characters"
+        :maxlength="REGISTER_LIMITS.password"
         :error="errors.password"
         @blur="validatePassword"
         @input="errors.password = ''"
@@ -219,7 +184,8 @@ const handleSubmit = async () => {
         name="confirmPassword"
         type="password"
         autocomplete="new-password"
-        placeholder="Confirm Password"
+        placeholder="Re-enter your password"
+        :maxlength="REGISTER_LIMITS.password"
         :error="errors.confirmPassword"
         @blur="validateConfirmPassword"
         @input="errors.confirmPassword = ''"

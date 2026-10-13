@@ -14,8 +14,15 @@ export function listEventCategories() {
   return apiRequest('/event-categories')
 }
 
-export function listAdminEvents({ status, query, page = 0, size = 20 } = {}) {
-  return authenticatedApiRequest(`/admin/events${queryString({ status, query, page, size, sort: 'updatedAt,desc' })}`)
+export function listAdminEvents({ status, eventCategoryId, query, page = 0, size = 20 } = {}) {
+  return authenticatedApiRequest(`/admin/events${queryString({
+    status,
+    eventCategoryId,
+    query,
+    page,
+    size,
+    sort: 'updatedAt,desc',
+  })}`)
 }
 
 export function getAdminEvent(eventId) {

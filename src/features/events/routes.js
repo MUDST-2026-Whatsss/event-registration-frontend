@@ -30,6 +30,7 @@ export const adminEventRoutes = [
     component: () => import('./management/AdminEventsPage.vue'),
     meta: {
       heading: 'All Events',
+      ownTopbar: true,
       title: 'All Events | Eventsss',
     },
   },

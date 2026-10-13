@@ -16,6 +16,6 @@ export const superAdminDashboardRoutes = [
     path: 'dashboard',
     name: 'sa-dashboard',
     component: () => import('./SuperAdminDashboardPage.vue'),
-    meta: { heading: 'Dashboard' },
+    meta: { heading: 'Dashboard', ownTopbar: true },
   },
 ]

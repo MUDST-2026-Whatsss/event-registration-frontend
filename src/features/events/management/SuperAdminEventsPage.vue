@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useToast } from '@/shared/composables/useToast.js'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import EventAdminsModal from './EventAdminsModal.vue'
 import {
   listAdminEvents, listEventAdmins, listEventAdminCandidates,
@@ -13,6 +13,7 @@ const availableAdmins = ref([])
 const searchQuery = ref('')
 const activeTab = ref('All')
 const page = ref(0)
+const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
 const loading = ref(false)
@@ -52,7 +53,7 @@ async function loadEvents() {
   errorMessage.value = ''
   try {
     const payload = await listAdminEvents({
-      status: statusMap[activeTab.value], query: searchQuery.value.trim(), page: page.value, size: 10,
+      status: statusMap[activeTab.value], query: searchQuery.value.trim(), page: page.value, size: pageSize.value,
     })
     events.value = payload.content.map(mapEvent)
     totalPages.value = payload.totalPages
@@ -117,7 +118,7 @@ function registrationPercent(event) {
 let searchTimer
 watch(searchQuery, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page.value = 0; loadEvents() }, 300) })
 watch(activeTab, loadEvents)
-watch(page, loadEvents)
+watch([page, pageSize], loadEvents)
 onMounted(loadEvents)
 </script>
 
@@ -580,37 +581,17 @@ onMounted(loadEvents)
 
       <!-- Pagination -->
 
-      <div class="console-pagination table-footer">
-
-        <span>
-          Page {{ totalPages ? page + 1 : 0 }} of {{ totalPages }}
-        </span>
-
-        <div class="console-pagination-controls">
-
-          <button class="console-page-num" :disabled="page === 0" @click="page--">
-
-            <Icon
-              name="chevron-left"
-              :size="14"
-            />
-
-          </button>
-
-          <button class="console-page-num active">{{ page + 1 }}</button>
-
-          <button class="console-page-num" :disabled="page + 1 >= totalPages" @click="page++">
-
-            <Icon
-              name="chevron-right"
-              :size="14"
-            />
-
-          </button>
-
-        </div>
-
-      </div>
+      <ConsolePagination
+        class="table-footer"
+        :page="page"
+        :page-size="pageSize"
+        :total-elements="totalElements"
+        :total-pages="totalPages"
+        :loading="loading"
+        item-label="events"
+        @page="page = $event"
+        @page-size="pageSize = $event; page = 0"
+      />
 
     </section>
 

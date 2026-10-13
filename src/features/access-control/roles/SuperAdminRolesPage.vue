@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
+import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import { useAuth } from '@/features/auth/public.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import RoleEditorModal from './RoleEditorModal.vue'
@@ -12,6 +12,8 @@ const { showToast } = useToast()
 const { syncAuth } = useAuth()
 const search = ref('')
 const roles = ref([])
+const page = ref(0)
+const pageSize = ref(10)
 const permissions = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -24,6 +26,11 @@ const filteredRoles = computed(() => {
   const query = search.value.trim().toLowerCase()
   if (!query) return roles.value
   return roles.value.filter((role) => role.name.toLowerCase().includes(query))
+})
+const totalPages = computed(() => Math.ceil(filteredRoles.value.length / pageSize.value))
+const paginatedRoles = computed(() => {
+  const start = page.value * pageSize.value
+  return filteredRoles.value.slice(start, start + pageSize.value)
 })
 
 async function load() {
@@ -86,6 +93,8 @@ async function removeRole() {
   }
 }
 
+watch(search, () => { page.value = 0 })
+watch(pageSize, () => { page.value = 0 })
 onMounted(load)
 </script>
 
@@ -109,7 +118,7 @@ onMounted(load)
         <table class="console-table">
           <thead><tr><th>Role</th><th>Scope</th><th>Permissions</th><th>Assigned Users</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
           <tbody>
-            <tr v-for="role in filteredRoles" :key="role.roleId">
+            <tr v-for="role in paginatedRoles" :key="role.roleId">
               <td><div class="role-name"><strong>{{ role.name }}</strong><span v-if="role.system"><small>System role</small></span></div></td>
               <td>{{ role.scopeType.replaceAll('_', ' ') }}</td>
               <td><span class="permission-count">{{ role.permissions.length }}</span> permissions</td>
@@ -122,6 +131,16 @@ onMounted(load)
           </tbody>
         </table>
       </div>
+      <ConsolePagination
+        :page="page"
+        :page-size="pageSize"
+        :total-elements="filteredRoles.length"
+        :total-pages="totalPages"
+        :loading="loading"
+        item-label="roles"
+        @page="page = $event"
+        @page-size="pageSize = $event"
+      />
     </div>
   </div>
 
@@ -140,5 +159,6 @@ onMounted(load)
 .actions { display: flex; justify-content: flex-end; }
 .empty { text-align: center; color: var(--console-text-muted); padding: 32px; }
 .page-alert { margin-bottom: 16px; border: 1px solid #fecaca; border-radius: var(--console-radius); padding: 12px 14px; background: #fef2f2; color: #b91c1c; }
+.console-card :deep(.console-pagination) { padding: 14px 22px; border-top: 1px solid var(--console-border-soft); }
 @media (max-width: 600px) { .console-card-header .console-search { width: 100%; } }
 </style>
