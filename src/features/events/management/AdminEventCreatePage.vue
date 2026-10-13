@@ -1,11 +1,12 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ConsoleIcon as Icon, PageTopbar } from '@/features/console-shell/public.js'
 import { ApiError } from '@/shared/lib/apiClient.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import {
   createAdminEvent,
+  findEventInvitee,
   createEventChangeRequest,
   deleteEventImage,
   getAdminEvent,
@@ -29,6 +30,7 @@ const saving = ref(false)
 const uploading = ref(false)
 const pageError = ref('')
 const fieldErrors = ref({})
+const errorBanner = ref(null)
 const imageInput = ref(null)
 const imageObjectKey = ref('')
 const imageUrl = ref('')
@@ -36,6 +38,37 @@ const newlyUploadedImage = ref(false)
 const showAdminTip = ref(true)
 const changeReason = ref('')
 const changeRequests = ref([])
+const invitedUsers = ref([])
+const inviteeEmail = ref('')
+const inviteeError = ref('')
+const lookingUpInvitee = ref(false)
+
+async function addInvitee() {
+  inviteeError.value = ''
+  const email = inviteeEmail.value.trim()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    inviteeError.value = 'Enter the email address of an existing user.'
+    return
+  }
+  if (invitedUsers.value.length >= 100) {
+    inviteeError.value = 'You can invite up to 100 users per event.'
+    return
+  }
+  lookingUpInvitee.value = true
+  try {
+    const user = await findEventInvitee(email)
+    if (invitedUsers.value.some((item) => item.userId === user.userId)) {
+      inviteeError.value = 'This user is already on the invitation list.'
+      return
+    }
+    invitedUsers.value.push(user)
+    inviteeEmail.value = ''
+  } catch (error) {
+    inviteeError.value = error.message || 'Unable to find this user.'
+  } finally {
+    lookingUpInvitee.value = false
+  }
+}
 
 const form = ref({
   title: '', description: '', category: '', locationType: 'ONSITE', location: '', onlineUrl: '',
@@ -45,7 +78,7 @@ const form = ref({
 })
 
 const effectivePrice = computed(() =>
-  form.value.pricingType === 'free' ? 0 : Number(form.value.price || 0))
+  form.value.pricingType === 'free' ? 0 : form.value.price === '' ? null : Number(form.value.price))
 const pageTitle = computed(() => eventId.value ? 'Edit Event' : 'Create New Event')
 const pendingChangeRequest = computed(() =>
   changeRequests.value.find((request) => request.status === 'PENDING'))
@@ -72,7 +105,7 @@ function buildPayload() {
     title: form.value.title.trim(),
     summary: form.value.description.trim().slice(0, 500) || null,
     description: form.value.description.trim() || null,
-    eventCategoryId: form.value.category,
+    eventCategoryId: form.value.category || null,
     eventType: form.value.pricingType === 'free' ? 'FREE' : 'PAID',
     price: effectivePrice.value,
     currency: form.value.currency,
@@ -88,18 +121,45 @@ function buildPayload() {
     registrationStartAt: toInstant(form.value.registrationStart),
     registrationEndAt: toInstant(form.value.deadline),
     cancellationDeadlineAt: form.value.allowCancel ? toInstant(form.value.deadline) : null,
-    maximumParticipants: Number(form.value.maxParticipants),
+    maximumParticipants: form.value.maxParticipants === '' ? null : Number(form.value.maxParticipants),
     rules: form.value.rules.trim() || null,
     contactEmail: form.value.contactEmail.trim() || null,
     eligibility: form.value.eligibility.trim() || null,
     allowCancellation: form.value.allowCancel,
     showRemainingSeats: form.value.showSeats,
+    invitedUserIds: invitedUsers.value.map((user) => user.userId),
   }
 }
 
 function applyError(error) {
   fieldErrors.value = error instanceof ApiError && error.fieldErrors ? error.fieldErrors : {}
   pageError.value = error instanceof Error ? error.message : 'Unable to save the event.'
+  nextTick(() => {
+    errorBanner.value?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    errorBanner.value?.focus({ preventScroll: true })
+  })
+}
+
+function validateForm(forReview = false) {
+  const errors = {}
+  if (!form.value.title.trim()) errors.title = 'Enter an event title to save a draft.'
+  if (inviteeEmail.value.trim()) errors.invitedUserIds = 'Click Add user to include this email, or clear it before saving.'
+  if (forReview) {
+    if (!form.value.category) errors.eventCategoryId = 'Choose an event category.'
+    if (!form.value.date || !form.value.startTime) errors.startAt = 'Choose the event date and start time.'
+    if (!form.value.date || !form.value.endTime) errors.endAt = 'Choose the event date and end time.'
+    if (!form.value.registrationStart) errors.registrationStartAt = 'Choose when registration opens.'
+    if (!form.value.deadline) errors.registrationEndAt = 'Choose the registration deadline.'
+    if (!Number.isInteger(Number(form.value.maxParticipants)) || Number(form.value.maxParticipants) < 1) errors.maximumParticipants = 'Enter a participant limit of at least 1.'
+    if (form.value.locationType !== 'ONLINE' && !form.value.location.trim()) errors.locationName = 'Enter a venue.'
+    if (form.value.locationType !== 'ONSITE' && !form.value.onlineUrl.trim()) errors.onlineUrl = 'Enter the online event URL.'
+    if (form.value.pricingType === 'paid' && !(Number(form.value.price) > 0)) errors.price = 'Enter a positive ticket price.'
+  }
+  if (!Object.keys(errors).length) return true
+  applyError(new ApiError(forReview ? 'Complete the required details before submitting for review.' : 'A draft needs an event title.', {
+    fieldErrors: errors,
+  }))
+  return false
 }
 
 async function persistDraft() {
@@ -114,6 +174,7 @@ async function persistDraft() {
 }
 
 async function saveDraft() {
+  if (!validateForm()) return
   saving.value = true
   pageError.value = ''
   fieldErrors.value = {}
@@ -129,6 +190,7 @@ async function saveDraft() {
 }
 
 async function submitForm() {
+  if (!validateForm(true)) return
   saving.value = true
   pageError.value = ''
   fieldErrors.value = {}
@@ -222,6 +284,7 @@ function applyEvent(event) {
   status.value = event.status
   imageObjectKey.value = event.imageObjectKey || ''
   imageUrl.value = event.imageUrl || ''
+  invitedUsers.value = event.invitedUsers || []
   const start = localDateTime(event.startAt)
   const end = localDateTime(event.endAt)
   Object.assign(form.value, {
@@ -229,9 +292,9 @@ function applyEvent(event) {
     category: event.category?.eventCategoryId || '', locationType: event.locationType || 'ONSITE',
     location: event.locationName || '', onlineUrl: event.onlineUrl || '', date: start.slice(0, 10),
     startTime: start.slice(11, 16), endTime: end.slice(11, 16),
-    maxParticipants: event.maximumParticipants, registrationStart: localDateTime(event.registrationStartAt),
+    maxParticipants: event.maximumParticipants ?? '', registrationStart: localDateTime(event.registrationStartAt),
     deadline: localDateTime(event.registrationEndAt), pricingType: event.eventType === 'PAID' ? 'paid' : 'free',
-    price: event.eventType === 'PAID' ? event.price : '', currency: event.currency || 'THB',
+    price: event.eventType === 'PAID' ? event.price ?? '' : '', currency: event.currency || 'THB',
     allowCancel: event.allowCancellation, showSeats: event.showRemainingSeats, rules: event.rules || '',
     contactEmail: event.contactEmail || '', eligibility: event.eligibility || '',
   })
@@ -273,13 +336,14 @@ onMounted(async () => {
 
       <section class="content-scroll">
         <div class="form-container">
-          <div v-if="pageError" class="form-alert" role="alert">
+          <div v-if="pageError" ref="errorBanner" class="form-alert" role="alert" tabindex="-1">
             <strong>{{ pageError }}</strong>
             <ul v-if="Object.keys(fieldErrors).length">
               <li v-for="(message, field) in fieldErrors" :key="field">{{ field }}: {{ message }}</li>
             </ul>
           </div>
           <p v-if="loading" class="loading-message">Loading event data…</p>
+          <p v-if="!isPublished" class="draft-hint">Save a draft with just an event title. Complete the remaining details before submitting for review.</p>
           
           <div class="stepper">
             <div class="step" :class="{ active: ['DRAFT', 'REJECTED'].includes(status) }">
@@ -525,6 +589,31 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div v-if="!isPublished" class="card form-section invitees-section">
+            <div class="section-header">
+              <h2>Invite participants</h2>
+              <p>Add existing users to your event invitation list. Invitations are saved with the draft and appear in their My Registrations after publication. Users confirm their own registration; invitations do not reserve seats.</p>
+            </div>
+            <label for="invitee-email">USER EMAIL</label>
+            <div class="invitee-input-row">
+              <input id="invitee-email" v-model="inviteeEmail" type="email" placeholder="e.g. attendee@example.com" :aria-invalid="Boolean(inviteeError)" aria-describedby="invitee-error" @keydown.enter.prevent="addInvitee" />
+              <button type="button" class="btn-upload" :disabled="lookingUpInvitee || !canEdit" @click="addInvitee">
+                <Icon name="plus" :size="16" aria-hidden="true" />
+                {{ lookingUpInvitee ? 'Searching…' : 'Add user' }}
+              </button>
+            </div>
+            <p v-if="inviteeError" id="invitee-error" class="invitee-error" role="alert">{{ inviteeError }}</p>
+            <ul v-if="invitedUsers.length" class="invitee-list">
+              <li v-for="user in invitedUsers" :key="user.userId">
+                <span>{{ user.email }}</span>
+                <button type="button" :aria-label="`Remove ${user.email} from invitation list`" @click="invitedUsers = invitedUsers.filter((item) => item.userId !== user.userId)">
+                  <Icon name="x" :size="16" aria-hidden="true" />
+                </button>
+              </li>
+            </ul>
+            <p v-else class="field-hint">No users added yet. This is optional.</p>
+          </div>
+
           <div v-if="isPublished" class="card form-section">
             <div class="section-header">
               <h2>Reason for change</h2>
@@ -540,13 +629,13 @@ onMounted(async () => {
           <div class="form-actions">
             <button type="button" class="btn-cancel" @click="router.push('/admin/all-events')">Cancel</button>
             <div class="right-actions">
-              <button v-if="!isPublished" type="button" class="btn-draft" :disabled="saving || loading || !canEdit" @click="saveDraft">
+              <button v-if="!isPublished" type="button" class="btn-draft" :disabled="saving || loading || lookingUpInvitee || uploading || !canEdit" @click="saveDraft">
                 {{ saving ? 'Saving…' : 'Save as Draft' }}
               </button>
-              <button v-if="!isPublished" type="button" class="btn-submit" :disabled="saving || loading || !canEdit" @click="submitForm">
+              <button v-if="!isPublished" type="button" class="btn-submit" :disabled="saving || loading || lookingUpInvitee || uploading || !canEdit" @click="submitForm">
                 Submit for Review
               </button>
-              <button v-else type="button" class="btn-submit" :disabled="saving || loading || !canEdit" @click="submitChangeRequest">
+              <button v-else type="button" class="btn-submit" :disabled="saving || loading || uploading || !canEdit" @click="submitChangeRequest">
                 {{ saving ? 'Submitting…' : 'Submit Change Request' }}
               </button>
             </div>
@@ -603,6 +692,16 @@ onMounted(async () => {
   max-width: 1200px;
   margin-inline: auto;
 }
+.draft-hint { margin: 0 0 18px; color: var(--console-text-secondary); font-size: 13px; }
+.invitee-input-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.invitee-input-row input { flex: 1; min-width: 0; }
+.invitee-input-row button { flex-shrink: 0; gap: 6px; }
+.invitee-error { color: #b91c1c; font-size: 13px; margin: 8px 0 0; }
+.invitee-list { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.invitee-list li { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+.invitee-list span { overflow-wrap: anywhere; }
+.invitee-list button { display: grid; place-items: center; padding: 6px; color: #64748b; background: transparent; border: 0; cursor: pointer; }
+@media (max-width: 600px) { .invitee-input-row { align-items: stretch; flex-direction: column; } }
 .form-alert {
   padding: 14px 18px;
   margin-bottom: 18px;

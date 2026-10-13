@@ -216,9 +216,11 @@ onMounted(loadDashboard)
         <div v-if="categoryStats.length" class="category-grid">
           <button
             v-for="category in categoryStats"
-            :key="category.eventCategoryId"
+            :key="category.eventCategoryId || 'uncategorized'"
             class="category-item"
             type="button"
+            :disabled="!category.eventCategoryId"
+            :title="category.eventCategoryId ? undefined : 'Assign a category when editing these drafts.'"
             @click="openCategory(category.eventCategoryId)"
           >
             <span class="category-heading">

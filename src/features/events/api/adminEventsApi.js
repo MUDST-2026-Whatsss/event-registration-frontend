@@ -37,6 +37,10 @@ export function createAdminEvent(payload) {
   return authenticatedApiRequest('/admin/events', { method: 'POST', body: payload })
 }
 
+export function findEventInvitee(email) {
+  return authenticatedApiRequest(`/admin/events/invitees/lookup${queryString({ email })}`)
+}
+
 export function updateAdminEvent(eventId, version, payload) {
   return authenticatedApiRequest(`/admin/events/${eventId}${queryString({ version })}`, {
     method: 'PATCH',
