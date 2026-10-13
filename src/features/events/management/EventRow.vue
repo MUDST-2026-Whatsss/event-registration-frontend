@@ -28,7 +28,7 @@ defineEmits(['edit', 'cancel', 'withdraw'])
 
     <!-- Date -->
     <div class="date">
-      {{ new Date(event.startAt).toLocaleString() }}
+      {{ event.startAt ? new Date(event.startAt).toLocaleString() : 'Date not set' }}
     </div>
 
     <!-- Registrations -->

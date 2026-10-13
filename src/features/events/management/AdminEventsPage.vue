@@ -42,7 +42,7 @@ function mapEvent(event) {
   return {
     ...event,
     location: event.locationName || (event.locationType === 'ONLINE' ? 'Online' : '—'),
-    registration: `${registered} / ${total}`,
+    registration: event.maximumParticipants == null ? 'Capacity not set' : `${registered} / ${total}`,
     progress: total ? Math.round((registered / total) * 100) : 0,
   }
 }

@@ -1,4 +1,9 @@
 import { apiRequest } from '@/shared/lib/apiClient.js'
+import { authenticatedApiRequest } from '@/features/auth/public.js'
+
+export function listMyInvitations() {
+  return authenticatedApiRequest('/invitations')
+}
 
 export function registerForEvent(eventId, attendee) {
   return apiRequest(`/events/${encodeURIComponent(eventId)}/registrations`, {

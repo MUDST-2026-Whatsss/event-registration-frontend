@@ -8,8 +8,11 @@ import AppToast from '@/shared/ui/AppToast.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
 import { usePublicEvents } from '@/features/events/public.js'
+import { mapPublicEvent } from '@/features/events/public.js'
+import { listMyInvitations } from '../api/registrationsApi.js'
 
 const searchQuery = ref('')
+const invitations = ref([])
 const route = useRoute()
 const activeFilter = ref('upcoming')
 const { registrations, loadRegistrations, register, cancel } = useRegistrations()
@@ -130,6 +133,9 @@ onMounted(() => {
   loadRegistrations(true).catch((cause) => {
     actionError.value = cause?.message || 'Unable to load your registrations.'
   })
+  listMyInvitations().then((items) => {
+    invitations.value = items.map((item) => ({ ...item, event: mapPublicEvent(item.event) }))
+  }).catch((cause) => { actionError.value = cause?.message || 'Unable to load your invitations.' })
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
@@ -142,6 +148,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <div><p>My account</p><h1>My Registrations</h1><span>Manage your upcoming and previous event registrations.</span></div>
         <div class="registrations-summary"><TicketCheck :size="22" /><strong>{{ registeredEvents.filter((item) => item.registrationStatus === 'registered').length }}</strong><span>Active registrations</span></div>
       </div>
+
+      <section v-if="invitations.length" class="invitation-section" aria-label="Event invitations">
+        <h2>Event invitations</h2>
+        <p>You have been invited. Review the details and confirm your registration to reserve a seat.</p>
+        <article v-for="invitation in invitations" :key="invitation.invitationId" class="invitation-card">
+          <div><strong>{{ invitation.event.title }}</strong><span>{{ invitation.event.date }} · {{ invitation.event.location }}</span></div>
+          <RouterLink :to="{ name: 'event-registration', params: { slug: invitation.event.id } }">Review invitation</RouterLink>
+        </article>
+      </section>
 
       <div class="registrations-toolbar">
         <div class="registration-tabs" role="tablist" aria-label="Registration status">
@@ -218,6 +233,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .registrations-page { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; color: #20263a; }
 .registrations-page main { flex: 1; }
 .registrations-shell { width: min(100% - 48px, 1060px); margin-inline: auto; padding-block: 54px 100px; }
+.invitation-section { margin-top: 26px; padding: 20px; background: #f5f7ff; border: 1px solid #d5daf0; border-radius: 8px; }
+.invitation-section h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.invitation-section > p { margin: 0 0 16px; color: var(--neutral-600); font-size: .8rem; }
+.invitation-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid #d5daf0; }
+.invitation-card > div { display: grid; gap: 4px; }
+.invitation-card span { color: var(--neutral-600); font-size: .75rem; }
+.invitation-card a { flex-shrink: 0; padding: 8px 12px; color: #fff; background: #2455db; border-radius: 6px; font-size: .8rem; text-decoration: none; }
+@media (max-width: 600px) { .invitation-card { align-items: flex-start; flex-direction: column; } }
 .registrations-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .registrations-heading p { margin: 0 0 5px; color: #2455db; font-size: .75rem; font-weight: 600; text-transform: uppercase; }
 .registrations-heading h1 { margin: 0; font-size: 2.25rem; letter-spacing: 0; }
