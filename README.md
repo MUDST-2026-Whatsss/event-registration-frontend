@@ -12,16 +12,17 @@ Connected to the Spring Boot API:
 - Participant profile text fields and password change
 - Role-aware navigation for USER, ADMIN, and SUPER_ADMIN
 - Published event catalogue, event search/filtering, and event detail
+- Event registrations, invitations, and cancellation
 - Admin event lifecycle and Super Admin governance/access-control screens
 
 Still backed by mock JavaScript data or `localStorage`:
 
-- Registrations, cancellation, and QR tickets
+- QR ticket content
 - Super Admin participant operations
 - Profile avatar
 - Forgot/reset password submission
 
-The PromptPay UI is a simulation only and must not represent a real successful payment.
+The payment UI is a simulation only: paid registrations remain pending and no payment is processed.
 
 ## Requirements
 

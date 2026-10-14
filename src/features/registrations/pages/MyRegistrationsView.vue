@@ -20,6 +20,8 @@ const { events, loadEvents } = usePublicEvents()
 const pendingCancellation = ref(null)
 const cancellationToast = ref(null)
 const actionError = ref('')
+const registrationLoadError = ref('')
+const isLoadingRegistrations = ref(true)
 const cancelDialog = ref(null)
 const qrDialog = ref(null)
 const qrEvent = ref(null)
@@ -91,6 +93,18 @@ function registrationId(event) {
   return event.registrationNumber
 }
 
+async function reloadRegistrations() {
+  registrationLoadError.value = ''
+  isLoadingRegistrations.value = true
+  try {
+    await loadRegistrations(true)
+  } catch (cause) {
+    registrationLoadError.value = cause?.message || 'Unable to load your registrations.'
+  } finally {
+    isLoadingRegistrations.value = false
+  }
+}
+
 async function openQrCode(event) {
   qrEvent.value = event
   qrDataUrl.value = ''
@@ -130,9 +144,7 @@ function handleKeydown(event) {
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   loadEvents().catch(() => {})
-  loadRegistrations(true).catch((cause) => {
-    actionError.value = cause?.message || 'Unable to load your registrations.'
-  })
+  reloadRegistrations()
   listMyInvitations().then((items) => {
     invitations.value = items.map((item) => ({ ...item, event: mapPublicEvent(item.event) }))
   }).catch((cause) => { actionError.value = cause?.message || 'Unable to load your invitations.' })
@@ -146,7 +158,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     <main class="registrations-shell">
       <div class="registrations-heading">
         <div><p>My account</p><h1>My Registrations</h1><span>Manage your upcoming and previous event registrations.</span></div>
-        <div class="registrations-summary"><TicketCheck :size="22" /><strong>{{ registeredEvents.filter((item) => item.registrationStatus === 'registered').length }}</strong><span>Active registrations</span></div>
+        <div class="registrations-summary"><TicketCheck :size="22" /><strong>{{ isLoadingRegistrations || registrationLoadError ? '—' : registeredEvents.filter((item) => item.registrationStatus === 'registered').length }}</strong><span>Active registrations</span></div>
       </div>
 
       <section v-if="invitations.length" class="invitation-section" aria-label="Event invitations">
@@ -169,7 +181,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         </label>
       </div>
 
-      <div v-if="visibleEvents.length" class="registration-list">
+      <div v-if="isLoadingRegistrations" class="registrations-empty" role="status">
+        <p>Loading your registrations...</p>
+      </div>
+      <div v-else-if="registrationLoadError" class="registrations-empty registration-load-error" role="alert">
+        <AlertTriangle :size="28" />
+        <h2>Registrations could not be loaded</h2>
+        <p>{{ registrationLoadError }}</p>
+        <button type="button" @click="reloadRegistrations">Try again</button>
+      </div>
+      <div v-else-if="visibleEvents.length" class="registration-list">
         <article v-for="event in visibleEvents" :key="event.id" class="registration-card">
           <img :src="event.image" :alt="event.title" />
           <div class="registration-card__content">
@@ -276,6 +297,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .registrations-empty h2 { margin: 12px 0 2px; color: #20263a; }
 .registrations-empty p { margin: 0 0 18px; }
 .registrations-empty a { min-width: 120px; }
+.registration-load-error button { min-width: 120px; min-height: 39px; padding-inline: 12px; color: var(--neutral-0); background: #2455db; border: 0; border-radius: 5px; cursor: pointer; font-size: .75rem; font-weight: 500; }
+.registration-load-error button:hover { background: #1d48bd; }
 .cancel-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; padding: 20px; place-items: center; background: rgb(24 24 27 / 56%); backdrop-filter: blur(5px); }
 .cancel-dialog { position: relative; width: min(100%, 460px); padding: 32px; background: var(--neutral-0); border-radius: 8px; box-shadow: 0 26px 70px rgb(24 24 27 / 30%); outline: 0; }
 .cancel-dialog__close { position: absolute; top: 14px; right: 14px; display: grid; width: 36px; height: 36px; place-items: center; color: var(--neutral-600); background: transparent; border-radius: 50%; cursor: pointer; }

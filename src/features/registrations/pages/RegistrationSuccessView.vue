@@ -15,7 +15,6 @@ const ready = ref(false)
 const event = computed(() => findEvent(String(route.params.slug || '')))
 const registration = computed(() => findRegistration(String(route.params.slug || '')))
 const registrationId = computed(() => registration.value?.registrationNumber ?? '')
-const transactionId = computed(() => route.query.transaction ?? 'TXN-PENDING')
 const amount = computed(() => event.value?.price ?? 0)
 const isFree = computed(() => amount.value === 0)
 
@@ -39,9 +38,9 @@ onMounted(async () => {
     <main class="success-shell">
       <section v-if="ready && event" class="success-card">
         <div class="success-icon"><Check :size="38" stroke-width="2.5" /></div>
-        <p class="success-eyebrow">{{ isFree ? 'Registration confirmed' : 'Payment confirmed' }}</p>
+        <p class="success-eyebrow">{{ isFree ? 'Registration confirmed' : 'Payment demo complete' }}</p>
         <h1>Registration successful!</h1>
-        <p class="success-lead">Your place has been reserved. A confirmation summary is shown below.</p>
+        <p class="success-lead">{{ isFree ? 'Your place has been reserved. A confirmation summary is shown below.' : 'This is a payment mockup only. No real payment was processed, and your registration remains pending.' }}</p>
 
         <div class="success-event">
           <img :src="event.image" :alt="event.title" />
@@ -50,13 +49,12 @@ onMounted(async () => {
 
         <dl class="success-details">
           <div><dt>Registration ID</dt><dd>{{ registrationId }}</dd></div>
-          <div><dt>Payment status</dt><dd class="paid"><Check :size="14" />{{ isFree ? 'No payment required' : 'Paid' }}</dd></div>
-          <div><dt>Payment method</dt><dd>{{ isFree ? 'Free registration' : 'PromptPay' }}</dd></div>
-          <div><dt>Amount</dt><dd>{{ isFree ? 'Free' : `฿${amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}` }}</dd></div>
-          <div v-if="!isFree"><dt>Transaction reference</dt><dd>{{ transactionId }}</dd></div>
+          <div><dt>Payment status</dt><dd class="paid"><Check v-if="isFree" :size="14" />{{ isFree ? 'No payment required' : 'Demo only — pending' }}</dd></div>
+          <div><dt>Payment method</dt><dd>{{ isFree ? 'Free registration' : 'Payment mockup' }}</dd></div>
+          <div><dt>Amount</dt><dd>{{ isFree ? 'Free' : `฿${amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} (not charged)` }}</dd></div>
         </dl>
 
-        <div class="success-notice"><ReceiptText :size="19" /><span><strong>{{ isFree ? 'Registration complete' : 'Payment receipt' }}</strong><small>{{ isFree ? 'No payment was required for this event.' : 'Keep your transaction reference for registration check-in.' }}</small></span></div>
+        <div class="success-notice"><ReceiptText :size="19" /><span><strong>{{ isFree ? 'Registration complete' : 'Payment mockup only' }}</strong><small>{{ isFree ? 'No payment was required for this event.' : 'No charge was made. Payment must be integrated before this registration can be confirmed.' }}</small></span></div>
 
         <div class="success-actions">
           <RouterLink class="primary" to="/my-registrations">View my registrations</RouterLink>

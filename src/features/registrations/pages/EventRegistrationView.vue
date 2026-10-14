@@ -58,7 +58,6 @@ function clearPaymentTimers() {
 
 async function finishPayment(runId) {
   if (runId !== paymentRunId) return
-  const transactionId = `TXN-${Date.now().toString().slice(-10)}`
 
   try {
     await register(event.value, attendee())
@@ -74,7 +73,6 @@ async function finishPayment(runId) {
     router.replace({
       name: 'registration-success',
       params: { slug: event.value.id },
-      query: { transaction: transactionId },
     })
   }, 1200))
 }
@@ -114,7 +112,7 @@ async function confirmRegistration() {
 
   try {
     qrDataUrl.value = await QRCode.toDataURL(JSON.stringify({
-      type: 'eventsss-promptpay',
+      type: 'eventsss-payment-demo',
       eventId: event.value.id,
       amount: event.value.price ?? 0,
       reference: `PAY-${event.value.id}-${Date.now()}`,
@@ -199,7 +197,7 @@ onBeforeUnmount(clearPaymentTimers)
             <Check v-if="form.consent" :size="18" />
             <ArrowRight v-else :size="18" />
           </button>
-          <p class="registration-note">The PromptPay QR and payment status will be processed automatically.</p>
+          <p class="registration-note">Payment is a mockup only. No real payment will be processed.</p>
         </form>
       </div>
       </template>
@@ -215,21 +213,21 @@ onBeforeUnmount(clearPaymentTimers)
         </template>
 
         <template v-else-if="paymentState === 'ready'">
-          <div class="payment-dialog__heading"><span><QrCode :size="23" /></span><div><p>PromptPay</p><h2 id="payment-title">Scan to pay</h2></div></div>
+          <div class="payment-dialog__heading"><span><QrCode :size="23" /></span><div><p>Payment demo</p><h2 id="payment-title">Simulate checkout</h2></div></div>
           <div class="payment-qr">
-            <img v-if="qrDataUrl" :src="qrDataUrl" alt="PromptPay QR code" />
+            <img v-if="qrDataUrl" :src="qrDataUrl" alt="Demo QR code, not a payment request" />
             <p v-else-if="qrError">QR code could not be generated.</p>
           </div>
           <div class="payment-total"><span>Total amount</span><strong>{{ formatPrice(event.price) }}</strong></div>
-          <div class="payment-auto"><Clock3 :size="16" /><span>Payment status will be checked automatically.</span></div>
+          <div class="payment-auto"><Clock3 :size="16" /><span>Demo only — no real payment will be processed.</span></div>
         </template>
 
         <template v-else-if="paymentState === 'checking'">
-          <div class="payment-progress"><span class="payment-spinner"></span><h2 id="payment-title">Checking payment status</h2><p>Verifying transaction information...</p><small>Please do not close this window.</small></div>
+          <div class="payment-progress"><span class="payment-spinner"></span><h2 id="payment-title">Completing payment demo</h2><p>No payment provider is connected.</p><small>Please do not close this window.</small></div>
         </template>
 
         <template v-else-if="paymentState === 'success'">
-          <div class="payment-progress success"><span><Check :size="34" /></span><h2 id="payment-title">Payment successful</h2><p>Your registration has been confirmed.</p><small>Opening your registration details...</small></div>
+          <div class="payment-progress success"><span><Check :size="34" /></span><h2 id="payment-title">Payment demo complete</h2><p>Your registration remains pending.</p><small>No real payment was processed.</small></div>
         </template>
       </section>
     </div>
