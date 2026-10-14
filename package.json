@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:e2e": "start-server-and-test dev http://127.0.0.1:5173 test:e2e:run",
+    "test:e2e:run": "node scripts/cypress-runner.js",
+    "test:e2e:open": "node scripts/cypress-runner.js --open"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-thai": "^5.3.0",
@@ -19,7 +23,10 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.5.0",
+    "cross-env": "^10.1.0",
+    "cypress": "^16.1.0",
     "jsdom": "^29.1.1",
+    "start-server-and-test": "^3.0.12",
     "vite": "^8.1.5",
     "vite-plugin-vue-devtools": "^8.1.5",
     "vitest": "^5.0.0"

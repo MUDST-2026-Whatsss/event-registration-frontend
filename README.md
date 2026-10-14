@@ -47,7 +47,11 @@ npm run dev
 npm test
 npm run build
 npm run preview
+npm run test:e2e
+npm run test:e2e:open
 ```
+
+Cypress tests intercept the API with isolated fixtures; they do not log into the shared database.
 
 ## Docker
 
