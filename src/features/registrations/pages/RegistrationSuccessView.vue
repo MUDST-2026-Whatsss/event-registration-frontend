@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
-import { usePublicEvents } from '@/features/events/public.js'
+import { usePublicEvents, EventCover } from '@/features/events/public.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +15,8 @@ const ready = ref(false)
 const event = computed(() => findEvent(String(route.params.slug || '')))
 const registration = computed(() => findRegistration(String(route.params.slug || '')))
 const registrationId = computed(() => registration.value?.registrationNumber ?? '')
-const transactionId = computed(() => route.query.transaction ?? 'TXN-PENDING')
+const transactionId = computed(() => registration.value?.apiStatus === 'CONFIRMED'
+  ? `MOCK-${registration.value.registrationNumber}` : '')
 const amount = computed(() => event.value?.price ?? 0)
 const isFree = computed(() => amount.value === 0)
 
@@ -37,14 +38,14 @@ onMounted(async () => {
   <div class="success-page">
     <PublicHeader />
     <main class="success-shell">
-      <section v-if="ready && event" class="success-card">
+    <section v-if="ready && event && registration?.status === 'registered'" class="success-card">
         <div class="success-icon"><Check :size="38" stroke-width="2.5" /></div>
         <p class="success-eyebrow">{{ isFree ? 'Registration confirmed' : 'Payment confirmed' }}</p>
         <h1>Registration successful!</h1>
         <p class="success-lead">Your place has been reserved. A confirmation summary is shown below.</p>
 
         <div class="success-event">
-          <img :src="event.image" :alt="event.title" />
+          <EventCover class="success-event__cover" :src="event.image" :title="event.title" :category="event.categoryName" compact />
           <div><h2>{{ event.title }}</h2><span><CalendarDays :size="15" />{{ event.date }}</span><span><MapPin :size="15" />{{ event.location }}</span></div>
         </div>
 
@@ -78,7 +79,7 @@ onMounted(async () => {
 .success-card h1 { margin: 0; font-size: 2rem; }
 .success-lead { margin: 8px auto 0; color: var(--neutral-600); font-size: .84rem; }
 .success-event { display: grid; margin-top: 27px; padding: 14px; grid-template-columns: 130px 1fr; gap: 15px; background: #f7f8fc; border: 1px solid #e0e3ec; border-radius: 8px; text-align: left; }
-.success-event img { width: 100%; height: 100%; min-height: 100px; object-fit: cover; border-radius: 6px; }
+.success-event__cover { width: 100%; height: 100%; min-height: 100px; border-radius: 6px; }
 .success-event h2 { margin: 2px 0 9px; font-size: 1rem; }
 .success-event span { display: flex; margin-top: 5px; align-items: center; gap: 6px; color: var(--neutral-600); font-size: .69rem; }
 .success-details { display: grid; margin: 22px 0 0; gap: 0; text-align: left; }
@@ -93,5 +94,5 @@ onMounted(async () => {
 .success-actions { display: grid; margin-top: 24px; grid-template-columns: 1fr 1fr; gap: 10px; }
 .success-actions a { display: grid; min-height: 44px; padding-inline: 12px; place-items: center; color: #33405f; background: #fff; border: 1px solid #cbd0df; border-radius: 6px; font-size: .76rem; font-weight: 600; text-decoration: none; }
 .success-actions a.primary { color: #fff; background: #2455db; border-color: #2455db; }
-@media (max-width: 520px) { .success-shell { padding-block: 34px 58px; } .success-card { padding: 30px 18px 22px; } .success-event { grid-template-columns: 1fr; } .success-event img { max-height: 170px; } .success-actions { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .success-shell { padding-block: 34px 58px; } .success-card { padding: 30px 18px 22px; } .success-event { grid-template-columns: 1fr; } .success-event__cover { height: 170px; } .success-actions { grid-template-columns: 1fr; } }
 </style>

@@ -6,7 +6,7 @@ import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useAuth } from '@/features/auth/public.js'
 import { useRegistrations } from '@/features/registrations/public.js'
-import { canRegisterForEvent, usePublicEvents } from '../public.js'
+import { canRegisterForEvent, usePublicEvents, EventCover } from '../public.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,7 +92,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
       <div v-else-if="event" class="detail-layout">
         <div class="detail-content">
           <div class="detail-image">
-            <img :src="event.image" :alt="event.title" />
+            <EventCover :src="event.image" :title="event.title" :category="event.categoryName" />
             <span>{{ event.categoryName }}</span>
           </div>
 

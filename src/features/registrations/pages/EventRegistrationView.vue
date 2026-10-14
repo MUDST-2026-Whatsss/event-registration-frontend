@@ -6,12 +6,12 @@ import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
-import { canRegisterForEvent, usePublicEvents } from '@/features/events/public.js'
+import { canRegisterForEvent, usePublicEvents, EventCover } from '@/features/events/public.js'
 import { useAuth } from '@/features/auth/public.js'
 
 const route = useRoute()
 const router = useRouter()
-const { register } = useRegistrations()
+const { register, completeMockPayment, loadRegistrations, findRegistration } = useRegistrations()
 const { currentUser } = useAuth()
 const { findEvent, loadEvent } = usePublicEvents()
 const eventLoading = ref(true)
@@ -40,7 +40,7 @@ const form = reactive({
 
 onMounted(async () => {
   try {
-    await loadEvent(String(route.params.slug || ''))
+    await Promise.all([loadEvent(String(route.params.slug || '')), loadRegistrations(true)])
   } catch (cause) {
     eventError.value = cause?.message || 'Unable to load this event.'
   } finally {
@@ -58,16 +58,21 @@ function clearPaymentTimers() {
 
 async function finishPayment(runId) {
   if (runId !== paymentRunId) return
-  const transactionId = `TXN-${Date.now().toString().slice(-10)}`
+  let transactionId
 
   try {
-    await register(event.value, attendee())
+    const pending = await register(event.value, attendee())
+    const confirmed = await completeMockPayment(pending.id)
+    if (confirmed.apiStatus !== 'CONFIRMED') throw new Error('Your registration has not been confirmed. Please try again.')
+    transactionId = `MOCK-${confirmed.registrationNumber}`
   } catch (cause) {
+    if (runId !== paymentRunId) return
     paymentOpen.value = false
     paymentState.value = 'idle'
     submitError.value = cause?.message || 'Unable to complete your registration.'
     return
   }
+  if (runId !== paymentRunId) return
   paymentState.value = 'success'
 
   timers.push(window.setTimeout(() => {
@@ -84,7 +89,9 @@ function attendee() {
 }
 
 async function confirmRegistration() {
-  if (!canRegisterForEvent(event.value)) {
+  if (paymentOpen.value || submitting.value || !form.consent) return
+  const existing = findRegistration(event.value.id)
+  if (!canRegisterForEvent(event.value) && existing?.apiStatus !== 'PENDING_PAYMENT') {
     router.replace(`/events/${event.value.id}`)
     return
   }
@@ -147,7 +154,7 @@ function closePaymentModal() {
   qrError.value = false
 }
 
-onBeforeUnmount(clearPaymentTimers)
+onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
 </script>
 
 <template>
@@ -167,7 +174,7 @@ onBeforeUnmount(clearPaymentTimers)
 
       <div class="registration-layout">
         <aside class="event-review">
-          <img :src="event.image" :alt="event.title" />
+          <EventCover class="event-review__cover" :src="event.image" :title="event.title" :category="event.categoryName" />
           <div class="event-review__body">
             <span>Selected event</span>
             <h2>{{ event.title }}</h2>
@@ -252,7 +259,7 @@ onBeforeUnmount(clearPaymentTimers)
 .registration-heading span { color: var(--neutral-600); }
 .registration-layout { display: grid; margin-top: 28px; grid-template-columns: minmax(280px, .85fr) minmax(0, 1.35fr); gap: 24px; align-items: start; }
 .event-review, .registration-form { overflow: hidden; background: var(--neutral-0); border: 1px solid var(--neutral-300); border-radius: 8px; box-shadow: 0 8px 24px rgb(24 24 27 / 8%); }
-.event-review img { width: 100%; aspect-ratio: 1.7; display: block; object-fit: cover; }
+.event-review__cover { width: 100%; height: auto; aspect-ratio: 1.7; }
 .event-review__body { padding: 24px; }
 .event-review__body > span { color: #2455db; font-size: .68rem; font-weight: 600; text-transform: uppercase; }
 .event-review h2 { margin: 6px 0 20px; font-size: 1.35rem; line-height: 1.25; }
@@ -307,6 +314,6 @@ onBeforeUnmount(clearPaymentTimers)
 .payment-progress.success > span { display: grid; width: 70px; height: 70px; place-items: center; color: #176a3f; background: #dff7e9; border-radius: 50%; box-shadow: 0 0 0 9px #f0fbf5; }
 @keyframes payment-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .payment-spinner { animation-duration: 1.8s; } }
-@media (max-width: 760px) { .registration-layout { grid-template-columns: 1fr; } .event-review { display: grid; grid-template-columns: 190px 1fr; } .event-review img { height: 100%; aspect-ratio: auto; } }
-@media (max-width: 540px) { .registration-shell { width: min(100% - 32px, 1080px); padding-block: 26px 60px; } .registration-heading h1 { font-size: 1.8rem; } .event-review { display: block; } .event-review img { height: auto; aspect-ratio: 1.7; } .registration-form { padding: 22px 18px; } .registration-fields { grid-template-columns: 1fr; } .registration-fields label.full { grid-column: auto; } .payment-dialog { min-height: 470px; padding: 22px 18px; } .payment-qr { width: min(100%, 250px); min-height: 250px; } }
+@media (max-width: 760px) { .registration-layout { grid-template-columns: 1fr; } .event-review { display: grid; grid-template-columns: 190px 1fr; } .event-review__cover { height: 100%; aspect-ratio: auto; } }
+@media (max-width: 540px) { .registration-shell { width: min(100% - 32px, 1080px); padding-block: 26px 60px; } .registration-heading h1 { font-size: 1.8rem; } .event-review { display: block; } .event-review__cover { height: auto; aspect-ratio: 1.7; } .registration-form { padding: 22px 18px; } .registration-fields { grid-template-columns: 1fr; } .registration-fields label.full { grid-column: auto; } .payment-dialog { min-height: 470px; padding: 22px 18px; } .payment-qr { width: min(100%, 250px); min-height: 250px; } }
 </style>

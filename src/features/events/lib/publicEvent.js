@@ -1,5 +1,3 @@
-import fallbackImage from '@/assets/events/hero.jpg'
-
 const dateFormatterCache = new Map()
 
 function formatter(timeZone, options) {
@@ -69,7 +67,7 @@ export function mapPublicEvent(event, now = Date.now()) {
     ...event,
     id: event.slug,
     eventId: event.eventId,
-    image: event.imageUrl || fallbackImage,
+    image: event.imageUrl || '',
     price: Number(event.price || 0),
     categoryName: event.category?.nameEn || event.category?.nameTh || 'Event',
     date: formatDateRange(event.startAt, event.endAt, timezone),

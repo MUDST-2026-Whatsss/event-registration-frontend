@@ -26,6 +26,7 @@ describe('public event model', () => {
     expect(event.status).toBe('open')
     expect(event.location).toBe('Bangkok Hall')
     expect(event.categoryName).toBe('Technology')
+    expect(event.image).toBe('')
     expect(canRegisterForEvent(event)).toBe(true)
   })
 
