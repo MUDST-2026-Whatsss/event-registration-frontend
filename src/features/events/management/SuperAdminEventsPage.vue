@@ -1,4 +1,5 @@
 <script setup>
+import EventCover from '../components/EventCover.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useToast } from '@/shared/composables/useToast.js'
 import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
@@ -369,17 +370,7 @@ onMounted(loadEvents)
 
                   <div class="event-image">
 
-                    <img
-                      v-if="event.image"
-                      :src="event.image"
-                      :alt="event.name"
-                    />
-
-                    <Icon
-                      v-else
-                      name="calendar"
-                      :size="17"
-                    />
+                    <EventCover :src="event.image" :title="event.name" compact />
 
                   </div>
 

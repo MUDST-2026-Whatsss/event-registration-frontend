@@ -1,6 +1,7 @@
 <script setup>
 import { ConsoleIcon as Icon } from '@/features/console-shell/public.js'
 import StatusBadge from './StatusBadge.vue'
+import EventCover from '../components/EventCover.vue'
 
 
 
@@ -16,8 +17,7 @@ defineEmits(['edit', 'cancel', 'withdraw'])
     <!-- Event Details -->
     <div class="info">
       <div class="event-image">
-        <img v-if="event.imageUrl" :src="event.imageUrl" :alt="event.title" />
-        <Icon v-else name="image" :size="22" aria-hidden="true" />
+        <EventCover :src="event.imageUrl" :title="event.title" compact />
       </div>
 
       <div>

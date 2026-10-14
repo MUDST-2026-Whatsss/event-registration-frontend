@@ -1,6 +1,6 @@
 import { readonly, ref } from 'vue'
 import { mapPublicEvent } from '@/features/events/public.js'
-import { cancelRegistration, listMyRegistrations, registerForEvent } from '../api/registrationsApi.js'
+import { cancelRegistration, confirmMockPayment, listMyRegistrations, registerForEvent } from '../api/registrationsApi.js'
 
 const ACTIVE_STATUSES = ['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN']
 
@@ -14,7 +14,8 @@ function mapRegistration(registration) {
     id: registration.registrationId,
     eventId: registration.event?.slug,
     event: registration.event ? mapPublicEvent(registration.event) : null,
-    status: ACTIVE_STATUSES.includes(registration.status) ? 'registered' : 'cancelled',
+    status: registration.status === 'PENDING_PAYMENT' ? 'pending payment'
+      : ACTIVE_STATUSES.includes(registration.status) ? 'registered' : 'cancelled',
     apiStatus: registration.status,
     registeredAt: registration.registeredAt?.slice(0, 10),
   }
@@ -56,6 +57,10 @@ export function useRegistrations() {
     return upsert(await cancelRegistration(registrationId))
   }
 
+  async function completeMockPayment(registrationId) {
+    return upsert(await confirmMockPayment(registrationId))
+  }
+
   function findRegistration(slug) {
     return registrations.value.find((item) => item.eventId === slug) || null
   }
@@ -68,6 +73,7 @@ export function useRegistrations() {
     registrations: readonly(registrations),
     loadRegistrations,
     register,
+    completeMockPayment,
     cancel,
     findRegistration,
     isRegistered,

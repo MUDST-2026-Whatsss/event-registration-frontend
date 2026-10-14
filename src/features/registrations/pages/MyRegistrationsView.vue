@@ -7,7 +7,7 @@ import AppFooter from '@/shared/ui/AppFooter.vue'
 import AppToast from '@/shared/ui/AppToast.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
-import { usePublicEvents } from '@/features/events/public.js'
+import { usePublicEvents, EventCover } from '@/features/events/public.js'
 import { mapPublicEvent } from '@/features/events/public.js'
 import { listMyInvitations } from '../api/registrationsApi.js'
 
@@ -49,7 +49,7 @@ const visibleEvents = computed(() => {
     const isPast = event.status === 'closed'
     const matchesFilter = activeFilter.value === 'cancelled'
       ? event.registrationStatus === 'cancelled'
-      : event.registrationStatus === 'registered' && (activeFilter.value === 'past' ? isPast : !isPast)
+      : ['registered', 'pending payment'].includes(event.registrationStatus) && (activeFilter.value === 'past' ? isPast : !isPast)
     return matchesFilter && (!query || `${event.title} ${event.location}`.toLowerCase().includes(query))
   })
 })
@@ -171,7 +171,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
       <div v-if="visibleEvents.length" class="registration-list">
         <article v-for="event in visibleEvents" :key="event.id" class="registration-card">
-          <img :src="event.image" :alt="event.title" />
+          <EventCover class="registration-card__cover" :src="event.image" :title="event.title" :category="event.categoryName" />
           <div class="registration-card__content">
             <span class="registration-card__status" :class="{ cancelled: event.registrationStatus === 'cancelled' }">{{ event.registrationStatus }}</span>
             <h2>{{ event.title }}</h2>
@@ -181,6 +181,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           </div>
           <div class="registration-card__actions">
             <RouterLink :to="{ path: `/events/${event.id}`, query: { from: route.fullPath } }"><Eye :size="17" aria-hidden="true" />View</RouterLink>
+            <RouterLink v-if="event.registrationStatus === 'pending payment'" :to="{ name: 'event-registration', params: { slug: event.id } }">Complete registration</RouterLink>
             <button v-if="event.registrationStatus === 'registered'" class="qr" type="button" @click="openQrCode(event)"><QrCode :size="17" aria-hidden="true" />QR Code</button>
             <button v-if="event.registrationStatus === 'registered' && event.cancellable" class="cancel" type="button" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
           </div>
@@ -257,7 +258,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .registrations-search input { width: 100%; min-width: 0; padding: 0; color: var(--neutral-950); background: transparent; border: 0; outline: 0; font-size: .8125rem; }
 .registration-list { display: grid; gap: 16px; }
 .registration-card { display: grid; min-height: 180px; overflow: hidden; grid-template-columns: 240px minmax(0, 1fr) 170px; background: var(--neutral-0); border: 1px solid var(--neutral-300); border-radius: 6px; box-shadow: 0 3px 10px rgb(24 24 27 / 8%); }
-.registration-card > img { width: 100%; height: 100%; object-fit: cover; }
+.registration-card__cover { width: 100%; height: 100%; }
 .registration-card__content { padding: 20px 22px; }
 .registration-card__status { display: inline-flex; padding: 3px 8px; color: #176a3f; background: #dff7e9; border-radius: 3px; font-size: .65rem; font-weight: 600; text-transform: uppercase; }
 .registration-card__status.cancelled { color: #9a3540; background: #fde3e5; }
@@ -311,5 +312,5 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .toast-undo { display: inline-flex; min-height: 34px; padding-inline: 8px; align-items: center; gap: 5px; color: #315bd5; background: transparent; border-radius: 4px; cursor: pointer; font-size: .76rem; font-weight: 600; }
 .toast-undo:hover { background: #eef1ff; }
 @media (max-width: 760px) { .registrations-heading { align-items: stretch; flex-direction: column; } .registrations-summary { min-width: 0; } .registrations-toolbar { padding-top: 14px; align-items: stretch; flex-direction: column; gap: 12px; } .registration-tabs { min-height: 42px; align-self: auto; } .registrations-search { width: 100%; margin-bottom: 12px; } .registration-card { grid-template-columns: 130px minmax(0, 1fr); } .registration-card__actions { grid-column: 1 / -1; flex-direction: row; border-top: 1px solid var(--neutral-200); border-left: 0; } }
-@media (max-width: 520px) { .registrations-shell { width: min(100% - 32px, 1060px); padding-block: 36px 64px; } .registrations-heading h1 { font-size: 1.9rem; } .registration-card { grid-template-columns: 1fr; } .registration-card > img { height: 190px; } .registration-card__actions { grid-column: auto; flex-direction: column; } .cancel-dialog, .qr-dialog { padding: 28px 20px 22px; } .cancel-dialog__actions { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .registrations-shell { width: min(100% - 32px, 1060px); padding-block: 36px 64px; } .registrations-heading h1 { font-size: 1.9rem; } .registration-card { grid-template-columns: 1fr; } .registration-card__cover { height: 190px; } .registration-card__actions { grid-column: auto; flex-direction: column; } .cancel-dialog, .qr-dialog { padding: 28px 20px 22px; } .cancel-dialog__actions { grid-template-columns: 1fr; } }
 </style>

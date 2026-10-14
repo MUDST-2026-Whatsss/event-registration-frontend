@@ -12,6 +12,12 @@ export function registerForEvent(eventId, attendee) {
   })
 }
 
+export function confirmMockPayment(registrationId) {
+  return authenticatedApiRequest(`/registrations/${encodeURIComponent(registrationId)}/mock-payment/confirm`, {
+    method: 'POST',
+  })
+}
+
 export function listMyRegistrations() {
   return apiRequest('/registrations')
 }
