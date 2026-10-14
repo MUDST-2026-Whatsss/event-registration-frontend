@@ -1,14 +1,13 @@
+import { stubApi, login } from '../support/api.js'
+
 describe('Event Registration Flow', () => {
+  beforeEach(stubApi)
   it('completes free event registration and reflects in user registrations', () => {
     // 1. Authenticate user
-    cy.visit('/login')
-    cy.get('#email').type('demo@eventsss.com')
-    cy.get('#password').type('password123')
-    cy.get('.submit-button').click()
-    cy.url().should('not.include', '/login')
+    login()
 
-    // 2. Navigate to an open event (Event 9: Cloud Security Community Meetup)
-    cy.visit('/events/9')
+    // 2. Navigate using the published API event slug, not a legacy mock ID.
+    cy.visit('/events/cloud-security-meetup')
     cy.get('h1').should('contain.text', 'Cloud Security Community Meetup')
 
     cy.get('button.detail-register')
@@ -17,7 +16,7 @@ describe('Event Registration Flow', () => {
       .click()
 
     // 3. Confirm details on registration confirmation page
-    cy.url().should('include', '/events/9/register')
+    cy.url().should('include', '/events/cloud-security-meetup/register')
     cy.get('h1').should('contain.text', 'Confirm your registration')
 
     cy.get('.registration-consent input[type="checkbox"]').check()
@@ -26,13 +25,28 @@ describe('Event Registration Flow', () => {
     cy.get('button.registration-confirm').click()
 
     // 5. Success screen verification
-    cy.url().should('include', '/events/9/registration-success')
+    cy.url().should('include', '/events/cloud-security-meetup/registration-success')
     cy.get('h1').should('have.text', 'Registration successful!')
-    cy.get('.success-details').should('contain.text', 'EVT-2026-0009')
+    cy.get('.success-details').should('contain.text', 'REG-TEST000001')
 
     // 6. Navigate to My Registrations and confirm event is listed
     cy.contains('a', 'View my registrations').click()
     cy.url().should('include', '/my-registrations')
     cy.get('.registration-card').should('contain.text', 'Cloud Security Community Meetup')
+  })
+
+  it('finishes the paid QR process and loads the confirmed record from the API', () => {
+    login()
+    cy.intercept('POST', '**/mock-payment/confirm').as('paymentConfirm')
+    cy.visit('/events/global-tech-summit-2026/register')
+    cy.get('.registration-consent input').check()
+    cy.get('.registration-confirm').click()
+    cy.contains('[role="dialog"]', 'Scan to pay').should('be.visible')
+    cy.wait('@paymentConfirm', { timeout: 15000 }).its('response.body.status').should('eq', 'CONFIRMED')
+    cy.url().should('include', '/registration-success')
+    cy.get('.success-details').should('contain.text', 'REG-TEST000001')
+    cy.contains('a', 'View my registrations').click()
+    cy.get('.registration-card').should('contain.text', 'Global Tech Summit 2026')
+    cy.get('.registration-card__status').should('have.text', 'registered')
   })
 })

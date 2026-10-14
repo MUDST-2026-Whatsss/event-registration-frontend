@@ -1,4 +1,7 @@
+import { stubApi, login } from '../support/api.js'
+
 describe('Authentication and User Sessions', () => {
+  beforeEach(stubApi)
   it('redirects unauthenticated users trying to access protected routes', () => {
     cy.visit('/profile')
 
@@ -17,13 +20,7 @@ describe('Authentication and User Sessions', () => {
   })
 
   it('successfully logs in with valid user credentials and logs out', () => {
-    cy.visit('/login')
-
-    cy.get('#email').type('demo@eventsss.com')
-    cy.get('#password').type('password123')
-    cy.get('.submit-button').click()
-
-    cy.url().should('not.include', '/login')
+    login()
 
     // Header updates with user info and Logout button
     cy.get('.public-header__account').should('be.visible').and('have.text', 'Logout')

@@ -1,0 +1,89 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const apiResponse = (body, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+const user = {
+  userId: 'c5d5b682-2eb4-48d7-b766-b7fd4e021a54',
+  email: 'user@example.test',
+  role: 'USER',
+  roles: ['USER'],
+}
+
+describe('application router authentication guard', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.restoreAllMocks()
+    vi.stubGlobal('fetch', vi.fn())
+    sessionStorage.clear()
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('does not block a public route on auth API initialization', async () => {
+    const { default: router } = await import('../index.js')
+
+    await router.push('/events')
+
+    expect(router.currentRoute.value.name).toBe('events')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('redirects an unauthenticated protected route to login', async () => {
+    fetch
+      .mockResolvedValueOnce(apiResponse({ code: 'UNAUTHENTICATED' }, 401))
+      .mockResolvedValueOnce(apiResponse({ token: 'csrf-token' }))
+      .mockResolvedValueOnce(apiResponse({ code: 'INVALID_REFRESH_TOKEN' }, 401))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/profile')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.query.redirect).toBe('/profile')
+  })
+
+  it('redirects an authenticated cookie session away from login after a hard refresh', async () => {
+    fetch.mockResolvedValueOnce(apiResponse(user))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/login')
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(fetch).toHaveBeenCalledWith('/api/v1/auth/me', expect.objectContaining({
+      credentials: 'include',
+    }))
+  })
+
+  it('allows the login page when no cookie session can be restored', async () => {
+    fetch
+      .mockResolvedValueOnce(apiResponse({ code: 'UNAUTHENTICATED' }, 401))
+      .mockResolvedValueOnce(apiResponse({ token: 'csrf-token' }))
+      .mockResolvedValueOnce(apiResponse({ code: 'INVALID_REFRESH_TOKEN' }, 401))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/login')
+
+    expect(router.currentRoute.value.name).toBe('login')
+  })
+
+  it('lets the API-backed registration page decide event eligibility', async () => {
+    fetch.mockResolvedValueOnce(apiResponse(user))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/events/server-event-id/register')
+
+    expect(router.currentRoute.value.name).toBe('event-registration')
+    expect(router.currentRoute.value.params.slug).toBe('server-event-id')
+  })
+
+  it('sends a multi-role session to role selection before a protected area', async () => {
+    fetch.mockResolvedValueOnce(apiResponse({ ...user, role: null, roles: ['ADMIN', 'USER'] }))
+
+    const { default: router } = await import('../index.js')
+    await router.push('/admin/dashboard')
+
+    expect(router.currentRoute.value.name).toBe('select-role')
+    expect(router.currentRoute.value.query.redirect).toBe('/admin/dashboard')
+  })
+})

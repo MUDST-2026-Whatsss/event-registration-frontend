@@ -1,4 +1,7 @@
+import { stubApi, login } from '../support/api.js'
+
 describe('Admin Experience and Access Control', () => {
+  beforeEach(stubApi)
   it('redirects unauthenticated user accessing admin dashboard', () => {
     cy.visit('/admin/dashboard')
 
@@ -7,16 +10,12 @@ describe('Admin Experience and Access Control', () => {
   })
 
   it('admin logs in successfully and accesses admin dashboard', () => {
-    cy.visit('/login')
-
-    cy.get('#email').type('admin@eventsss.com')
-    cy.get('#password').type('admin123')
-    cy.get('.submit-button').click()
+    login('admin@example.test')
 
     cy.url().should('include', '/admin/dashboard')
-    cy.get('.hero-label').should('have.text', 'Total Registrations')
+    cy.contains('h2', 'Events by category').should('be.visible')
 
-    cy.contains('button', 'Create Event').should('be.visible').click()
+    cy.contains('button', 'Create event').should('be.visible').click()
     cy.url().should('include', '/admin/create-event')
   })
 })

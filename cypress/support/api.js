@@ -1,0 +1,71 @@
+// Every API request is intercepted: these browser tests never write to the shared backend.
+export function stubApi() {
+  let user = null
+  const registrations = []
+  const now = Date.now()
+  const iso = (offset) => new Date(now + offset).toISOString()
+  const free = {
+    eventId: '20000000-0000-0000-0000-000000000001', slug: 'cloud-security-meetup',
+    title: 'Cloud Security Community Meetup', summary: 'Community workshop', description: 'Community workshop',
+    category: { eventCategoryId: '10000000-0000-0000-0000-000000000001', code: 'TECHNOLOGY', nameEn: 'Technology' },
+    eventType: 'FREE', price: 0, currency: 'THB', imageUrl: null,
+    timezone: 'Asia/Bangkok', locationType: 'ONSITE', locationName: 'Bangkok Hall',
+    startAt: iso(604800000), endAt: iso(608400000), registrationStartAt: iso(-86400000), registrationEndAt: iso(518400000),
+    maximumParticipants: 10, remainingSeats: 10, full: false, allowCancellation: true, showRemainingSeats: true,
+  }
+  const paid = { ...free, eventId: '20000000-0000-0000-0000-000000000002', slug: 'global-tech-summit-2026', title: 'Global Tech Summit 2026', eventType: 'PAID', price: 99 }
+  const events = [free, paid]
+  cy.intercept('**/api/v1/**', (req) => {
+    const path = new URL(req.url).pathname.replace('/api/v1', '')
+    const reply = (body, statusCode = 200) => req.reply({ statusCode, body, headers: { 'content-type': 'application/json' } })
+    if (path === '/auth/csrf') return reply({ token: 'test-csrf' })
+    if (path === '/auth/me' || path === '/auth/refresh') return user
+      ? reply(path === '/auth/me' ? user : { user }) : reply({ code: 'UNAUTHENTICATED', message: 'Please sign in.' }, 401)
+    if (path === '/auth/login') {
+      if (req.body.email.startsWith('wrong')) return reply({ code: 'INVALID_CREDENTIALS', message: 'Incorrect email or password.' }, 401)
+      const admin = req.body.email === 'admin@example.test'
+      user = { userId: '30000000-0000-0000-0000-000000000001', email: req.body.email, name: 'Demo User', firstName: 'Demo', lastName: 'User', phoneNumber: '0912345678',
+        role: admin ? 'ADMIN' : 'USER', roles: [admin ? 'ADMIN' : 'USER'], permissions: ['EVENT_CREATE', 'EVENT_UPDATE', 'REGISTRATION_CREATE_SELF', 'REGISTRATION_READ_SELF', 'REGISTRATION_CANCEL_SELF'] }
+      return reply({ user })
+    }
+    if (path === '/auth/logout') { user = null; return reply({}) }
+    if (path === '/events') return reply(events)
+    if (req.method === 'GET' && path.startsWith('/events/')) return reply(events.find(e => path === `/events/${e.slug}`) || {}, events.some(e => path === `/events/${e.slug}`) ? 200 : 404)
+    if (path === '/registrations' && req.method === 'GET') return reply(registrations)
+    if (path === '/invitations') return reply([])
+    if (path === '/event-categories') return reply([free.category])
+    if (path === '/admin/events/stats') return reply({ total: 2, published: 2, draft: 0, pendingReview: 0, rejected: 0, cancelled: 0, completed: 0, categories: [{ ...free.category, total: 2, published: 2, draft: 0, pendingReview: 0, rejected: 0, cancelled: 0, completed: 0 }] })
+    if (path === '/admin/registrations/recent') return reply({ content: [], totalElements: 0 })
+    if (path === '/admin/events') return reply({ content: events, totalElements: 2 })
+    if (req.method === 'POST' && /^\/events\/[^/]+\/registrations$/.test(path)) {
+      if (!user) return reply({ code: 'UNAUTHENTICATED' }, 401)
+      if (!req.body.consentAccepted) return reply({ code: 'VALIDATION_FAILED' }, 400)
+      const event = events.find(e => path === `/events/${e.eventId}/registrations`)
+      if (!event) return reply({ code: 'EVENT_NOT_FOUND' }, 404)
+      let registration = registrations.find(r => r.event.eventId === event.eventId)
+      if (!registration) {
+        registration = { registrationId: '40000000-0000-0000-0000-00000000000' + (registrations.length + 1), registrationNumber: 'REG-TEST00000' + (registrations.length + 1),
+          status: event.eventType === 'PAID' ? 'PENDING_PAYMENT' : 'CONFIRMED', attendeeName: req.body.attendeeName, attendeeEmail: user.email,
+          registeredAt: iso(0), confirmedAt: event.eventType === 'PAID' ? null : iso(0), cancellable: true, event }
+        registrations.push(registration)
+      }
+      return reply(registration, 201)
+    }
+    if (req.method === 'POST' && path.endsWith('/mock-payment/confirm')) {
+      const registration = registrations.find(r => path === `/registrations/${r.registrationId}/mock-payment/confirm`)
+      if (!registration) return reply({ code: 'REGISTRATION_NOT_FOUND' }, 404)
+      registration.status = 'CONFIRMED'
+      registration.confirmedAt = iso(0)
+      return reply(registration)
+    }
+    return reply({ code: 'UNMOCKED_TEST_ENDPOINT', message: `${req.method} ${path}` }, 501)
+  }).as('api')
+}
+
+export function login(email = 'demo@example.test') {
+  cy.visit('/login')
+  cy.get('#email').type(email)
+  cy.get('#password').type('test-password-123')
+  cy.get('.submit-button').click()
+  cy.url().should('not.include', '/login')
+}

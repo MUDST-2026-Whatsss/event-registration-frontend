@@ -1,4 +1,7 @@
+import { stubApi } from '../support/api.js'
+
 describe('Navigation and Discovery', () => {
+  beforeEach(stubApi)
   it('loads the homepage with title and hero section', () => {
     cy.visit('/')
 
@@ -28,8 +31,14 @@ describe('Navigation and Discovery', () => {
 
     cy.get('.event-card').contains('Global Tech Summit 2026').click()
 
-    cy.url().should('include', '/events/1')
+    cy.url().should('include', '/events/global-tech-summit-2026')
     cy.get('h1').should('contain.text', 'Global Tech Summit 2026')
-    cy.get('.detail-tabs').should('be.visible')
+    cy.contains('h2', 'About This Event').should('be.visible')
+  })
+
+  it('shows a placeholder when the event has no cover image', () => {
+    cy.visit('/events')
+    cy.get('.event-card').first().find('.event-cover__placeholder').should('be.visible')
+    cy.get('.event-card').first().find('img').should('not.exist')
   })
 })
