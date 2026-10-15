@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import EventCard from '../components/EventCard.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
-import { groupPublicEvents, usePublicEvents } from '../public.js'
+import { canRegisterForEvent, groupPublicEvents, usePublicEvents } from '../public.js'
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -14,7 +14,9 @@ const now = ref(Date.now())
 const countdownTimer = window.setInterval(() => { now.value = Date.now() }, 1000)
 const { events, loading, error, loadEvents } = usePublicEvents()
 const eventGroups = computed(() => groupPublicEvents(events.value, { includeClosed: false }))
-const featuredEvent = computed(() => events.value.find((event) => new Date(event.startAt).getTime() > now.value) ?? null)
+const featuredEvent = computed(() => events.value.find((event) => canRegisterForEvent(event)
+  && new Date(event.startAt).getTime() > now.value
+  && (!event.registrationEndAt || new Date(event.registrationEndAt).getTime() >= now.value)) ?? null)
 
 const countdown = computed(() => {
   const target = featuredEvent.value ? new Date(featuredEvent.value.startAt).getTime() : now.value

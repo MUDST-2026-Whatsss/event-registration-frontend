@@ -85,7 +85,7 @@ export function groupPublicEvents(events, { includeClosed = true } = {}) {
     { id: 'open', title: 'Open for Registration', statuses: ['open'] },
     { id: 'upcoming', title: 'Upcoming Events', statuses: ['upcoming'] },
   ]
-  if (includeClosed) groups.push({ id: 'closed', title: 'Past & Closed Events', statuses: ['closed'] })
+  if (includeClosed) groups.push({ id: 'closed', title: 'Registration Closed / Past Events', statuses: ['closed'] })
 
   return groups
     .map((group) => ({
