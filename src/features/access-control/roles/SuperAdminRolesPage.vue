@@ -106,7 +106,7 @@ onMounted(load)
         <h1>Role Management</h1>
         <p>Roles and permissions currently stored in the authentication database.</p>
       </div>
-      <button type="button" class="console-btn console-btn-primary" @click="router.push('/super-admin/role-management/new')">Create New Role</button>
+      <button type="button" class="console-btn console-btn-primary" data-test="role-create" @click="router.push('/super-admin/role-management/new')">Create New Role</button>
     </div>
 
     <div class="console-card">
@@ -118,7 +118,7 @@ onMounted(load)
         <table class="console-table">
           <thead><tr><th>Role</th><th>Scope</th><th>Permissions</th><th>Assigned Users</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
           <tbody>
-            <tr v-for="role in paginatedRoles" :key="role.roleId">
+            <tr data-test="role-row" v-for="role in paginatedRoles" :key="role.roleId">
               <td><div class="role-name"><strong>{{ role.name }}</strong><span v-if="role.system"><small>System role</small></span></div></td>
               <td>{{ role.scopeType.replaceAll('_', ' ') }}</td>
               <td><span class="permission-count">{{ role.permissions.length }}</span> permissions</td>

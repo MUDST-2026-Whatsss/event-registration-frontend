@@ -6,6 +6,6 @@ export default defineConfig({
     viewportWidth: 1280,
     viewportHeight: 720,
     video: false,
-    supportFile: false,
+    supportFile: 'cypress/support/e2e.js',
   },
 })

@@ -178,7 +178,7 @@ onMounted(async () => {
       description="Manage and track your assigned events and their approval status."
     >
       <template #actions>
-        <button type="button" class="console-btn console-btn-primary" @click="goToCreate">
+        <button type="button" class="console-btn console-btn-primary" data-test="create-event" @click="goToCreate">
           <Icon name="plus" :size="16" aria-hidden="true" />
           Create event
         </button>

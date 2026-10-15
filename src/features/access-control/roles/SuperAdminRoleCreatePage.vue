@@ -47,7 +47,7 @@ onMounted(loadPermissions)
       <div class="console-page-heading"><h1>Create New Role</h1><p>Create a database-backed role and assign explicit permission codes.</p></div>
       <div class="console-heading-actions">
         <button class="console-btn console-btn-ghost" @click="router.push('/super-admin/role-management')">Cancel</button>
-        <button class="console-btn console-btn-primary" :disabled="!valid || saving" @click="submit">{{ saving ? 'Creating...' : 'Create Role' }}</button>
+        <button class="console-btn console-btn-primary" :disabled="!valid || saving" data-test="role-submit" @click="submit">{{ saving ? 'Creating...' : 'Create Role' }}</button>
       </div>
     </div>
 
@@ -56,13 +56,13 @@ onMounted(loadPermissions)
         <div class="console-card-header"><h2>Role Information</h2></div>
         <div class="console-card-body form-stack">
           <div class="form-row">
-            <div><label class="console-field-label">Display name *</label><input v-model="form.name" class="console-input" placeholder="e.g. Registration Reviewer" /></div>
-            <div><label class="console-field-label">Role code (system identifier) *</label><input v-model="form.code" class="console-input" placeholder="REGISTRATION_REVIEWER" aria-describedby="new-role-code-help" @input="codeEdited = true" /><small id="new-role-code-help" class="field-help">Generated from the name. It cannot be changed after creation.</small></div>
+            <div><label class="console-field-label">Display name *</label><input data-test="role-name" v-model="form.name" class="console-input" placeholder="e.g. Registration Reviewer" /></div>
+            <div><label class="console-field-label">Role code (system identifier) *</label><input data-test="role-code" v-model="form.code" class="console-input" placeholder="REGISTRATION_REVIEWER" aria-describedby="new-role-code-help" @input="codeEdited = true" /><small id="new-role-code-help" class="field-help">Generated from the name. It cannot be changed after creation.</small></div>
           </div>
-          <div><label class="console-field-label">Description</label><textarea v-model="form.description" class="console-input description" placeholder="What this role is responsible for" /></div>
+          <div><label class="console-field-label">Description</label><textarea data-test="role-description" v-model="form.description" class="console-input description" placeholder="What this role is responsible for" /></div>
           <div class="form-row">
-            <div><label class="console-field-label">Scope *</label><select v-model="form.scopeType" class="console-select"><option value="SELF">Self</option><option value="ASSIGNED_EVENTS">Assigned events</option><option value="GLOBAL">Global</option></select></div>
-            <div><label class="console-field-label">Status *</label><select v-model="form.status" class="console-select"><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></div>
+            <div><label class="console-field-label">Scope *</label><select data-test="role-scopeType" v-model="form.scopeType" class="console-select"><option value="SELF">Self</option><option value="ASSIGNED_EVENTS">Assigned events</option><option value="GLOBAL">Global</option></select></div>
+            <div><label class="console-field-label">Status *</label><select data-test="role-status" v-model="form.status" class="console-select"><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></div>
           </div>
         </div>
       </div>
@@ -71,7 +71,7 @@ onMounted(loadPermissions)
         <div class="console-card-header"><div><h2>Permissions</h2><p>{{ selectedPermissions.length }} selected</p></div></div>
         <div class="console-card-body permission-grid">
           <label v-for="permission in permissions" :key="permission.code" class="permission-option">
-            <input v-model="selectedPermissions" type="checkbox" :value="permission.code" />
+            <input data-test="role-permission" v-model="selectedPermissions" type="checkbox" :value="permission.code" />
             <span><strong>{{ permission.code }}</strong><small>{{ permission.description }}</small></span>
           </label>
           <p v-if="loading" class="empty">Loading permissions...</p>

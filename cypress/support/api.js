@@ -64,8 +64,8 @@ export function stubApi() {
 
 export function login(email = 'demo@example.test') {
   cy.visit('/login')
-  cy.get('#email').type(email)
-  cy.get('#password').type('test-password-123')
-  cy.get('.submit-button').click()
+  cy.getByTestId('email').type(email)
+  cy.getByTestId('password').type('test-password-123')
+  cy.getByTestId('login-submit').click()
   cy.url().should('not.include', '/login')
 }

@@ -16,20 +16,20 @@ describe('Navigation and Discovery', () => {
     cy.contains('nav a', 'Events').click()
 
     cy.url().should('include', '/events')
-    cy.get('.event-card').should('have.length.greaterThan', 0)
+    cy.getByTestId('event-card').should('have.length.greaterThan', 0)
   })
 
   it('can search and filter events', () => {
     cy.visit('/events')
 
-    cy.get('input[placeholder="What kind of event are you looking for?"]').type('Global Tech Summit')
-    cy.get('.event-card').should('contain.text', 'Global Tech Summit 2026')
+    cy.getByTestId('events-search').type('Global Tech Summit')
+    cy.getByTestId('event-card').should('contain.text', 'Global Tech Summit 2026')
   })
 
   it('navigates to event details page from event card', () => {
     cy.visit('/events')
 
-    cy.get('.event-card').contains('Global Tech Summit 2026').click()
+    cy.getByTestId('event-card').contains('Global Tech Summit 2026').click()
 
     cy.url().should('include', '/events/global-tech-summit-2026')
     cy.get('h1').should('contain.text', 'Global Tech Summit 2026')
@@ -38,7 +38,7 @@ describe('Navigation and Discovery', () => {
 
   it('shows a placeholder when the event has no cover image', () => {
     cy.visit('/events')
-    cy.get('.event-card').first().find('.event-cover__placeholder').should('be.visible')
-    cy.get('.event-card').first().find('img').should('not.exist')
+    cy.getByTestId('event-card').first().find('.event-cover__placeholder').should('be.visible')
+    cy.getByTestId('event-card').first().find('img').should('not.exist')
   })
 })

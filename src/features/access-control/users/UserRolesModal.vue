@@ -30,13 +30,13 @@ function save() {
       <div class="console-modal-body">
         <p class="role-help">Select one or more active roles for this account.</p>
         <label v-for="role in roles" :key="role.code" class="role-option">
-          <input v-model="selected" type="checkbox" :value="role.code" />
+          <input data-test="user-role-option" v-model="selected" type="checkbox" :value="role.code" />
           <span>
             <strong>{{ role.name }}</strong>
             <small>{{ role.code }} · {{ role.permissions.length }} permissions</small>
           </span>
         </label>
-        <button type="button" class="console-btn console-btn-primary" style="justify-content: center" :disabled="saving || !selected.length" @click="save">
+        <button type="button" class="console-btn console-btn-primary" style="justify-content: center" :disabled="saving || !selected.length" data-test="user-roles-save" @click="save">
           {{ saving ? 'Saving...' : 'Save roles' }}
         </button>
       </div>

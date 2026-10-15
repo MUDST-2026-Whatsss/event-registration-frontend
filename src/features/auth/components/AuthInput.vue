@@ -56,7 +56,7 @@ const handleInput = (event) => {
     <label class="sr-only" :for="id">{{ label }}</label>
     <input
       v-bind="$attrs"
-      :id="id"
+      :data-test="$attrs['data-test'] || id" :id="id"
       :value="modelValue"
       :type="type"
       :aria-invalid="Boolean(error)"

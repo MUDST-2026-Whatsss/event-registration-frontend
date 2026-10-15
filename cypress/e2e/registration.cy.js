@@ -10,7 +10,7 @@ describe('Event Registration Flow', () => {
     cy.visit('/events/cloud-security-meetup')
     cy.get('h1').should('contain.text', 'Cloud Security Community Meetup')
 
-    cy.get('button.detail-register')
+    cy.getByTestId('event-register')
       .should('be.visible')
       .and('have.text', 'Register Now')
       .click()
@@ -19,10 +19,10 @@ describe('Event Registration Flow', () => {
     cy.url().should('include', '/events/cloud-security-meetup/register')
     cy.get('h1').should('contain.text', 'Confirm your registration')
 
-    cy.get('.registration-consent input[type="checkbox"]').check()
+    cy.getByTestId('registration-consent').check()
 
     // 4. Submit registration
-    cy.get('button.registration-confirm').click()
+    cy.getByTestId('registration-confirm').click()
 
     // 5. Success screen verification
     cy.url().should('include', '/events/cloud-security-meetup/registration-success')
@@ -32,21 +32,21 @@ describe('Event Registration Flow', () => {
     // 6. Navigate to My Registrations and confirm event is listed
     cy.contains('a', 'View my registrations').click()
     cy.url().should('include', '/my-registrations')
-    cy.get('.registration-card').should('contain.text', 'Cloud Security Community Meetup')
+    cy.getByTestId('registration-card').should('contain.text', 'Cloud Security Community Meetup')
   })
 
   it('finishes the paid QR process and loads the confirmed record from the API', () => {
     login()
     cy.intercept('POST', '**/mock-payment/confirm').as('paymentConfirm')
     cy.visit('/events/global-tech-summit-2026/register')
-    cy.get('.registration-consent input').check()
-    cy.get('.registration-confirm').click()
+    cy.getByTestId('registration-consent').check()
+    cy.getByTestId('registration-confirm').click()
     cy.contains('[role="dialog"]', 'Scan to pay').should('be.visible')
     cy.wait('@paymentConfirm', { timeout: 15000 }).its('response.body.status').should('eq', 'CONFIRMED')
     cy.url().should('include', '/registration-success')
     cy.get('.success-details').should('contain.text', 'REG-TEST000001')
     cy.contains('a', 'View my registrations').click()
-    cy.get('.registration-card').should('contain.text', 'Global Tech Summit 2026')
-    cy.get('.registration-card__status').should('have.text', 'registered')
+    cy.getByTestId('registration-card').should('contain.text', 'Global Tech Summit 2026')
+    cy.getByTestId('registration-status').should('have.text', 'registered')
   })
 })

@@ -149,7 +149,7 @@ const handleSubmit = async () => {
 
 <template>
   <AuthLayout title="Sign in" subtitle="Welcome back to Eventsss">
-    <form class="login-form" novalidate @submit.prevent="handleSubmit">
+    <form data-test="login-form" class="login-form" novalidate @submit.prevent="handleSubmit">
       <AuthInput
         id="email"
         v-model="email"
@@ -181,12 +181,12 @@ const handleSubmit = async () => {
         Forgot password?
       </RouterLink>
 
-      <button class="submit-button" type="submit" :disabled="isSubmitting">
+      <button data-test="login-submit" class="submit-button" type="submit" :disabled="isSubmitting">
         <span>{{ isSubmitting ? 'Signing in…' : 'Sign in' }}</span>
         <LogIn :size="17" :stroke-width="2.25" aria-hidden="true" />
       </button>
 
-      <p v-if="formStatus" class="form-status" role="alert">{{ formStatus }}</p>
+      <p v-if="formStatus" data-test="login-status" class="form-status" role="alert">{{ formStatus }}</p>
     </form>
 
     <p class="register-prompt">

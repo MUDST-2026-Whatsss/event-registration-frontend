@@ -170,10 +170,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       </div>
 
       <div v-if="visibleEvents.length" class="registration-list">
-        <article v-for="event in visibleEvents" :key="event.id" class="registration-card">
+        <article v-for="event in visibleEvents" :key="event.id" data-test="registration-card" class="registration-card">
           <EventCover class="registration-card__cover" :src="event.image" :title="event.title" :category="event.categoryName" />
           <div class="registration-card__content">
-            <span class="registration-card__status" :class="{ cancelled: event.registrationStatus === 'cancelled' }">{{ event.registrationStatus }}</span>
+            <span data-test="registration-status" class="registration-card__status" :class="{ cancelled: event.registrationStatus === 'cancelled' }">{{ event.registrationStatus }}</span>
             <h2>{{ event.title }}</h2>
             <p><CalendarDays :size="16" />{{ event.date }}</p>
             <p><MapPin :size="16" />{{ event.location }}</p>
@@ -182,8 +182,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <div class="registration-card__actions">
             <RouterLink :to="{ path: `/events/${event.id}`, query: { from: route.fullPath } }"><Eye :size="17" aria-hidden="true" />View</RouterLink>
             <RouterLink v-if="event.registrationStatus === 'pending payment'" :to="{ name: 'event-registration', params: { slug: event.id } }">Complete registration</RouterLink>
-            <button v-if="event.registrationStatus === 'registered'" class="qr" type="button" @click="openQrCode(event)"><QrCode :size="17" aria-hidden="true" />QR Code</button>
-            <button v-if="event.registrationStatus === 'registered' && event.cancellable" class="cancel" type="button" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
+            <button v-if="event.registrationStatus === 'registered'" class="qr" type="button" data-test="registration-qr" @click="openQrCode(event)"><QrCode :size="17" aria-hidden="true" />QR Code</button>
+            <button v-if="event.registrationStatus === 'registered' && event.cancellable" class="cancel" type="button" data-test="registration-cancel" @click="requestCancellation(event)"><CalendarX2 :size="17" aria-hidden="true" />Cancel</button>
           </div>
         </article>
       </div>
@@ -202,8 +202,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <p id="cancel-description">Your reserved place for <strong>{{ pendingCancellation.title }}</strong> will be released. You can register again later if spots remain.</p>
         <div class="cancel-dialog__event"><CalendarDays :size="18" /><span><strong>{{ pendingCancellation.title }}</strong><small>{{ pendingCancellation.date }}</small></span></div>
         <div class="cancel-dialog__actions">
-          <button type="button" autofocus @click="closeCancellation">Keep registration</button>
-          <button class="danger" type="button" @click="confirmCancellation">Cancel registration</button>
+          <button type="button" autofocus data-test="cancellation-keep" @click="closeCancellation">Keep registration</button>
+          <button class="danger" type="button" data-test="cancellation-confirm" @click="confirmCancellation">Cancel registration</button>
         </div>
       </section>
     </div>

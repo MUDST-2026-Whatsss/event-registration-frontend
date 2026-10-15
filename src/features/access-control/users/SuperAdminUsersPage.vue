@@ -201,7 +201,7 @@ onMounted(() => Promise.all([loadUsers(), loadSummary()]))
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in users" :key="user.userId">
+            <tr data-test="user-row" v-for="user in users" :key="user.userId">
               <td>
                 <div class="console-event-cell">
                   <span class="user-initials">{{ initials(user.displayName) }}</span>
@@ -225,16 +225,16 @@ onMounted(() => Promise.all([loadUsers(), loadSummary()]))
               <td><span class="last-login">{{ formatLastLogin(user.lastLoginAt) }}</span></td>
               <td>
                 <div class="actions">
-                  <button type="button" class="console-btn console-btn-outline console-btn-sm" :disabled="saving" @click="openManage(user)">Manage Roles</button>
+                  <button type="button" class="console-btn console-btn-outline console-btn-sm" :disabled="saving" data-test="user-manage-roles" @click="openManage(user)">Manage Roles</button>
                   <button
                     v-if="user.status === 'ACTIVE'"
                     type="button"
                     class="console-btn console-btn-outline console-btn-sm danger-action"
                     :disabled="saving || Boolean(disableRestriction(user))"
                     :title="disableRestriction(user) || 'Disable account'"
-                    @click="setStatus(user, 'DISABLED')"
+                    data-test="user-disable" @click="setStatus(user, 'DISABLED')"
                   >Disable</button>
-                  <button v-else type="button" class="console-btn console-btn-primary console-btn-sm" :disabled="saving" @click="setStatus(user, 'ACTIVE')">Enable</button>
+                  <button v-else type="button" class="console-btn console-btn-primary console-btn-sm" :disabled="saving" data-test="user-enable" @click="setStatus(user, 'ACTIVE')">Enable</button>
                 </div>
               </td>
             </tr>

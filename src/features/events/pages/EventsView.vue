@@ -51,8 +51,8 @@ onMounted(() => loadEvents().catch(() => {}))
         <div v-else-if="!events.length" class="events-state"><CalendarX2 :size="30" /><h2>No published events</h2><p>Published events will appear here.</p></div>
         <template v-else>
         <section class="event-tools" aria-label="Event search and filters">
-          <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
-          <label class="event-tools__filter"><ListFilter :size="17" /><span class="sr-only">Filter by status</span><select v-model="selectedStatus"><option v-for="option in filterOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
+          <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input data-test="events-search" v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
+          <label class="event-tools__filter"><ListFilter :size="17" /><span class="sr-only">Filter by status</span><select data-test="events-filter" v-model="selectedStatus"><option v-for="option in filterOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
         </section>
         <section v-for="group in filteredGroups" :key="group.id" class="event-group" :aria-labelledby="`${group.id}-title`">
           <div class="event-group__heading">

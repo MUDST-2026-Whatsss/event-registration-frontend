@@ -193,11 +193,11 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
             <label><span>Phone number</span><div><Phone :size="17" /><input v-model.trim="form.phone" type="tel" autocomplete="tel" required /></div></label>
             <label><span>Email</span><div><Mail :size="17" /><input v-model.trim="form.email" type="email" autocomplete="email" required /></div></label>
           </div>
-          <label class="registration-consent"><input v-model="form.consent" type="checkbox" required /><span>I confirm that the attendee information is correct and agree to the event terms and privacy policy.</span></label>
+          <label class="registration-consent"><input data-test="registration-consent" v-model="form.consent" type="checkbox" required /><span>I confirm that the attendee information is correct and agree to the event terms and privacy policy.</span></label>
           <div class="registration-form__summary"><span>Total</span><strong>{{ formatPrice(event.price) }}</strong></div>
           <p v-if="submitError" class="registration-error" role="alert">{{ submitError }}</p>
           <button
-            class="registration-confirm"
+            data-test="registration-confirm" class="registration-confirm"
             :class="{ ready: form.consent }"
             type="submit"
             :disabled="paymentOpen || submitting || !form.consent"

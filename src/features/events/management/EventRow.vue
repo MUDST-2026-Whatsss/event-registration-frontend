@@ -12,7 +12,7 @@ defineEmits(['edit', 'cancel', 'withdraw'])
 </script>
 
 <template>
-  <div class="row">
+  <div data-test="admin-event-row" class="row">
 
     <!-- Event Details -->
     <div class="info">
@@ -64,21 +64,21 @@ defineEmits(['edit', 'cancel', 'withdraw'])
         type="button"
         :title="event.status === 'PUBLISHED' ? 'Request event changes' : 'Edit event'"
         :aria-label="event.status === 'PUBLISHED' ? 'Request event changes' : 'Edit event'"
-        @click="$emit('edit', event)"
+        data-test="event-edit" @click="$emit('edit', event)"
       ><Icon name="pencil" :size="17" /></button>
       <button
         v-if="event.status === 'PENDING_REVIEW'"
         type="button"
         title="Withdraw review"
         aria-label="Withdraw review"
-        @click="$emit('withdraw', event)"
+        data-test="event-withdraw" @click="$emit('withdraw', event)"
       ><Icon name="undo" :size="17" /></button>
       <button
         v-if="!['CANCELLED', 'COMPLETED'].includes(event.status)"
         type="button"
         title="Cancel event"
         aria-label="Cancel event"
-        @click="$emit('cancel', event)"
+        data-test="event-cancel" @click="$emit('cancel', event)"
       ><Icon name="x" :size="17" /></button>
     </div>
 
