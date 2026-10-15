@@ -30,16 +30,22 @@ not required for this project.
 
 ## Requirements
 
-- Node.js `22.18.0` or `24.12.0` and newer
+- Node.js `22.22.2+`, `24.15.0+`, or `26+` for the locked test dependencies
 - npm
 
 ## Setup
 
+Clone the `develop` branch to get the latest application and browser tests used by backend CI:
+
 ```bash
-npm install
+git clone --branch develop https://github.com/MUDST-2026-Whatsss/event-registration-frontend.git
+cd event-registration-frontend
+npm ci
 cp .env.example .env
 npm run dev
 ```
+
+On Windows PowerShell, use `Copy-Item .env.example .env` for the copy step.
 
 Vite runs at `http://localhost:5173`. Browser requests remain same-origin under `/api`; the local
 development proxy forwards them to `VITE_API_PROXY_TARGET`, defaulting to
@@ -77,8 +83,12 @@ When this repository is cloned beside the backend repository, start the complete
 the backend directory:
 
 ```bash
-docker compose --env-file .env.local up -d --build
+docker compose up -d --build
 ```
+
+First create the backend's `.env` from its `.env.example` and replace the placeholder secrets,
+following the backend README. If you used `.env.local` from the detailed Docker guide instead,
+add `--env-file .env.local` to the Compose command.
 
 Open `http://localhost:5173`. Set `FRONTEND_PORT` in the backend environment file when another host
 port is required. `npm run dev` remains the recommended workflow while actively editing frontend
