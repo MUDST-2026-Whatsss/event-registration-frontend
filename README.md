@@ -14,14 +14,19 @@ Connected to the Spring Boot API:
 - Published event catalogue, event search/filtering, and event detail
 - Admin event lifecycle and Super Admin governance/access-control screens
 
-Still backed by mock JavaScript data or `localStorage`:
+Also connected to the API:
 
-- Registrations, cancellation, and QR tickets
-- Super Admin participant operations
-- Profile avatar
-- Forgot/reset password submission
+- Event registration, cancellation, seat availability, and participant lists
+- Event invitations, partial drafts, and recent registration activity
+- Password recovery with an emailed reset token
+- Audit, sign-in, and session activity with spreadsheet export
 
-The PromptPay UI is a simulation only and must not represent a real successful payment.
+Profile avatars remain in per-user `localStorage`. QR tickets display the saved registration
+number; attendance scanning/check-in is outside the current classroom scope.
+
+The QR payment flow is an intentional university demonstration. The backend saves the simulated
+confirmation when `MOCK_PAYMENTS_ENABLED=true`; no real money is collected. A payment provider is
+not required for this project.
 
 ## Requirements
 
@@ -52,6 +57,16 @@ npm run test:e2e:open
 ```
 
 Cypress tests intercept the API with isolated fixtures; they do not log into the shared database.
+The suite covers navigation, authentication, free registration, the QR payment demonstration,
+cancellation, event submission/approval, published-event change approval/rejection, and user/role
+administration. Controls use `data-test` attributes and `cy.getByTestId`, following Lab Week 7.
+These browser tests complement the backend's PostgreSQL integration tests; they do not replace them.
+
+To run one browser spec:
+
+```bash
+npx start-server-and-test dev http://127.0.0.1:5173 "node scripts/cypress-runner.js --spec cypress/e2e/governance.cy.js"
+```
 
 ## Docker
 
@@ -94,7 +109,7 @@ route records instead of reaching into implementation folders.
 - [`docs/architecture.md`](docs/architecture.md): frontend structure and state boundaries
 - [`docs/api-integration.md`](docs/api-integration.md): API, cookie, CSRF, and error conventions
 - [`docs/pages-and-flows.md`](docs/pages-and-flows.md): page inventory and live/mock status
-- Workspace [`PLAN.md`](../PLAN.md): cross-repository implementation order
+- The course Labs in the Docs folder define the coursework; this repository follows the existing feature architecture.
 
 ## Security
 

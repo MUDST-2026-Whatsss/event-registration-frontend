@@ -63,13 +63,13 @@ authorization.
 
 - `features/auth/composables/useAuth.js` is the current source of truth for the API-backed user.
 - `features/auth/composables/useProfile.js` maps authenticated user data to profile UI state.
-- `features/registrations/composables/useRegistrations.js` is temporary localStorage state and will
-  be replaced by the registration API.
+- `features/registrations/composables/useRegistrations.js` maps API registration records into the
+  page state; registration and cancellation persist in PostgreSQL.
 - `shared/lib/apiClient.js` owns `/api/v1`, credentialed cookies, JSON errors, and CSRF handling.
-- Mock files live inside the feature that consumes them and are removed one vertical API slice at a
-  time.
-- Pinia should be introduced when event and registration server state needs shared caching or more
-  complex transitions; adding it only to wrap the current small singleton state adds little value.
+- Browser test fixtures live in `cypress/support/`. They intercept requests only during Cypress
+  tests. Application pages do not fall back to fixture data.
+- Keep the current composables and API modules; no extra state framework is needed for the
+  classroom requirements.
 
 ## Component rules
 
