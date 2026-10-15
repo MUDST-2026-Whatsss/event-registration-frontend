@@ -6,7 +6,7 @@ describe('Admin Experience and Access Control', () => {
     cy.visit('/admin/dashboard')
 
     cy.url().should('include', '/login?redirect=/admin/dashboard')
-    cy.get('.login-form').should('be.visible')
+    cy.getByTestId('login-form').should('be.visible')
   })
 
   it('admin logs in successfully and accesses admin dashboard', () => {

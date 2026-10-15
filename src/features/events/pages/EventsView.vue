@@ -1,7 +1,7 @@
 <script setup>
 import { ArrowRight, CalendarX2, ListFilter, RefreshCw, Search } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import heroImage from '@/assets/events/hero.jpg'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import EventCard from '../components/EventCard.vue'
@@ -9,26 +9,31 @@ import PublicHeader from '@/app/components/PublicHeader.vue'
 import { groupPublicEvents, usePublicEvents } from '../public.js'
 
 const route = useRoute()
+const router = useRouter()
 const searchQuery = ref(typeof route.query.q === 'string' ? route.query.q : '')
-const selectedStatus = ref('all')
 const { events, loading, error, loadEvents } = usePublicEvents()
-const eventGroups = computed(() => groupPublicEvents(events.value))
-const selectedGroup = computed(() => {
-  const group = typeof route.query.group === 'string' ? route.query.group : ''
-  return eventGroups.value.some((item) => item.id === group) ? group : ''
+const eventGroups = computed(() => groupPublicEvents(events.value, { includeEmptyUpcoming: true }))
+const selectedStatus = computed({
+  get: () => ['open', 'upcoming', 'closed'].includes(route.query.group) ? route.query.group : 'all',
+  set: (status) => {
+    const query = { ...route.query }
+    if (status === 'all') delete query.group
+    else query.group = status
+    router.push({ path: '/events', query })
+  },
 })
-const pageTitle = computed(() => eventGroups.value.find((group) => group.id === selectedGroup.value)?.title ?? 'Our Events')
-const pageSubtitle = computed(() => selectedGroup.value ? `Explore all ${pageTitle.value.toLowerCase()}` : 'All of My Events Now')
 const filterOptions = [
   { value: 'all', label: 'All events' }, { value: 'open', label: 'Open' },
-  { value: 'upcoming', label: 'Upcoming' }, { value: 'closed', label: 'Closed' },
+  { value: 'upcoming', label: 'Upcoming' }, { value: 'closed', label: 'Registration closed / Past' },
 ]
+const groupTitles = { open: 'Open for Registration', upcoming: 'Upcoming Events', closed: 'Registration Closed / Past Events' }
+const pageTitle = computed(() => groupTitles[selectedStatus.value] ?? 'Our Events')
+const pageSubtitle = computed(() => selectedStatus.value !== 'all' ? `Explore all ${pageTitle.value.toLowerCase()}` : 'Explore all published events')
 const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
-  const visibleGroups = selectedGroup.value ? eventGroups.value.filter((group) => group.id === selectedGroup.value) : eventGroups.value
+  const visibleGroups = selectedStatus.value === 'all' ? eventGroups.value : eventGroups.value.filter((group) => group.id === selectedStatus.value)
   return visibleGroups.map((group) => ({ ...group, events: group.events.filter((event) => {
-    const matchesQuery = !query || `${event.title} ${event.location}`.toLocaleLowerCase().includes(query)
-    return matchesQuery && (selectedStatus.value === 'all' || event.status === selectedStatus.value)
+    return !query || `${event.title} ${event.location}`.toLocaleLowerCase().includes(query)
   }) }))
 })
 
@@ -48,22 +53,21 @@ onMounted(() => loadEvents().catch(() => {}))
       <div id="events" class="events-shell">
         <div v-if="loading && !events.length" class="events-state" aria-live="polite"><RefreshCw :size="28" class="events-state__spinner" /><h2>Loading events</h2><p>Fetching the latest published events.</p></div>
         <div v-else-if="error && !events.length" class="events-state" role="alert"><CalendarX2 :size="30" /><h2>Events could not be loaded</h2><p>{{ error }}</p><button type="button" @click="loadEvents(true).catch(() => {})">Try again</button></div>
-        <div v-else-if="!events.length" class="events-state"><CalendarX2 :size="30" /><h2>No published events</h2><p>Published events will appear here.</p></div>
         <template v-else>
         <section class="event-tools" aria-label="Event search and filters">
-          <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
-          <label class="event-tools__filter"><ListFilter :size="17" /><span class="sr-only">Filter by status</span><select v-model="selectedStatus"><option v-for="option in filterOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
+          <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input data-test="events-search" v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
+          <label class="event-tools__filter"><ListFilter :size="17" /><span class="sr-only">Filter by status</span><select data-test="events-filter" v-model="selectedStatus"><option v-for="option in filterOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
         </section>
         <section v-for="group in filteredGroups" :key="group.id" class="event-group" :aria-labelledby="`${group.id}-title`">
           <div class="event-group__heading">
             <h2 :id="`${group.id}-title`">{{ group.title }}</h2>
-            <RouterLink v-if="selectedGroup" to="/events">All events <ArrowRight :size="14" /></RouterLink>
+            <RouterLink v-if="selectedStatus !== 'all'" to="/events">All events <ArrowRight :size="14" /></RouterLink>
             <RouterLink v-else :to="{ path: '/events', query: { group: group.id } }">View all <ArrowRight :size="14" /></RouterLink>
           </div>
           <div v-if="group.events.length" class="event-grid"><EventCard v-for="event in group.events" :key="event.id" :event="event" /></div>
-          <p v-else class="event-group__empty">No events match your search.</p>
+          <p v-else class="event-group__empty">{{ group.id === 'upcoming' && !searchQuery.trim() ? 'No upcoming events are published yet.' : 'No events match your search.' }}</p>
         </section>
-        <div v-if="!visibleEventCount" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
+        <div v-if="!visibleEventCount && (searchQuery.trim() || !filteredGroups.length)" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
         </template>
       </div>
     </main>
@@ -85,7 +89,7 @@ onMounted(() => loadEvents().catch(() => {}))
 .event-tools__search { width: min(100%, 350px); padding-inline: 14px; gap: 10px; }
 .event-tools__search:focus-within, .event-tools__filter:focus-within { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgb(91 124 250 / 14%); }
 .event-tools__search input { width: 100%; min-width: 0; padding: 0; color: var(--neutral-950); background: transparent; border: 0; outline: 0; font-size: .875rem; }
-.event-tools__filter { width: 140px; padding-left: 14px; }
+.event-tools__filter { width: 156px; padding-inline: 14px 12px; }
 .event-tools__filter select { width: 100%; height: 100%; padding: 0 10px 0 8px; color: #4d5263; background: transparent; border: 0; outline: 0; cursor: pointer; font-size: .875rem; }
 .event-group + .event-group { margin-top: 68px; }
 .event-group__heading { display: flex; margin-bottom: 20px; align-items: center; justify-content: space-between; gap: 16px; }

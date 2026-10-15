@@ -70,4 +70,12 @@ describe('public event model', () => {
 
     expect(grouped.map((group) => group.id)).toEqual(['open', 'upcoming', 'closed'])
   })
+
+  it('includes the empty Upcoming group only when requested', () => {
+    const events = [{ id: 'one', status: 'open' }]
+    expect(groupPublicEvents(events).map(group => group.id)).toEqual(['open'])
+    const groups = groupPublicEvents(events, { includeEmptyUpcoming: true })
+    expect(groups.map(group => group.id)).toEqual(['open', 'upcoming'])
+    expect(groups[1].events).toEqual([])
+  })
 })

@@ -314,7 +314,7 @@ onMounted(loadDashboard)
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .metric-card {
   min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start; gap: 11px; padding: 17px; color: var(--console-text); text-align: left;
+  align-items: center; gap: 11px; padding: 17px; color: var(--console-text); text-align: left;
   background: #fff; border: 1px solid var(--console-border-soft); border-radius: 14px;
   box-shadow: 0 3px 12px rgb(15 23 42 / 4%); cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
@@ -342,7 +342,7 @@ onMounted(loadDashboard)
 .metric-label { grid-area: label; color: var(--console-text-secondary); font-size: 12px; font-weight: 600; }
 .metric-copy strong { grid-area: value; font-size: 25px; line-height: 1; text-align: right; font-variant-numeric: tabular-nums; }
 .metric-copy small { grid-area: note; overflow: hidden; color: var(--console-text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.metric-arrow { margin-top: 2px; color: #cbd5e1; }
+.metric-arrow { color: #cbd5e1; }
 .category-card { height: 100%; overflow: hidden; }
 .dashboard-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .section-kicker { color: var(--console-primary); font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
@@ -381,7 +381,7 @@ onMounted(loadDashboard)
 .recent-list { display: flex; flex-direction: column; }
 .recent-row {
   min-width: 0; display: grid;
-  grid-template-columns: minmax(220px, 1.35fr) minmax(180px, 1fr) minmax(150px, .75fr) auto auto;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(180px, 1fr) minmax(150px, .75fr) 132px 16px;
   align-items: center; gap: 18px; padding: 14px 18px; color: var(--console-text); text-align: left;
   background: #fff; border: 0; border-top: 1px solid var(--console-border-soft); cursor: pointer;
   transition: background .15s ease;
@@ -397,6 +397,7 @@ onMounted(loadDashboard)
 .participant-copy strong, .recent-detail strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .participant-copy small, .recent-detail small { overflow: hidden; color: var(--console-text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .recent-time > span { color: var(--console-text-secondary); font-size: 12px; white-space: nowrap; }
+.recent-row > .console-pill { justify-self: end; }
 .recent-arrow { color: #cbd5e1; }
 
 @media (min-width: 1321px) {
@@ -418,7 +419,7 @@ onMounted(loadDashboard)
 }
 @media (max-width: 980px) {
   .dashboard-layout { grid-template-columns: minmax(0, 1fr); }
-  .recent-row { grid-template-columns: minmax(200px, 1.2fr) minmax(170px, 1fr) auto auto; }
+  .recent-row { grid-template-columns: minmax(200px, 1.2fr) minmax(170px, 1fr) 132px 16px; }
   .recent-time { display: none; }
 }
 @media (max-width: 680px) {

@@ -52,7 +52,7 @@ watch(() => props.event, () => { comment.value = '' })
 
         <label>
           <span class="console-field-label">Decision comment</span>
-          <textarea v-model="comment" class="console-input decision-comment" placeholder="Required when rejecting" />
+          <textarea data-test="review-comment" v-model="comment" class="console-input decision-comment" placeholder="Required when rejecting" />
         </label>
 
         <div>
@@ -94,7 +94,7 @@ watch(() => props.event, () => { comment.value = '' })
           class="console-btn console-btn-outline"
           style="flex: 1; justify-content: center; color: var(--console-danger); border-color: #fbcaca"
           :disabled="event.status !== 'Pending Review' || !comment.trim()"
-          @click="emit('reject', event, comment)"
+          data-test="review-modal-reject" @click="emit('reject', event, comment)"
         >
           Reject
         </button>
@@ -103,7 +103,7 @@ watch(() => props.event, () => { comment.value = '' })
           class="console-btn console-btn-primary"
           style="flex: 1; justify-content: center"
           :disabled="event.status !== 'Pending Review'"
-          @click="emit('approve', event, comment)"
+          data-test="review-modal-approve" @click="emit('approve', event, comment)"
         >
           Approve
         </button>

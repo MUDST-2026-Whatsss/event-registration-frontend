@@ -215,7 +215,7 @@ onMounted(loadRequests)
       <article
         v-for="request in filteredRequests"
         :key="request.id"
-        class="console-card request-card"
+        data-test="change-request" class="console-card request-card"
       >
 
         <!-- Left icon -->
@@ -311,7 +311,7 @@ onMounted(loadRequests)
                 : 'console-btn-secondary'
             "
             :disabled="request.status !== 'Pending'"
-            @click="openReview(request)"
+            data-test="change-review" @click="openReview(request)"
           >
             {{
               request.status === 'Pending'

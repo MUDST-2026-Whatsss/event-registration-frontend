@@ -121,7 +121,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
           <div v-else class="registration-state open"><CalendarClock :size="20" /><span><strong>Registration is open</strong><small>{{ event.capacity }}</small></span></div>
           <div class="detail-price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           <p>{{ registrationMessage }}</p>
-          <button class="detail-register" type="button" :disabled="registered || !registrationOpen" @click="handleRegistration">{{ registrationButtonLabel }}</button>
+          <button data-test="event-register" class="detail-register" type="button" :disabled="registered || !registrationOpen" @click="handleRegistration">{{ registrationButtonLabel }}</button>
           <small class="detail-closes">{{ event.status === 'upcoming' ? 'Registration has not opened yet' : event.status === 'closed' ? 'Registration is no longer available' : `Registration closes ${new Date(event.registrationEndAt).toLocaleString()}` }}</small>
           <div v-if="event.contactEmail" class="organizer"><span>@</span><p>Event contact<strong>{{ event.contactEmail }}</strong></p></div>
         </aside>

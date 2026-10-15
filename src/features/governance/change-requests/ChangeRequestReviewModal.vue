@@ -49,7 +49,7 @@ watch(() => props.request, () => { comment.value = '' })
 
       <div class="decision-section">
         <label class="modal-eyebrow" for="change-review-comment">Decision comment</label>
-        <textarea id="change-review-comment" v-model="comment" class="console-input decision-comment" placeholder="Required when rejecting" />
+        <textarea id="change-review-comment" data-test="change-comment" v-model="comment" class="console-input decision-comment" placeholder="Required when rejecting" />
       </div>
 
       <!-- Requester -->
@@ -120,7 +120,7 @@ watch(() => props.request, () => { comment.value = '' })
         <button
           class="console-btn reject-btn"
           :disabled="!comment.trim()"
-          @click="$emit('reject', comment)"
+          data-test="change-reject" @click="$emit('reject', comment)"
         >
           <Icon
             name="x"
@@ -132,7 +132,7 @@ watch(() => props.request, () => { comment.value = '' })
 
         <button
           class="console-btn console-btn-primary"
-          @click="$emit('approve', comment)"
+          data-test="change-approve" @click="$emit('approve', comment)"
         >
           <Icon
             name="check"

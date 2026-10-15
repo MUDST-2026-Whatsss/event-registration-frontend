@@ -178,7 +178,7 @@ onMounted(async () => {
       description="Manage and track your assigned events and their approval status."
     >
       <template #actions>
-        <button type="button" class="console-btn console-btn-primary" @click="goToCreate">
+        <button type="button" class="console-btn console-btn-primary" data-test="create-event" @click="goToCreate">
           <Icon name="plus" :size="16" aria-hidden="true" />
           Create event
         </button>
@@ -210,9 +210,9 @@ onMounted(async () => {
           <span class="sr-only">Search your events</span>
           <Icon name="search" :size="17" aria-hidden="true" />
           <input v-model="search" type="search" placeholder="Search by event title or location…" />
+          <span class="loading-status" aria-live="polite">{{ loading ? 'Updating results…' : '' }}</span>
         </label>
         <button class="search-button" type="submit">Search</button>
-        <span class="loading-status" aria-live="polite">{{ loading ? 'Updating results…' : '' }}</span>
       </form>
 
       <EventFilter
@@ -336,7 +336,7 @@ onMounted(async () => {
   border-radius: 10px;
   cursor: pointer;
 }
-.loading-status { min-width: 92px; color: var(--console-text-muted); font-size: 11px; }
+.loading-status { flex-shrink: 0; color: var(--console-text-muted); font-size: 11px; white-space: nowrap; }
 .error-message { padding: 12px 14px; color: #991b1b; background: #fef2f2; border-radius: 10px; }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -354,7 +354,6 @@ onMounted(async () => {
 
   .search-toolbar { align-items: stretch; flex-wrap: wrap; padding: 12px 14px; }
   .search-field { flex-basis: calc(100% - 90px); }
-  .loading-status { width: 100%; min-width: 0; }
 }
 
 @media (max-width: 480px) {

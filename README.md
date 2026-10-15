@@ -14,27 +14,38 @@ Connected to the Spring Boot API:
 - Published event catalogue, event search/filtering, and event detail
 - Admin event lifecycle and Super Admin governance/access-control screens
 
-Still backed by mock JavaScript data or `localStorage`:
+Also connected to the API:
 
-- Registrations, cancellation, and QR tickets
-- Super Admin participant operations
-- Profile avatar
-- Forgot/reset password submission
+- Event registration, cancellation, seat availability, and participant lists
+- Event invitations, partial drafts, and recent registration activity
+- Password recovery with an emailed reset token
+- Audit, sign-in, and session activity with spreadsheet export
 
-The PromptPay UI is a simulation only and must not represent a real successful payment.
+Profile avatars remain in per-user `localStorage`. QR tickets display the saved registration
+number; attendance scanning/check-in is outside the current classroom scope.
+
+The QR payment flow is an intentional university demonstration. The backend saves the simulated
+confirmation when `MOCK_PAYMENTS_ENABLED=true`; no real money is collected. A payment provider is
+not required for this project.
 
 ## Requirements
 
-- Node.js `22.18.0` or `24.12.0` and newer
+- Node.js `22.22.2+`, `24.15.0+`, or `26+` for the locked test dependencies
 - npm
 
 ## Setup
 
+Clone the `develop` branch to get the latest application and browser tests used by backend CI:
+
 ```bash
-npm install
+git clone --branch develop https://github.com/MUDST-2026-Whatsss/event-registration-frontend.git
+cd event-registration-frontend
+npm ci
 cp .env.example .env
 npm run dev
 ```
+
+On Windows PowerShell, use `Copy-Item .env.example .env` for the copy step.
 
 Vite runs at `http://localhost:5173`. Browser requests remain same-origin under `/api`; the local
 development proxy forwards them to `VITE_API_PROXY_TARGET`, defaulting to
@@ -52,6 +63,16 @@ npm run test:e2e:open
 ```
 
 Cypress tests intercept the API with isolated fixtures; they do not log into the shared database.
+The suite covers navigation, authentication, free registration, the QR payment demonstration,
+cancellation, event submission/approval, published-event change approval/rejection, and user/role
+administration. Controls use `data-test` attributes and `cy.getByTestId`, following Lab Week 7.
+These browser tests complement the backend's PostgreSQL integration tests; they do not replace them.
+
+To run one browser spec:
+
+```bash
+npx start-server-and-test dev http://127.0.0.1:5173 "node scripts/cypress-runner.js --spec cypress/e2e/governance.cy.js"
+```
 
 ## Docker
 
@@ -62,8 +83,12 @@ When this repository is cloned beside the backend repository, start the complete
 the backend directory:
 
 ```bash
-docker compose --env-file .env.local up -d --build
+docker compose up -d --build
 ```
+
+First create the backend's `.env` from its `.env.example` and replace the placeholder secrets,
+following the backend README. If you used `.env.local` from the detailed Docker guide instead,
+add `--env-file .env.local` to the Compose command.
 
 Open `http://localhost:5173`. Set `FRONTEND_PORT` in the backend environment file when another host
 port is required. `npm run dev` remains the recommended workflow while actively editing frontend
@@ -94,7 +119,7 @@ route records instead of reaching into implementation folders.
 - [`docs/architecture.md`](docs/architecture.md): frontend structure and state boundaries
 - [`docs/api-integration.md`](docs/api-integration.md): API, cookie, CSRF, and error conventions
 - [`docs/pages-and-flows.md`](docs/pages-and-flows.md): page inventory and live/mock status
-- Workspace [`PLAN.md`](../PLAN.md): cross-repository implementation order
+- The course Labs in the Docs folder define the coursework; this repository follows the existing feature architecture.
 
 ## Security
 

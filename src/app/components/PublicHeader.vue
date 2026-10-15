@@ -41,20 +41,20 @@ async function handleLogout() {
       <div id="public-navigation" class="public-header__navigation" :class="{ 'is-open': menuOpen }">
         <nav aria-label="Main navigation">
           <RouterLink to="/" @click="menuOpen = false">Home</RouterLink>
-          <RouterLink to="/events" :class="{ active: route.path.startsWith('/events') }" @click="menuOpen = false">Events</RouterLink>
+          <RouterLink data-test="nav-events" to="/events" :class="{ active: route.path.startsWith('/events') }" @click="menuOpen = false">Events</RouterLink>
           <RouterLink v-if="isAuthenticated" to="/my-registrations" @click="menuOpen = false">My Registrations</RouterLink>
         </nav>
         <div class="public-header__actions" :aria-busy="!isInitialized">
           <span v-if="!isInitialized" class="public-header__session-placeholder" aria-label="Checking session" />
           <template v-if="!isAuthenticated">
             <template v-if="isInitialized">
-              <RouterLink class="public-header__login" to="/login">Login</RouterLink>
+              <RouterLink data-test="nav-login" class="public-header__login" to="/login">Login</RouterLink>
               <RouterLink class="public-header__register" to="/register">Register</RouterLink>
             </template>
           </template>
           <template v-else>
             <RouterLink class="public-header__profile" to="/profile" aria-label="Profile" title="Profile" @click="menuOpen = false"><img v-if="profile.avatar" :src="profile.avatar" alt="" /><UserRound v-else :size="18" /><span>{{ profile.firstName }}</span></RouterLink>
-            <button class="public-header__account" type="button" @click="handleLogout">Logout</button>
+            <button data-test="logout" class="public-header__account" type="button" @click="handleLogout">Logout</button>
           </template>
         </div>
       </div>

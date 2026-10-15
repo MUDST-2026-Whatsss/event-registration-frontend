@@ -204,7 +204,7 @@ onMounted(loadReviews)
                     type="button"
                     class="console-icon-btn success"
                     :disabled="event.status !== 'Pending Review'"
-                  @click="decide(event, 'approve')"
+                  data-test="review-approve" @click="decide(event, 'approve')"
                   >
                     <Icon name="check" :size="15" />
                   </button>

@@ -18,7 +18,7 @@ const formattedPrice = computed(() => (
 </script>
 
 <template>
-  <RouterLink class="event-card" :to="detailTarget">
+  <RouterLink data-test="event-card" class="event-card" :to="detailTarget">
     <div class="event-card__media">
       <EventCover :src="event.image" :title="event.title" :category="event.categoryName" />
       <span class="event-card__badge" :class="`event-card__badge--${event.status}`">{{ event.badge }}</span>

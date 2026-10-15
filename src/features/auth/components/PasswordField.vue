@@ -62,6 +62,7 @@ const handleInput = (event) => {
       <LockKeyhole v-if="variant === 'profile'" class="password-field__leading-icon" :size="17" aria-hidden="true" />
       <input
         v-bind="$attrs"
+        :data-test="$attrs['data-test'] || id"
         :id="id"
         :value="modelValue"
         :type="inputType"

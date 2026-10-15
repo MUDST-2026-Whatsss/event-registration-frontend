@@ -1,130 +1,76 @@
 # Pages and flows
 
-This document is the current inventory of frontend routes, access rules, data sources, and
-unfinished API work. Update it whenever a route or vertical flow changes.
-
-## Status legend
-
-- **Live API** — the screen reads or writes backend data through `src/shared/lib/apiClient.js`.
-- **Partial API** — some fields use the API, while explicitly documented UI-only state remains.
-- **Prototype** — the screen uses feature-owned mock data, browser storage, or simulated actions.
+This university project uses the existing Vue feature folders and Spring Boot API. Registration
+and administration changes persist in PostgreSQL. The QR payment demonstration is intentionally
+simulated; real payment integration is outside the project scope.
 
 ## Public and participant pages
 
-| Page | Route | Access | Feature owner | Current state | Next backend integration |
-| --- | --- | --- | --- | --- | --- |
-| Home | `/` | Public | `features/events` | **Live API**: published highlights grouped by registration period | Server ranking/featured-event policy remains |
-| Events | `/events` | Public | `features/events` | **Live API**: published catalogue, search, and lifecycle filters | Server pagination/search for larger catalogues |
-| Event detail | `/events/:slug` | Public | `features/events` | **Live API**: published event detail and registration window | Authoritative remaining-seat count after registration API |
-| Create account | `/register` | Public | `features/auth` | **Live API**: account registration | Complete |
-| Sign in | `/login` | Public | `features/auth` | **Live API**: login, cookie session, refresh, role redirect | Complete |
-| Choose role | `/select-role` | Authenticated multi-role account | `features/auth` | **Live API**: selects one active role and permission scope | Complete |
-| Forgot password | `/forgot-password` | Public | `features/auth` | Prototype browser-only confirmation | Password-reset request API |
-| Reset password | `/reset-password` | Public | `features/auth` | Prototype client validation | Reset-token validation and consumption API |
-| Profile | `/profile` | Authenticated | `features/auth` | **Partial API**: profile fields live; avatar in localStorage | Media upload/removal API |
-| Register for event | `/events/:slug/register` | Authenticated | `features/registrations` | **Partial API**: event context is live; registration and PromptPay are simulated | Atomic registration hold plus payment intent |
-| Registration success | `/events/:slug/registration-success` | Authenticated | `features/registrations` | Prototype localStorage lookup | Registration/payment detail API |
-| My registrations | `/my-registrations` | Authenticated | `features/registrations` | Prototype localStorage list, cancellation, and QR | Current-user registrations, cancellation, and signed QR |
+| Page | Route | Current behavior |
+| --- | --- | --- |
+| Home | `/` | Published highlights from the API |
+| Events | `/events` | Published catalogue with client-side search and date/status filters |
+| Event detail | `/events/:slug` | API event details, registration window, and remaining seats |
+| Create account | `/register` | API account registration |
+| Sign in | `/login` | Cookie session, refresh, and role-aware redirect |
+| Choose role | `/select-role` | API selection of one assigned role |
+| Forgot password | `/forgot-password` | API request; reset link sent through configured SMTP |
+| Reset password | `/reset-password` | API token consumption and password change |
+| Profile | `/profile` | API text fields and password change; avatar stays in localStorage |
+| Register for event | `/events/:slug/register` | API registration; paid events show the classroom QR simulation |
+| Registration success | `/events/:slug/registration-success` | Saved registration and mock transaction reference |
+| My registrations | `/my-registrations` | API list, invitations and cancellation; browser-generated QR ticket |
 
-Published event data comes from `GET /api/v1/events` and `GET /api/v1/events/{slug}`. Registration
-state still comes from `features/registrations/composables/useRegistrations.js`; it is device-local
-and is not an authoritative reservation.
+## Administration
 
-## Admin console
+| Page | Route | Current behavior |
+| --- | --- | --- |
+| Admin dashboard | `/admin/dashboard` | Scoped event/category totals and recent registrations |
+| Admin events | `/admin/all-events` | Search/filter, edit, withdraw, cancel, and participant navigation |
+| Create event | `/admin/create-event` | Partial drafts, image upload, participant invitations, submission for review |
+| Edit event | `/admin/events/:eventId/edit` | Draft/rejected editing; published changes require a review request |
+| Participants | `/admin/events/:id/participants` and `/super-admin/all-events/:id/participants` | API participant list with pagination |
+| Super-admin dashboard | `/super-admin/dashboard` | Pending reviews/changes, user totals and security activity |
+| Global events | `/super-admin/all-events` | Global event list, filters, and admin assignment |
+| Event approvals | `/super-admin/event-approvals` | Approve or reject submitted events |
+| Change requests | `/super-admin/change-requests` | Compare field changes, approve or reject |
+| Audit logs | `/super-admin/audit-logs` | Audit/sign-in/session views, filtering and spreadsheet export |
+| Users | `/super-admin/user-management` | User status and assigned roles |
+| Roles | `/super-admin/role-management` | Role details, permissions and deletion subject to backend rules |
+| Create role | `/super-admin/role-management/new` | Persist a custom role and permissions |
 
-The `/admin/**` parent route uses `features/console-shell/ConsoleLayout.vue` and requires the
-`ADMIN` role. Its business pages do not live in the shell feature.
+Backend permissions and event ownership enforce access. Vue route guards control navigation only.
+User/role changes revoke affected sessions. Event updates carry an optimistic version, and published
+data remains unchanged until a super admin approves the change request.
 
-| Page | Route | Feature owner | Current state | Next backend integration |
-| --- | --- | --- | --- | --- |
-| Dashboard | `/admin/dashboard` | `features/dashboards` | **Partial API**: scoped event totals and recent events | Registration trends/activity after their APIs exist |
-| All events | `/admin/all-events` | `features/events/management` | **Live API**: scoped list, search, status filter, withdraw and cancel | Complete for event lifecycle |
-| Create event | `/admin/create-event` | `features/events/management` | **Live API**: image upload, draft creation and submit for review | Complete for event lifecycle |
-| Edit/request changes | `/admin/events/:eventId/edit` | `features/events/management` | **Live API**: DRAFT/REJECTED edit; PUBLISHED field-diff request | Super Admin decision UI is Phase 3 |
+## Registration and classroom payment flow
 
-Admin event writes carry an optimistic version. Published edits create a field-level change request
-and leave the active event unchanged until a later Super Admin decision.
+1. A signed-in participant loads a published event from the API.
+2. A free registration is saved as `CONFIRMED`, with capacity checked by the backend.
+3. A paid demo registration is saved as `PENDING_PAYMENT`; the page shows its simulated QR flow.
+4. The mock confirmation endpoint saves `CONFIRMED`. The `MOCK-` reference is not a bank transaction.
+5. Success and My Registrations read saved API records. Cancellation persists through the API.
 
-## Super-admin console
+The `local` profile enables mock payments by default. No payment provider or webhook is required.
+Profile avatar storage, signed/scannable attendance tickets, admin cancellation of an individual
+registration, and participant export are optional future work, not required by the course checklist.
 
-The `/super-admin/**` parent route uses the same console shell and requires the `SUPER_ADMIN` role.
+## Browser test cases
 
-| Page | Route | Feature owner | Current state | Next backend integration |
-| --- | --- | --- | --- | --- |
-| Dashboard | `/super-admin/dashboard` | `features/dashboards` | **Live API**: event lifecycle totals, recent reviews, and change-request summary | User/admin totals after access-control API |
-| All events | `/super-admin/all-events` | `features/events/management` | **Live API**: global event list/search/status filters and admin assignments | Participant operations after registration API |
-| Participants | `/super-admin/all-events/:id/participants` | `features/registrations/management` | Prototype; selected-event context and changes use localStorage | Event registrations, check-in, cancellation, and export APIs |
-| Change requests | `/super-admin/change-requests` | `features/governance/change-requests` | **Live API**: queue, field diff, approve and reject | Complete for event governance |
-| Event approvals | `/super-admin/event-approvals` | `features/governance/approvals` | **Live API**: queue/detail, approve and reject | Complete for event governance |
-| Audit logs | `/super-admin/audit-logs` | `features/governance/audit` | **Live API**: search, target filter and pagination | Complete for current audit fields |
-| User management | `/super-admin/user-management` | `features/access-control/users` | **Live API**: users, stats, status and role assignment | Invitation flow remains |
-| Role management | `/super-admin/role-management` | `features/access-control/roles` | **Live API**: roles, permissions, usage and editing | Complete for create/update |
-| Create role | `/super-admin/role-management/new` | `features/access-control/roles` | **Live API**: persists custom role and permissions | Complete |
+The Cypress suite follows Lab Week 7's `cypress/e2e` and `cypress/support` structure. Tests reset
+isolated API fixtures before each case and select controls through `data-test` attributes.
 
-## Runtime flows
+| Case | Steps | Expected result |
+| --- | --- | --- |
+| EVENT-001 | Save draft, reload, submit, approve as super admin | Event appears in the public catalogue |
+| EVENT-002 | Save draft while API returns a version conflict | Error shown; entered title retained |
+| CHANGE-001 | Request a published title change, approve it | Old title remains until approval; new title then appears |
+| CHANGE-002 | Reject a published change with a reason | Request rejected; original title preserved |
+| ROLE-001 | Create a role with permissions and assign it | Role and assignment survive page reload |
+| USER-001 | Disable and re-enable a participant | Account status updates and persists |
+| ACCESS-001 | Participant opens super-admin URL | Redirected out of the protected console |
+| REG-003 | Register, display QR, dismiss cancellation, then confirm it | Cancellation persists; cancelled ticket is unavailable |
 
-### Guest browsing and authentication
-
-1. Guests can browse `/`, `/events`, and `/events/:slug` without waiting for auth initialization.
-2. Opening a protected route runs the global guard in `app/router/index.js`.
-3. The guard initializes the session with `GET /api/v1/auth/me` and attempts one cookie-based
-   refresh when the access session has expired.
-4. An unauthenticated visitor is sent to `/login?redirect=<original-route>`.
-5. A single-role account continues directly. A multi-role account is sent to `/select-role` and
-   must choose one role before entering a protected area.
-6. Role selection issues a new access cookie containing only that role and its permissions. The
-   selected role is kept in tab-scoped session storage only to preserve scope during refresh; auth
-   tokens remain HttpOnly cookies.
-7. The app accepts the original redirect only when it belongs to the selected role's area;
-   otherwise it sends the user to the correct role home. Multi-role console users can switch role
-   from the header without signing out.
-
-### Account creation
-
-1. `/register` validates the form in the browser.
-2. It sends `POST /api/v1/auth/register` through the shared API client.
-3. Validation errors are mapped back to fields.
-4. Success redirects to `/login` with the registered email prefilled; registration does not
-   silently create a signed-in session.
-
-### Authenticated profile
-
-1. The authenticated user is loaded from the backend session.
-2. Profile text changes use `PATCH /api/v1/auth/me`.
-3. Password changes use `POST /api/v1/auth/change-password` and clear the local auth state.
-4. Avatar data remains in per-user localStorage until the media API exists.
-
-### Event registration and payment prototype
-
-1. A signed-in user opens `/events/:slug/register`; published event context is loaded from the API.
-2. A free event writes a local registration immediately.
-3. A paid event generates a browser-side QR and timers simulate payment checking and success.
-4. The success and My Registrations screens read the same localStorage record.
-
-This flow is demonstration-only. The frontend must not confirm capacity, registration, or payment
-in production. The target flow is backend-created reservation/hold, transactional capacity
-control, provider payment intent, idempotent provider callback, then backend-confirmed registration.
-
-### Administrative flows
-
-Admin and super-admin routes are grouped in `app/router/consoleRoutes.js`, but route guards are only
-a navigation convenience. Every backend endpoint must independently authenticate the session,
-authorize the role and event scope, validate state transitions, and audit privileged writes.
-
-## Route ownership
-
-- `features/auth/routes.js` owns authentication and profile routes.
-- `features/events/routes.js` owns public events and admin/super-admin event management routes.
-- `features/registrations/routes.js` owns participant registration and participant-management routes.
-- `features/dashboards/routes.js` owns both console dashboards.
-- `features/governance/routes.js` owns approvals, change requests, and audit logs.
-- `features/access-control/routes.js` owns users, roles, and permissions screens.
-- `app/router/consoleRoutes.js` composes role-specific console trees.
-- `app/router/index.js` composes the application router and owns the global auth guard.
-
-## Delivery order
-
-Follow the workspace `PLAN.md`: public events, admin event lifecycle, super-admin review, free
-registration with concurrency control, participant operations, users/roles/audit/dashboards,
-account recovery, media, then real payments. Replace one complete vertical slice at a time and do
-not silently fall back to mock records after an API failure.
+Existing specs also cover sign-in/out, invalid credentials, protected routes, event discovery,
+free registration and the paid QR simulation. These are browser tests with fixture responses;
+backend business rules are tested separately with PostgreSQL integration tests.

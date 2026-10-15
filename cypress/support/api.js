@@ -1,3 +1,5 @@
+import { stubAdministration } from './administration.js'
+
 // Every API request is intercepted: these browser tests never write to the shared backend.
 export function stubApi() {
   let user = null
@@ -12,6 +14,7 @@ export function stubApi() {
     timezone: 'Asia/Bangkok', locationType: 'ONSITE', locationName: 'Bangkok Hall',
     startAt: iso(604800000), endAt: iso(608400000), registrationStartAt: iso(-86400000), registrationEndAt: iso(518400000),
     maximumParticipants: 10, remainingSeats: 10, full: false, allowCancellation: true, showRemainingSeats: true,
+    status: 'PUBLISHED', version: 0, registrationCount: 0, updatedAt: iso(0),
   }
   const paid = { ...free, eventId: '20000000-0000-0000-0000-000000000002', slug: 'global-tech-summit-2026', title: 'Global Tech Summit 2026', eventType: 'PAID', price: 99 }
   const events = [free, paid]
@@ -23,15 +26,22 @@ export function stubApi() {
       ? reply(path === '/auth/me' ? user : { user }) : reply({ code: 'UNAUTHENTICATED', message: 'Please sign in.' }, 401)
     if (path === '/auth/login') {
       if (req.body.email.startsWith('wrong')) return reply({ code: 'INVALID_CREDENTIALS', message: 'Incorrect email or password.' }, 401)
-      const admin = req.body.email === 'admin@example.test'
+      const role = req.body.email === 'super@example.test' ? 'SUPER_ADMIN' : req.body.email === 'admin@example.test' ? 'ADMIN' : 'USER'
       user = { userId: '30000000-0000-0000-0000-000000000001', email: req.body.email, name: 'Demo User', firstName: 'Demo', lastName: 'User', phoneNumber: '0912345678',
-        role: admin ? 'ADMIN' : 'USER', roles: [admin ? 'ADMIN' : 'USER'], permissions: ['EVENT_CREATE', 'EVENT_UPDATE', 'REGISTRATION_CREATE_SELF', 'REGISTRATION_READ_SELF', 'REGISTRATION_CANCEL_SELF'] }
+        role, roles: [role], permissions: ['EVENT_CREATE', 'EVENT_UPDATE', 'REGISTRATION_CREATE_SELF', 'REGISTRATION_READ_SELF', 'REGISTRATION_CANCEL_SELF'] }
       return reply({ user })
     }
     if (path === '/auth/logout') { user = null; return reply({}) }
-    if (path === '/events') return reply(events)
+    if (path === '/events') return reply(events.filter(event => event.status === 'PUBLISHED'))
     if (req.method === 'GET' && path.startsWith('/events/')) return reply(events.find(e => path === `/events/${e.slug}`) || {}, events.some(e => path === `/events/${e.slug}`) ? 200 : 404)
     if (path === '/registrations' && req.method === 'GET') return reply(registrations)
+    if (req.method === 'POST' && path.endsWith('/cancel')) {
+      const registration = registrations.find(item => path === `/registrations/${item.registrationId}/cancel`)
+      if (!registration) return reply({ code: 'REGISTRATION_NOT_FOUND' }, 404)
+      registration.status = 'CANCELLED_BY_USER'
+      registration.cancellable = false
+      return reply(registration)
+    }
     if (path === '/invitations') return reply([])
     if (path === '/event-categories') return reply([free.category])
     if (path === '/admin/events/stats') return reply({ total: 2, published: 2, draft: 0, pendingReview: 0, rejected: 0, cancelled: 0, completed: 0, categories: [{ ...free.category, total: 2, published: 2, draft: 0, pendingReview: 0, rejected: 0, cancelled: 0, completed: 0 }] })
@@ -60,12 +70,13 @@ export function stubApi() {
     }
     return reply({ code: 'UNMOCKED_TEST_ENDPOINT', message: `${req.method} ${path}` }, 501)
   }).as('api')
+  stubAdministration(events, free.category, iso)
 }
 
 export function login(email = 'demo@example.test') {
   cy.visit('/login')
-  cy.get('#email').type(email)
-  cy.get('#password').type('test-password-123')
-  cy.get('.submit-button').click()
+  cy.getByTestId('email').type(email)
+  cy.getByTestId('password').type('test-password-123')
+  cy.getByTestId('login-submit').click()
   cy.url().should('not.include', '/login')
 }

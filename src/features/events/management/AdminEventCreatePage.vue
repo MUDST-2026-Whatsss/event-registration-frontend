@@ -375,18 +375,18 @@ onMounted(async () => {
 
             <div class="form-group">
               <label>EVENT TITLE <span class="required">*</span></label>
-              <input type="text" v-model="form.title" placeholder="e.g. Annual Tech Leadership Summit" />
+              <input type="text" data-test="event-title" v-model="form.title" placeholder="e.g. Annual Tech Leadership Summit" />
             </div>
 
             <div class="form-group">
               <label>DESCRIPTION <span class="required">*</span></label>
-              <textarea v-model="form.description" placeholder="Detailed information about the event..." rows="4"></textarea>
+              <textarea data-test="event-description" v-model="form.description" placeholder="Detailed information about the event..." rows="4"></textarea>
             </div>
 
             <div class="grid-2">
               <div class="form-group">
                 <label>CATEGORY <span class="required">*</span></label>
-                <select v-model="form.category">
+                <select data-test="event-category" v-model="form.category">
                   <option value="" disabled>Select category</option>
                   <option
                     v-for="category in categories"
@@ -399,7 +399,7 @@ onMounted(async () => {
               </div>
               <div class="form-group">
                 <label>LOCATION TYPE <span class="required">*</span></label>
-                <select v-model="form.locationType">
+                <select data-test="event-locationType" v-model="form.locationType">
                   <option value="ONSITE">On site</option>
                   <option value="ONLINE">Online</option>
                   <option value="HYBRID">Hybrid</option>
@@ -410,26 +410,26 @@ onMounted(async () => {
             <div class="grid-2">
               <div v-if="form.locationType !== 'ONLINE'" class="form-group">
                 <label>VENUE <span class="required">*</span></label>
-                <input type="text" v-model="form.location" placeholder="Venue name" />
+                <input type="text" data-test="event-location" v-model="form.location" placeholder="Venue name" />
               </div>
               <div v-if="form.locationType !== 'ONSITE'" class="form-group">
                 <label>ONLINE URL <span class="required">*</span></label>
-                <input type="url" v-model="form.onlineUrl" placeholder="https://…" />
+                <input type="url" data-test="event-onlineUrl" v-model="form.onlineUrl" placeholder="https://…" />
               </div>
             </div>
 
             <div class="grid-3">
               <div class="form-group">
                 <label>EVENT DATE <span class="required">*</span></label>
-                <input type="date" v-model="form.date" />
+                <input type="date" data-test="event-date" v-model="form.date" />
               </div>
               <div class="form-group">
                 <label>START TIME <span class="required">*</span></label>
-                <input type="time" v-model="form.startTime" />
+                <input type="time" data-test="event-startTime" v-model="form.startTime" />
               </div>
               <div class="form-group">
                 <label>END TIME <span class="required">*</span></label>
-                <input type="time" v-model="form.endTime" />
+                <input type="time" data-test="event-endTime" v-model="form.endTime" />
               </div>
             </div>
 
@@ -477,15 +477,15 @@ onMounted(async () => {
             <div class="grid-2">
               <div class="form-group">
                 <label>MAX PARTICIPANTS <span class="required">*</span></label>
-                <input type="number" v-model="form.maxParticipants" placeholder="e.g. 500" />
+                <input type="number" data-test="event-maxParticipants" v-model="form.maxParticipants" placeholder="e.g. 500" />
               </div>
               <div class="form-group">
                 <label>REGISTRATION START <span class="required">*</span></label>
-                <input type="datetime-local" v-model="form.registrationStart" />
+                <input type="datetime-local" data-test="event-registrationStart" v-model="form.registrationStart" />
               </div>
               <div class="form-group">
                 <label>REGISTRATION DEADLINE <span class="required">*</span></label>
-                <input type="datetime-local" v-model="form.deadline" />
+                <input type="datetime-local" data-test="event-deadline" v-model="form.deadline" />
               </div>
             </div>
 
@@ -523,7 +523,7 @@ onMounted(async () => {
                 <div class="price-input">
                   <span class="price-currency">{{ form.currency }}</span>
                   <input
-                    v-model="form.price"
+                    data-test="event-price" v-model="form.price"
                     type="number"
                     min="1"
                     step="0.01"
@@ -547,7 +547,7 @@ onMounted(async () => {
                 <p>Users can cancel their registration before the deadline</p>
               </div>
               <label class="switch">
-                <input type="checkbox" v-model="form.allowCancel">
+                <input type="checkbox" data-test="event-allowCancel" v-model="form.allowCancel">
                 <span class="slider round"></span>
               </label>
             </div>
@@ -560,7 +560,7 @@ onMounted(async () => {
                 <p>Display current availability on the public event page</p>
               </div>
               <label class="switch">
-                <input type="checkbox" v-model="form.showSeats">
+                <input type="checkbox" data-test="event-showSeats" v-model="form.showSeats">
                 <span class="slider round"></span>
               </label>
             </div>
@@ -574,17 +574,17 @@ onMounted(async () => {
 
             <div class="form-group">
               <label>EVENT RULES <span class="required">*</span></label>
-              <textarea v-model="form.rules" placeholder="Policies, refund info, behavior guidelines..." rows="3"></textarea>
+              <textarea data-test="event-rules" v-model="form.rules" placeholder="Policies, refund info, behavior guidelines..." rows="3"></textarea>
             </div>
 
             <div class="grid-2">
               <div class="form-group">
                 <label>CONTACT EMAIL</label>
-                <input type="email" v-model="form.contactEmail" placeholder="support@event.com" />
+                <input type="email" data-test="event-contactEmail" v-model="form.contactEmail" placeholder="support@event.com" />
               </div>
               <div class="form-group">
                 <label>ELIGIBILITY</label>
-                <input type="text" v-model="form.eligibility" placeholder="e.g. Registered students only" />
+                <input type="text" data-test="event-eligibility" v-model="form.eligibility" placeholder="e.g. Registered students only" />
               </div>
             </div>
           </div>
@@ -621,7 +621,7 @@ onMounted(async () => {
             </div>
             <div class="form-group">
               <label>CHANGE REASON <span class="required">*</span></label>
-              <textarea v-model="changeReason" rows="3" placeholder="Explain what changed and why..."></textarea>
+              <textarea data-test="event-change-reason" v-model="changeReason" rows="3" placeholder="Explain what changed and why..."></textarea>
             </div>
           </div>
           </fieldset>
@@ -629,13 +629,13 @@ onMounted(async () => {
           <div class="form-actions">
             <button type="button" class="btn-cancel" @click="router.push('/admin/all-events')">Cancel</button>
             <div class="right-actions">
-              <button v-if="!isPublished" type="button" class="btn-draft" :disabled="saving || loading || lookingUpInvitee || uploading || !canEdit" @click="saveDraft">
+              <button v-if="!isPublished" type="button" class="btn-draft" :disabled="saving || loading || lookingUpInvitee || uploading || !canEdit" data-test="event-save-draft" @click="saveDraft">
                 {{ saving ? 'Saving…' : 'Save as Draft' }}
               </button>
-              <button v-if="!isPublished" type="button" class="btn-submit" :disabled="saving || loading || lookingUpInvitee || uploading || !canEdit" @click="submitForm">
+              <button v-if="!isPublished" type="button" class="btn-submit" :disabled="saving || loading || lookingUpInvitee || uploading || !canEdit" data-test="event-submit" @click="submitForm">
                 Submit for Review
               </button>
-              <button v-else type="button" class="btn-submit" :disabled="saving || loading || uploading || !canEdit" @click="submitChangeRequest">
+              <button v-else type="button" class="btn-submit" :disabled="saving || loading || uploading || !canEdit" data-test="event-submit-change" @click="submitChangeRequest">
                 {{ saving ? 'Submitting…' : 'Submit Change Request' }}
               </button>
             </div>
