@@ -68,6 +68,20 @@ describe('event discovery filters', () => {
     expect(wrapper.text()).toContain('No matching events')
   })
 
+  it('keeps the empty Upcoming section without a duplicate no-results state', async () => {
+    await render('/events?group=upcoming', EventsView, [{ id: 'open', status: 'open', title: 'Open event' }])
+    expect(wrapper.get('select').element.value).toBe('upcoming')
+    expect(wrapper.get('.event-group__empty').text()).toBe('No upcoming events are published yet.')
+    expect(wrapper.find('.events-state').exists()).toBe(false)
+    expect(wrapper.findAll('.test-event-card')).toHaveLength(0)
+  })
+
+  it('shows no search results when searching the empty Upcoming section', async () => {
+    await render('/events?group=upcoming&q=missing', EventsView, [{ id: 'open', status: 'open', title: 'Open event' }])
+    expect(wrapper.text()).toContain('No matching events')
+    expect(wrapper.text()).not.toContain('No upcoming events are published yet.')
+  })
+
   it('only promotes a future event with registration open and available seats', async () => {
     const future = new Date(Date.now() + 86400000).toISOString()
     await render('/', HomeView, [

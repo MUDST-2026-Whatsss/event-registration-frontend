@@ -67,7 +67,7 @@ onMounted(() => loadEvents().catch(() => {}))
           <div v-if="group.events.length" class="event-grid"><EventCard v-for="event in group.events" :key="event.id" :event="event" /></div>
           <p v-else class="event-group__empty">{{ group.id === 'upcoming' && !searchQuery.trim() ? 'No upcoming events are published yet.' : 'No events match your search.' }}</p>
         </section>
-        <div v-if="!visibleEventCount && searchQuery.trim()" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
+        <div v-if="!visibleEventCount && (searchQuery.trim() || !filteredGroups.length)" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
         </template>
       </div>
     </main>
