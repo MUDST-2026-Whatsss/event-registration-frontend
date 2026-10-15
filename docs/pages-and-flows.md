@@ -74,8 +74,3 @@ isolated API fixtures before each case and select controls through `data-test` a
 Existing specs also cover sign-in/out, invalid credentials, protected routes, event discovery,
 free registration and the paid QR simulation. These are browser tests with fixture responses;
 backend business rules are tested separately with PostgreSQL integration tests.
-
-## Remaining course dependency
-
-The Week 9 deployment of another team's application/database in a separate namespace is pending
-that team's repository and setup information. Our own Ingress manifests live in the backend's `k8s/`.
