@@ -1,7 +1,7 @@
 <script setup>
 import { ArrowRight, CalendarX2, ListFilter, RefreshCw, Search } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import heroImage from '@/assets/events/hero.jpg'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import EventCard from '../components/EventCard.vue'
@@ -9,26 +9,31 @@ import PublicHeader from '@/app/components/PublicHeader.vue'
 import { groupPublicEvents, usePublicEvents } from '../public.js'
 
 const route = useRoute()
+const router = useRouter()
 const searchQuery = ref(typeof route.query.q === 'string' ? route.query.q : '')
-const selectedStatus = ref('all')
 const { events, loading, error, loadEvents } = usePublicEvents()
 const eventGroups = computed(() => groupPublicEvents(events.value))
-const selectedGroup = computed(() => {
-  const group = typeof route.query.group === 'string' ? route.query.group : ''
-  return eventGroups.value.some((item) => item.id === group) ? group : ''
+const selectedStatus = computed({
+  get: () => ['open', 'upcoming', 'closed'].includes(route.query.group) ? route.query.group : 'all',
+  set: (status) => {
+    const query = { ...route.query }
+    if (status === 'all') delete query.group
+    else query.group = status
+    router.push({ path: '/events', query })
+  },
 })
-const pageTitle = computed(() => eventGroups.value.find((group) => group.id === selectedGroup.value)?.title ?? 'Our Events')
-const pageSubtitle = computed(() => selectedGroup.value ? `Explore all ${pageTitle.value.toLowerCase()}` : 'All of My Events Now')
 const filterOptions = [
   { value: 'all', label: 'All events' }, { value: 'open', label: 'Open' },
-  { value: 'upcoming', label: 'Upcoming' }, { value: 'closed', label: 'Closed' },
+  { value: 'upcoming', label: 'Upcoming' }, { value: 'closed', label: 'Registration closed / Past' },
 ]
+const groupTitles = { open: 'Open for Registration', upcoming: 'Upcoming Events', closed: 'Registration Closed / Past Events' }
+const pageTitle = computed(() => groupTitles[selectedStatus.value] ?? 'Our Events')
+const pageSubtitle = computed(() => selectedStatus.value !== 'all' ? `Explore all ${pageTitle.value.toLowerCase()}` : 'Explore all published events')
 const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
-  const visibleGroups = selectedGroup.value ? eventGroups.value.filter((group) => group.id === selectedGroup.value) : eventGroups.value
+  const visibleGroups = selectedStatus.value === 'all' ? eventGroups.value : eventGroups.value.filter((group) => group.id === selectedStatus.value)
   return visibleGroups.map((group) => ({ ...group, events: group.events.filter((event) => {
-    const matchesQuery = !query || `${event.title} ${event.location}`.toLocaleLowerCase().includes(query)
-    return matchesQuery && (selectedStatus.value === 'all' || event.status === selectedStatus.value)
+    return !query || `${event.title} ${event.location}`.toLocaleLowerCase().includes(query)
   }) }))
 })
 
@@ -57,7 +62,7 @@ onMounted(() => loadEvents().catch(() => {}))
         <section v-for="group in filteredGroups" :key="group.id" class="event-group" :aria-labelledby="`${group.id}-title`">
           <div class="event-group__heading">
             <h2 :id="`${group.id}-title`">{{ group.title }}</h2>
-            <RouterLink v-if="selectedGroup" to="/events">All events <ArrowRight :size="14" /></RouterLink>
+            <RouterLink v-if="selectedStatus !== 'all'" to="/events">All events <ArrowRight :size="14" /></RouterLink>
             <RouterLink v-else :to="{ path: '/events', query: { group: group.id } }">View all <ArrowRight :size="14" /></RouterLink>
           </div>
           <div v-if="group.events.length" class="event-grid"><EventCard v-for="event in group.events" :key="event.id" :event="event" /></div>

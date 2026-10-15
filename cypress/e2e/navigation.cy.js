@@ -41,4 +41,39 @@ describe('Navigation and Discovery', () => {
     cy.getByTestId('event-card').first().find('.event-cover__placeholder').should('be.visible')
     cy.getByTestId('event-card').first().find('img').should('not.exist')
   })
+
+  describe('registration status discovery', () => {
+    beforeEach(() => {
+      const iso = offset => new Date(Date.now() + offset).toISOString()
+      const event = { eventId: 'discovery-open', slug: 'discovery-open', title: 'Available event',
+        startAt: iso(86400000), endAt: iso(90000000), registrationStartAt: iso(-86400000), registrationEndAt: iso(43200000),
+        locationType: 'ONLINE', price: 0, maximumParticipants: 10, remainingSeats: 10, full: false }
+      cy.intercept('GET', '**/api/v1/events', [
+        { ...event, eventId: 'discovery-closed', slug: 'discovery-closed', title: 'Closed registration event', registrationEndAt: iso(-3600000) },
+        event,
+      ])
+    })
+
+    it('shows closed registrations after switching from Open to All, including after reload', () => {
+      cy.visit('/events?group=open')
+      cy.getByTestId('events-filter').should('have.value', 'open')
+      cy.getByTestId('event-card').should('have.length', 1).and('contain.text', 'Available event')
+      cy.getByTestId('events-filter').select('all')
+      cy.location('search').should('not.include', 'group=open')
+      cy.getByTestId('event-card').should('have.length', 2)
+      cy.getByTestId('event-card').should('contain.text', 'Closed registration event')
+      cy.reload()
+      cy.getByTestId('events-filter').should('have.value', 'all')
+      cy.getByTestId('event-card').should('have.length', 2)
+      cy.go('back')
+      cy.getByTestId('events-filter').should('have.value', 'open')
+      cy.getByTestId('event-card').should('have.length', 1)
+    })
+
+    it('does not promote a future event whose registration has closed', () => {
+      cy.visit('/')
+      cy.get('.countdown__event').should('have.text', 'Available event')
+      cy.get('.countdown').should('have.attr', 'href', '/events/discovery-open')
+    })
+  })
 })
