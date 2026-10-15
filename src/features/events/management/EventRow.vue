@@ -106,7 +106,8 @@ defineEmits(['edit', 'cancel', 'withdraw'])
 .event-image {
   width: 46px;
   height: 46px;
-  border-radius: 9px;
+  overflow: hidden;
+  border-radius: 10px;
   background: #f1f5f9;
   display: flex;
   align-items: center;

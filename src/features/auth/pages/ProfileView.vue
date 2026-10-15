@@ -1,5 +1,5 @@
 <script setup>
-import { Camera, Check, Mail, Phone, ShieldCheck, Trash2, UserRound, X } from '@lucide/vue'
+import { Camera, Check, Mail, Pencil, Phone, ShieldCheck, Trash2, UserRound, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
@@ -190,7 +190,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
             <div class="profile-avatar">
               <img v-if="profile.avatar" :src="profile.avatar" alt="Profile" />
               <span v-else>{{ profile.firstName.charAt(0) }}{{ profile.lastName.charAt(0) }}</span>
-              <button type="button" aria-label="Change profile photo" title="Change profile photo" @click="avatarInput.click()"><Camera :size="16" /></button>
+              <button type="button" :aria-label="profile.avatar ? 'Change profile photo' : 'Add profile photo'" :title="profile.avatar ? 'Change profile photo' : 'Add profile photo'" @click="avatarInput.click()"><Pencil v-if="profile.avatar" :size="14" /><Camera v-else :size="16" /></button>
               <input ref="avatarInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="handleAvatarChange" />
             </div>
             <div class="profile-identity"><h2>{{ profile.firstName }} {{ profile.lastName }}</h2><span>{{ profile.role }}</span></div>
@@ -251,7 +251,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .profile-summary { padding: 22px 20px; text-align: center; }
 .profile-avatar { position: relative; display: grid; width: 66px; height: 66px; margin-inline: auto; place-items: center; color: #2455db; background: #e8edff; border-radius: 50%; font-size: 1.3rem; font-weight: 600; }
 .profile-avatar > img { width: 100%; height: 100%; object-fit: cover; border: 2px solid var(--neutral-0); border-radius: 50%; box-shadow: 0 0 0 1px #cbd3ef; }
-.profile-avatar > button { position: absolute; right: -5px; bottom: -2px; display: grid; width: 29px; height: 29px; place-items: center; color: var(--neutral-0); background: #2455db; border: 2px solid var(--neutral-0); border-radius: 50%; box-shadow: 0 2px 7px rgb(24 24 27 / 22%); cursor: pointer; }
+.profile-avatar > button { position: absolute; right: -5px; bottom: -2px; display: grid; width: 29px; height: 29px; padding: 0; place-items: center; color: var(--neutral-0); background: #2455db; border: 2px solid var(--neutral-0); border-radius: 50%; box-shadow: 0 2px 7px rgb(24 24 27 / 22%); cursor: pointer; }
 .profile-avatar > button:hover { background: #183fae; }
 .profile-identity { display: flex; margin: 11px 0 14px; align-items: center; justify-content: center; gap: 7px; }
 .profile-summary h2 { margin: 0; font-size: 1.1rem; }

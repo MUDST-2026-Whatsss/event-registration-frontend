@@ -100,7 +100,11 @@ function changeSize(event) {
 .pagination-shell { gap: 18px; }
 .pagination-actions, .page-size-control { display: flex; align-items: center; gap: 10px; }
 .page-size-control { color: var(--console-text-muted); font-size: var(--console-fs-sm); white-space: nowrap; }
-.page-size-control .console-select { width: 72px; min-height: 34px; padding: 6px 26px 6px 10px; }
+.page-size-control .console-select {
+  width: 76px; min-height: 34px; padding: 6px 30px 6px 12px; cursor: pointer;
+  appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+}
 .page-gap { min-width: 20px; text-align: center; color: var(--console-text-muted); }
 
 @media (max-width: 720px) {

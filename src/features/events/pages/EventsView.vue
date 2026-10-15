@@ -85,7 +85,7 @@ onMounted(() => loadEvents().catch(() => {}))
 .event-tools__search { width: min(100%, 350px); padding-inline: 14px; gap: 10px; }
 .event-tools__search:focus-within, .event-tools__filter:focus-within { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgb(91 124 250 / 14%); }
 .event-tools__search input { width: 100%; min-width: 0; padding: 0; color: var(--neutral-950); background: transparent; border: 0; outline: 0; font-size: .875rem; }
-.event-tools__filter { width: 140px; padding-left: 14px; }
+.event-tools__filter { width: 156px; padding-inline: 14px 12px; }
 .event-tools__filter select { width: 100%; height: 100%; padding: 0 10px 0 8px; color: #4d5263; background: transparent; border: 0; outline: 0; cursor: pointer; font-size: .875rem; }
 .event-group + .event-group { margin-top: 68px; }
 .event-group__heading { display: flex; margin-bottom: 20px; align-items: center; justify-content: space-between; gap: 16px; }
