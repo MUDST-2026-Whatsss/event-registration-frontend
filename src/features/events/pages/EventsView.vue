@@ -53,7 +53,6 @@ onMounted(() => loadEvents().catch(() => {}))
       <div id="events" class="events-shell">
         <div v-if="loading && !events.length" class="events-state" aria-live="polite"><RefreshCw :size="28" class="events-state__spinner" /><h2>Loading events</h2><p>Fetching the latest published events.</p></div>
         <div v-else-if="error && !events.length" class="events-state" role="alert"><CalendarX2 :size="30" /><h2>Events could not be loaded</h2><p>{{ error }}</p><button type="button" @click="loadEvents(true).catch(() => {})">Try again</button></div>
-        <div v-else-if="!events.length" class="events-state"><CalendarX2 :size="30" /><h2>No published events</h2><p>Published events will appear here.</p></div>
         <template v-else>
         <section class="event-tools" aria-label="Event search and filters">
           <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input data-test="events-search" v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
