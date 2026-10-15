@@ -80,7 +80,7 @@ export function mapPublicEvent(event, now = Date.now()) {
   }
 }
 
-export function groupPublicEvents(events, { includeClosed = true } = {}) {
+export function groupPublicEvents(events, { includeClosed = true, includeEmptyUpcoming = false } = {}) {
   const groups = [
     { id: 'open', title: 'Open for Registration', statuses: ['open'] },
     { id: 'upcoming', title: 'Upcoming Events', statuses: ['upcoming'] },
@@ -93,7 +93,7 @@ export function groupPublicEvents(events, { includeClosed = true } = {}) {
       title: group.title,
       events: events.filter((event) => group.statuses.includes(event.status)),
     }))
-    .filter((group) => group.events.length > 0)
+    .filter((group) => group.events.length > 0 || (includeEmptyUpcoming && group.id === 'upcoming'))
 }
 
 export function canRegisterForEvent(event) {

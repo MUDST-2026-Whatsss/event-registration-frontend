@@ -12,7 +12,7 @@ const route = useRoute()
 const router = useRouter()
 const searchQuery = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const { events, loading, error, loadEvents } = usePublicEvents()
-const eventGroups = computed(() => groupPublicEvents(events.value))
+const eventGroups = computed(() => groupPublicEvents(events.value, { includeEmptyUpcoming: true }))
 const selectedStatus = computed({
   get: () => ['open', 'upcoming', 'closed'].includes(route.query.group) ? route.query.group : 'all',
   set: (status) => {
@@ -66,9 +66,9 @@ onMounted(() => loadEvents().catch(() => {}))
             <RouterLink v-else :to="{ path: '/events', query: { group: group.id } }">View all <ArrowRight :size="14" /></RouterLink>
           </div>
           <div v-if="group.events.length" class="event-grid"><EventCard v-for="event in group.events" :key="event.id" :event="event" /></div>
-          <p v-else class="event-group__empty">No events match your search.</p>
+          <p v-else class="event-group__empty">{{ group.id === 'upcoming' && !searchQuery.trim() ? 'No upcoming events are published yet.' : 'No events match your search.' }}</p>
         </section>
-        <div v-if="!visibleEventCount" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
+        <div v-if="!visibleEventCount && searchQuery.trim()" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
         </template>
       </div>
     </main>
