@@ -2,6 +2,27 @@ import { stubApi, login } from '../support/api.js'
 
 describe('Event Registration Flow', () => {
   beforeEach(stubApi)
+  it('REG-003 shows a QR ticket, cancels a registration and keeps the cancellation after reload', () => {
+    login()
+    cy.visit('/events/cloud-security-meetup/register')
+    cy.getByTestId('registration-consent').check()
+    cy.getByTestId('registration-confirm').click()
+    cy.contains('a', 'View my registrations').click()
+    cy.getByTestId('registration-qr').click()
+    cy.get('[role="dialog"] img').should('have.attr', 'src').and('match', /^data:image\/png/)
+    cy.get('[aria-label="Close QR code"]').click()
+    cy.getByTestId('registration-cancel').click()
+    cy.getByTestId('cancellation-keep').click()
+    cy.getByTestId('registration-status').should('have.text', 'registered')
+    cy.getByTestId('registration-cancel').click()
+    cy.intercept('POST', '**/registrations/*/cancel').as('cancel')
+    cy.getByTestId('cancellation-confirm').click()
+    cy.wait('@cancel').its('response.body.status').should('eq', 'CANCELLED_BY_USER')
+    cy.reload()
+    cy.contains('button', 'Cancelled').click()
+    cy.getByTestId('registration-status').should('have.text', 'cancelled')
+    cy.getByTestId('registration-qr').should('not.exist')
+  })
   it('completes free event registration and reflects in user registrations', () => {
     // 1. Authenticate user
     login()
