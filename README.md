@@ -51,6 +51,12 @@ Vite runs at `http://localhost:5173`. Browser requests remain same-origin under 
 development proxy forwards them to `VITE_API_PROXY_TARGET`, defaulting to
 `http://localhost:8080`.
 
+If Docker already occupies port 5173, Vite selects the next available port, usually 5174. Open the
+URL printed by Vite. The backend's local CORS settings must include that exact origin, including
+whether the host is `localhost` or `127.0.0.1`. The backend `.env.example` includes both hosts on
+ports 5173 and 5174. Existing backend `.env` files need the same update; recreate the API container
+with `docker compose up -d --no-deps api` from the backend directory to apply it.
+
 ## Commands
 
 ```bash
