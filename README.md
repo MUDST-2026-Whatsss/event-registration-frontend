@@ -51,6 +51,13 @@ Vite runs at `http://localhost:5173`. Browser requests remain same-origin under 
 development proxy forwards them to `VITE_API_PROXY_TARGET`, defaulting to
 `http://localhost:8080`.
 
+If Docker already occupies port 5173, Vite selects the next available port, usually 5174. Open the
+URL printed by Vite. The backend's local CORS settings must include that exact origin, including
+whether the host is `localhost` or `127.0.0.1`. The backend `.env.example` includes both hosts on
+ports 5173 and 5174. Existing backend `.env` files need the same update; recreate the API container
+with `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --no-deps api`
+from the backend directory to apply it to a source build.
+
 ## Commands
 
 ```bash
@@ -76,23 +83,38 @@ npx start-server-and-test dev http://127.0.0.1:5173 "node scripts/cypress-runner
 
 ## Docker
 
-The production image builds the Vite application and serves it with Nginx. Nginx also proxies
-same-origin `/api` requests to the Compose service named `api`.
+Backend CI produces the release artifact and application images. Before using the release
+commands below, confirm that Backend CI completed successfully and all three GHCR application
+packages are public. A local source build does not publish a release.
 
-When this repository is cloned beside the backend repository, start the complete local stack from
-the backend directory:
+The production image serves the built Vite application with Nginx and proxies same-origin `/api`
+requests to the Compose service named `api`. Its health check verifies both the HTML application
+and the API through that proxy.
+
+Use the backend release artifact for the complete stack. Extract its `docker-compose.yml` and
+generated `.env` into the same directory, then run there:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-First create the backend's `.env` from its `.env.example` and replace the placeholder secrets,
-following the backend README. If you used `.env.local` from the detailed Docker guide instead,
-add `--env-file .env.local` to the Compose command.
+Compose pulls the published frontend, backend, MinIO, and PostgreSQL images. This delivery needs
+Docker Compose and the two release files; see the backend README for release download and first
+account setup. Keep the generated `.env` private.
+
+To build from source instead, clone this repository beside the backend repository, prepare the
+backend `.env` as described in its README, and run from the backend directory:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 Open `http://localhost:5173`. Set `FRONTEND_PORT` in the backend environment file when another host
-port is required. `npm run dev` remains the recommended workflow while actively editing frontend
-code because it provides Vite hot reload.
+port is required. Backend CI tests a specific frontend commit, publishes its Docker image, and
+uses that same revision for the complete delivery. Frontend CI runs the frontend tests and build.
+
+`npm run dev` provides Vite hot reload while editing frontend code. Start the complete Docker stack
+from the backend or release directory; there is no separate frontend-only Compose stack.
 
 ## Structure
 

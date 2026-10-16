@@ -2,6 +2,24 @@ import { stubApi, login } from '../support/api.js'
 
 describe('Authentication and User Sessions', () => {
   beforeEach(stubApi)
+
+  it('keeps sign-in available after a failed session check and allows login to recover', () => {
+    cy.intercept({ method: 'GET', url: '**/api/v1/auth/me', times: 1 }, {
+      statusCode: 403,
+      body: 'Invalid CORS request',
+      headers: { 'content-type': 'text/plain' },
+    }).as('failedSession')
+
+    cy.visit('/')
+    cy.wait('@failedSession')
+    cy.getByTestId('nav-login').should('be.visible').click()
+    cy.getByTestId('email').type('demo@example.test')
+    cy.getByTestId('password').type('test-password-123')
+    cy.getByTestId('login-submit').click()
+
+    cy.getByTestId('logout').should('be.visible')
+  })
+
   it('redirects unauthenticated users trying to access protected routes', () => {
     cy.visit('/profile')
 

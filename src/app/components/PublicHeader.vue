@@ -9,7 +9,7 @@ import { useToast } from '@/shared/composables/useToast.js'
 const menuOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
-const { isAuthenticated, isInitialized, logout } = useAuth()
+const { isAuthenticated, isInitializing, logout } = useAuth()
 const { profile } = useProfile()
 const { showToast } = useToast()
 async function handleLogout() {
@@ -44,13 +44,11 @@ async function handleLogout() {
           <RouterLink data-test="nav-events" to="/events" :class="{ active: route.path.startsWith('/events') }" @click="menuOpen = false">Events</RouterLink>
           <RouterLink v-if="isAuthenticated" to="/my-registrations" @click="menuOpen = false">My Registrations</RouterLink>
         </nav>
-        <div class="public-header__actions" :aria-busy="!isInitialized">
-          <span v-if="!isInitialized" class="public-header__session-placeholder" aria-label="Checking session" />
-          <template v-if="!isAuthenticated">
-            <template v-if="isInitialized">
-              <RouterLink data-test="nav-login" class="public-header__login" to="/login">Login</RouterLink>
-              <RouterLink class="public-header__register" to="/register">Register</RouterLink>
-            </template>
+        <div class="public-header__actions" :aria-busy="isInitializing">
+          <span v-if="isInitializing" class="public-header__session-placeholder" aria-label="Checking session" />
+          <template v-else-if="!isAuthenticated">
+            <RouterLink data-test="nav-login" class="public-header__login" to="/login">Login</RouterLink>
+            <RouterLink class="public-header__register" to="/register">Register</RouterLink>
           </template>
           <template v-else>
             <RouterLink class="public-header__profile" to="/profile" aria-label="Profile" title="Profile" @click="menuOpen = false"><img v-if="profile.avatar" :src="profile.avatar" alt="" /><UserRound v-else :size="18" /><span>{{ profile.firstName }}</span></RouterLink>
