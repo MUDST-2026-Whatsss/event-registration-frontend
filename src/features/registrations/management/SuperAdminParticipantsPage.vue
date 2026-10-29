@@ -3,10 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import { getAdminEvent } from '@/features/events/api/adminEventsApi.js'
-import { listEventRegistrations } from '../api/registrationsApi.js'
+import { useToast } from '@/shared/composables/useToast.js'
+import { checkInRegistration, listEventRegistrations } from '../api/registrationsApi.js'
 
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
 
 const event = ref({ id: route.params.id, name: 'Loading...' })
 const participants = ref([])
@@ -15,6 +17,8 @@ const currentPage = ref(0)
 const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
+const checkInNumber = ref('')
+const checkingIn = ref(false)
 
 const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
@@ -47,6 +51,23 @@ async function loadParticipants() {
     totalElements.value = payload.totalElements
   } catch (cause) {
     errorMessage.value = cause?.message || 'Unable to load participants.'
+  }
+}
+
+// Staff type the registration number shown under the participant's QR code.
+async function submitCheckIn() {
+  const registrationNumber = checkInNumber.value.trim()
+  if (!registrationNumber || checkingIn.value) return
+  checkingIn.value = true
+  try {
+    const registration = await checkInRegistration(route.params.id, registrationNumber)
+    showToast({ title: `${registration.attendeeName} checked in.`, variant: 'success' })
+    checkInNumber.value = ''
+    await loadParticipants()
+  } catch (error) {
+    showToast({ title: error.message, variant: 'danger' })
+  } finally {
+    checkingIn.value = false
   }
 }
 
@@ -115,6 +136,30 @@ onMounted(async () => {
 
       </div>
 
+    </section>
+
+
+    <!-- CHECK-IN -->
+    <section class="console-card check-in-card">
+      <form class="check-in-form" @submit.prevent="submitCheckIn">
+        <div class="check-in-field">
+          <label class="console-field-label" for="check-in-number">Check in by registration number</label>
+          <input
+            id="check-in-number"
+            v-model="checkInNumber"
+            class="console-input"
+            placeholder="REG-XXXXXXXXXX"
+            autocomplete="off"
+          />
+        </div>
+        <button
+          class="console-btn console-btn-primary"
+          type="submit"
+          :disabled="!checkInNumber.trim() || checkingIn"
+        >
+          {{ checkingIn ? 'Checking in...' : 'Check in' }}
+        </button>
+      </form>
     </section>
 
 
@@ -309,6 +354,26 @@ onMounted(async () => {
 }
 
 /* =========================================================
+   CHECK-IN
+========================================================= */
+
+.check-in-card {
+  margin-bottom: 15px;
+  padding: 16px 18px;
+}
+
+.check-in-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.check-in-field {
+  flex: 1;
+  max-width: 360px;
+}
+
+/* =========================================================
    CARD
 ========================================================= */
 
@@ -426,6 +491,15 @@ onMounted(async () => {
 
 .payment-status.pending .status-dot {
   background: #eea328;
+}
+
+.payment-status.checked {
+  color: #27ae68;
+  background: #e9f9f1;
+}
+
+.payment-status.checked .status-dot {
+  background: #27ae68;
 }
 
 /* =========================================================

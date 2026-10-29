@@ -31,6 +31,13 @@ export function listEventRegistrations(eventId, { query = '', page = 0, size = 5
   return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/registrations?${params}`)
 }
 
+export function checkInRegistration(eventId, registrationNumber) {
+  return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/check-in`, {
+    method: 'POST',
+    body: { registrationNumber },
+  })
+}
+
 export function listRecentAdminRegistrations({ size = 5 } = {}) {
   const params = new URLSearchParams({ page: '0', size: String(size), sort: 'registeredAt,desc' })
   return apiRequest(`/admin/registrations/recent?${params}`)
