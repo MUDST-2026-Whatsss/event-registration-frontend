@@ -1,8 +1,9 @@
 <script setup>
-import { CalendarClock, CalendarDays, LockKeyhole, MapPin, RefreshCw, ShieldCheck } from '@lucide/vue'
+import { CalendarClock, CalendarDays, ChevronRight, LockKeyhole, MapPin, RefreshCw, ShieldCheck } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
+import BackLink from '@/shared/ui/BackLink.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useAuth } from '@/features/auth/public.js'
 import { useRegistrations } from '@/features/registrations/public.js'
@@ -20,7 +21,7 @@ const registered = computed(() => Boolean(event.value) && isAuthenticated.value 
 const registrationOpen = computed(() => canRegisterForEvent(event.value))
 const backTarget = computed(() => {
   const origin = typeof route.query.from === 'string' ? route.query.from : ''
-  if (origin === '/' || origin.startsWith('/my-registrations') || /^\/events(?:\?|$)/.test(origin)) return origin
+  if (origin === '/' || /^\/(?:my-registrations|events)(?:\?|$)/.test(origin)) return origin
   return '/events'
 })
 const backLabel = computed(() => {
@@ -87,7 +88,10 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
   <div class="detail-page">
     <PublicHeader />
     <main class="detail-shell">
-      <div class="detail-breadcrumb"><RouterLink :to="backTarget">&larr; {{ backLabel }}</RouterLink><template v-if="event"><span>&bull;</span><span>{{ event.categoryName }}</span></template></div>
+      <nav class="detail-breadcrumb" aria-label="Event navigation">
+        <BackLink :to="backTarget" :label="backLabel" data-test="event-back" />
+        <template v-if="event"><ChevronRight :size="15" aria-hidden="true" /><span>{{ event.categoryName }}</span></template>
+      </nav>
 
       <div v-if="loading" class="detail-state" aria-live="polite"><RefreshCw :size="30" class="detail-state__spinner" /><h1>Loading event</h1><p>Fetching the latest event information.</p></div>
       <div v-else-if="error" class="detail-state" role="alert"><CalendarClock :size="32" /><h1>Event unavailable</h1><p>{{ error }}</p><button type="button" @click="fetchEvent(String(route.params.slug || ''))">Try again</button></div>
@@ -138,8 +142,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
 .detail-page { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; color: #20263a; }
 .detail-page main { flex: 1; }
 .detail-shell { width: min(100% - 48px, 1180px); margin-inline: auto; padding-block: 34px 78px; }
-.detail-breadcrumb { display: flex; margin-bottom: 24px; align-items: center; gap: 9px; color: var(--neutral-600); font-size: .8125rem; }
-.detail-breadcrumb a { color: #28314a; text-decoration: none; }
+.detail-breadcrumb { display: flex; margin-bottom: 24px; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--neutral-600); font-size: .8125rem; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr); gap: 28px; align-items: start; }
 .detail-state { display: grid; min-height: 460px; padding: 42px 20px; place-items: center; align-content: center; gap: 8px; color: var(--neutral-600); background: #fafaff; border: 1px dashed var(--neutral-300); border-radius: 8px; text-align: center; }
 .detail-state h1, .detail-state p { margin: 0; }
