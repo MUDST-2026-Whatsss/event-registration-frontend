@@ -2,7 +2,6 @@
 import { AlertTriangle, CalendarDays, CalendarX2, Eye, MapPin, QrCode, RotateCcw, Search, TicketCheck, X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import QRCode from 'qrcode'
 import AppFooter from '@/shared/ui/AppFooter.vue'
 import AppToast from '@/shared/ui/AppToast.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
@@ -10,6 +9,7 @@ import { useRegistrations } from '../composables/useRegistrations.js'
 import { usePublicEvents, EventCover } from '@/features/events/public.js'
 import { mapPublicEvent } from '@/features/events/public.js'
 import { listMyInvitations } from '../api/registrationsApi.js'
+import { checkInQrDataUrl } from '../lib/checkInQr.js'
 
 const searchQuery = ref('')
 const invitations = ref([])
@@ -97,16 +97,7 @@ async function openQrCode(event) {
   qrError.value = false
 
   try {
-    qrDataUrl.value = await QRCode.toDataURL(JSON.stringify({
-      type: 'eventsss-check-in',
-      registrationId: registrationId(event),
-      eventId: event.id,
-    }), {
-      width: 280,
-      margin: 2,
-      errorCorrectionLevel: 'M',
-      color: { dark: '#18181B', light: '#FFFFFF' },
-    })
+    qrDataUrl.value = await checkInQrDataUrl(registrationId(event), event.id)
   } catch {
     qrError.value = true
   }

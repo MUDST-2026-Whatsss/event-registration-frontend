@@ -43,6 +43,7 @@ async function handleLogout() {
           <RouterLink to="/" @click="menuOpen = false">Home</RouterLink>
           <RouterLink data-test="nav-events" to="/events" :class="{ active: route.path.startsWith('/events') }" @click="menuOpen = false">Events</RouterLink>
           <RouterLink v-if="isAuthenticated" to="/my-registrations" @click="menuOpen = false">My Registrations</RouterLink>
+          <RouterLink v-else data-test="nav-find-ticket" to="/tickets" @click="menuOpen = false">Find My Ticket</RouterLink>
         </nav>
         <div class="public-header__actions" :aria-busy="isInitializing">
           <span v-if="isInitializing" class="public-header__session-placeholder" aria-label="Checking session" />

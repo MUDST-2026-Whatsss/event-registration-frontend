@@ -12,6 +12,21 @@ export function registerForEvent(eventId, attendee) {
   })
 }
 
+export function registerAsGuest(eventId, attendee) {
+  return apiRequest(`/events/${encodeURIComponent(eventId)}/guest-registrations`, {
+    method: 'POST',
+    body: attendee,
+  })
+}
+
+// POST keeps the email out of the URL.
+export function findGuestTicket(registrationNumber, email) {
+  return apiRequest('/guest-registrations/lookup', {
+    method: 'POST',
+    body: { registrationNumber, email },
+  })
+}
+
 export function confirmMockPayment(registrationId) {
   return authenticatedApiRequest(`/registrations/${encodeURIComponent(registrationId)}/mock-payment/confirm`, {
     method: 'POST',
