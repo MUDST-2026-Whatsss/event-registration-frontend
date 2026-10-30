@@ -11,7 +11,9 @@ export function stubAdministration(events, category, iso) {
     status: 'ACTIVE', roles: [roles[0]], version: 0, lastLoginAt: null }]
   const page = (content) => ({ content, totalElements: content.length, totalPages: content.length ? 1 : 0, number: 0 })
   const attendees = [{ registrationId: 'attendee-id', registrationNumber: 'REG-ATTEND0001', status: 'CONFIRMED',
-    attendeeName: 'Alice Attendee', attendeeEmail: 'alice@example.test', attendeePhone: null, registeredAt: iso(-3600000), checkedInAt: null }]
+    attendeeName: 'Alice Attendee', attendeeEmail: 'alice@example.test', attendeePhone: null, registeredAt: iso(-3600000), checkedInAt: null },
+  { registrationId: 'guest-attendee-id', registrationNumber: 'REG-GUESTA0001', status: 'CONFIRMED', registeredAsGuest: true,
+    attendeeName: 'Gary Guest', attendeeEmail: 'gary@example.test', attendeePhone: null, registeredAt: iso(-1800000), checkedInAt: null }]
 
   cy.intercept('**/api/v1/admin/**', (req) => {
     const url = new URL(req.url)

@@ -4,6 +4,7 @@ import { stubAdministration } from './administration.js'
 export function stubApi() {
   let user = null
   const registrations = []
+  const guestRegistrations = []
   const now = Date.now()
   const iso = (offset) => new Date(now + offset).toISOString()
   const free = {
@@ -72,6 +73,25 @@ export function stubApi() {
         registrations.push(registration)
       }
       return reply(registration, 201)
+    }
+    if (req.method === 'POST' && /^\/events\/[^/]+\/guest-registrations$/.test(path)) {
+      const event = events.find(e => path === `/events/${e.eventId}/guest-registrations`)
+      if (!event) return reply({ code: 'EVENT_NOT_FOUND' }, 404)
+      if (event.eventType === 'PAID') return reply({ code: 'GUEST_PAID_REGISTRATION_UNAVAILABLE', message: 'Sign in to register for paid events.' }, 409)
+      const email = req.body.attendeeEmail.toLowerCase()
+      if (guestRegistrations.some(r => r.event.eventId === event.eventId && r.attendeeEmail.toLowerCase() === email)) {
+        return reply({ code: 'GUEST_ALREADY_REGISTERED', message: 'This email address is already registered for this event.' }, 409)
+      }
+      const registration = { registrationId: '50000000-0000-0000-0000-00000000000' + (guestRegistrations.length + 1),
+        registrationNumber: 'REG-GUEST0000' + (guestRegistrations.length + 1), status: 'CONFIRMED', registeredAsGuest: true,
+        attendeeName: req.body.attendeeName, attendeeEmail: req.body.attendeeEmail, registeredAt: iso(0), confirmedAt: iso(0), cancellable: false, event }
+      guestRegistrations.push(registration)
+      return reply(registration, 201)
+    }
+    if (req.method === 'POST' && path === '/guest-registrations/lookup') {
+      const found = guestRegistrations.find(r => r.registrationNumber === req.body.registrationNumber.trim().toUpperCase()
+        && r.attendeeEmail.toLowerCase() === req.body.email.trim().toLowerCase())
+      return found ? reply(found) : reply({ code: 'REGISTRATION_NOT_FOUND', message: 'The requested registration was not found.' }, 404)
     }
     if (req.method === 'POST' && path.endsWith('/mock-payment/confirm')) {
       const registration = registrations.find(r => path === `/registrations/${r.registrationId}/mock-payment/confirm`)

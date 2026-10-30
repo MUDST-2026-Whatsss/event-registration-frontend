@@ -31,7 +31,8 @@ const backLabel = computed(() => {
 const registrationMessage = computed(() => {
   if (event.value.status === 'upcoming') return 'Registration has not opened yet. Please check back soon.'
   if (event.value.status === 'closed') return 'Registration is closed for this event.'
-  if (!isAuthenticated.value) return 'Please log in or sign up before registering for this event.'
+  if (!isAuthenticated.value && event.value.price) return 'Please log in or sign up to register for paid events.'
+  if (!isAuthenticated.value && !event.value.full) return 'Register as a guest, or log in to keep this event in your account.'
   if (registered.value) return 'You are registered for this event.'
   if (event.value.full) return 'This event is fully booked.'
   return 'Reserve your place before registration closes.'
@@ -39,7 +40,7 @@ const registrationMessage = computed(() => {
 const registrationButtonLabel = computed(() => {
   if (event.value.status === 'upcoming') return 'Coming Soon'
   if (event.value.status === 'closed') return 'Registration Closed'
-  if (!isAuthenticated.value) return 'Log In / Sign Up'
+  if (!isAuthenticated.value && event.value.price) return 'Log In / Sign Up'
   if (registered.value) return 'Registered'
   return event.value.full ? 'Fully Booked' : 'Register Now'
 })
@@ -53,7 +54,8 @@ function handleRegistration() {
   if (!registrationOpen.value || registered.value) return
   const registrationTarget = { path: `/events/${event.value.id}/register`, query: { from: backTarget.value } }
 
-  if (!isAuthenticated.value) {
+  // Guests register for free events themselves; paid events still need an account.
+  if (!isAuthenticated.value && event.value.price) {
     router.push({ path: '/login', query: { redirect: router.resolve(registrationTarget).fullPath } })
     return
   }
@@ -122,6 +124,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
           <div class="detail-price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           <p>{{ registrationMessage }}</p>
           <button data-test="event-register" class="detail-register" type="button" :disabled="registered || !registrationOpen" @click="handleRegistration">{{ registrationButtonLabel }}</button>
+          <RouterLink v-if="!isAuthenticated" class="detail-ticket-link" data-test="find-guest-ticket" to="/tickets">Registered as a guest? Find your ticket</RouterLink>
           <small class="detail-closes">{{ event.status === 'upcoming' ? 'Registration has not opened yet' : event.status === 'closed' ? 'Registration is no longer available' : `Registration closes ${new Date(event.registrationEndAt).toLocaleString()}` }}</small>
           <div v-if="event.contactEmail" class="organizer"><span>@</span><p>Event contact<strong>{{ event.contactEmail }}</strong></p></div>
         </aside>
@@ -185,6 +188,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
 .detail-price strong { font-size: 1.25rem; }
 .detail-panel > p { color: var(--neutral-600); font-size: .74rem; }
 .detail-register { display: grid; width: 100%; height: 44px; place-items: center; color: var(--neutral-0); background: #1454d8; border-radius: 6px; cursor: pointer; font-size: .8125rem; text-decoration: none; }
+.detail-ticket-link { display: block; margin-top: 10px; color: #2455db; font-size: .75rem; text-align: center; }
 .detail-register:disabled { color: #686d79; background: #e8e9ed; cursor: not-allowed; }
 .detail-closes { display: block; margin-top: 13px; color: var(--neutral-600); text-align: center; }
 .organizer { display: flex; margin-top: 20px; padding-top: 18px; align-items: center; gap: 10px; border-top: 1px solid var(--neutral-300); }
