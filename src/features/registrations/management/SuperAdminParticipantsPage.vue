@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import { getAdminEvent } from '@/features/events/api/adminEventsApi.js'
 import { useToast } from '@/shared/composables/useToast.js'
-import { checkInRegistration, listEventRegistrations } from '../api/registrationsApi.js'
+import { checkInRegistration, listAllEventRegistrations, listEventRegistrations } from '../api/registrationsApi.js'
+import { useOfflineCheckIn } from '../composables/useOfflineCheckIn.js'
 import CheckInScanner from './CheckInScanner.vue'
 import EventAnalyticsPanel from './EventAnalyticsPanel.vue'
 
@@ -24,6 +25,23 @@ const checkingIn = ref(false)
 const scannerOpen = ref(false)
 const analyticsPanel = ref(null)
 
+const offline = useOfflineCheckIn(String(route.params.id), {
+  checkIn: checkInRegistration,
+  onSynced: (count) => {
+    showToast({ title: `${count} offline check-in${count === 1 ? '' : 's'} synced.`, variant: 'success' })
+    refreshAfterCheckIn()
+  },
+})
+
+const OFFLINE_MESSAGES = {
+  queued: (name) => ({ title: `${name} checked in offline.`, message: 'It will sync when the connection is back.', variant: 'warning' }),
+  duplicate: (name) => ({ title: `${name} was already scanned offline.`, message: 'Waiting to sync.', variant: 'warning' }),
+  already: (name) => ({ title: `${name} is already checked in.`, variant: 'danger' }),
+  'not-checkable': (name) => ({ title: `${name} cannot be checked in.`, message: 'The registration is pending payment or cancelled.', variant: 'danger' }),
+  unknown: () => ({ title: 'Registration not found in the saved participant list.', variant: 'danger' }),
+  'no-roster': () => ({ title: 'No participant list saved on this device.', message: 'Open this page once while online before checking in offline.', variant: 'danger' }),
+}
+
 const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
   PENDING_PAYMENT: 'Pending',
@@ -42,7 +60,9 @@ function mapParticipant(registration) {
     name: registration.attendeeName,
     email: registration.attendeeEmail,
     tel: registration.attendeePhone || '-',
-    payment: STATUS_LABELS[registration.status] || registration.status,
+    payment: offline.isPending(registration.registrationNumber)
+      ? 'Pending sync'
+      : STATUS_LABELS[registration.status] || registration.status,
     guest: Boolean(registration.registeredAsGuest),
   }
 }
@@ -57,7 +77,29 @@ async function loadParticipants() {
     totalPages.value = payload.totalPages
     totalElements.value = payload.totalElements
   } catch (cause) {
-    errorMessage.value = cause?.message || 'Unable to load participants.'
+    errorMessage.value = cause?.code === 'NETWORK_ERROR' && offline.hasRoster.value
+      ? 'You are offline. Check-ins are saved on this device and sync when the connection is back.'
+      : cause?.message || 'Unable to load participants.'
+  }
+}
+
+// Saved while online so check-in keeps working if the connection drops later.
+function saveRosterForOffline() {
+  listAllEventRegistrations(route.params.id).then(offline.saveRoster).catch(() => {})
+}
+
+function refreshAfterCheckIn() {
+  saveRosterForOffline()
+  return Promise.all([loadParticipants(), analyticsPanel.value?.reload()])
+}
+
+function checkInWithoutConnection(registrationNumber) {
+  const result = offline.checkInOffline(registrationNumber)
+  showToast(OFFLINE_MESSAGES[result.status](result.name))
+  if (result.status === 'queued') {
+    checkInNumber.value = ''
+    participants.value = participants.value.map((row) => (row.registrationNumber === registrationNumber.toUpperCase()
+      ? { ...row, payment: 'Pending sync' } : row))
   }
 }
 
@@ -71,14 +113,20 @@ function checkInScanned(registrationNumber) {
 async function submitCheckIn() {
   const registrationNumber = checkInNumber.value.trim()
   if (!registrationNumber || checkingIn.value) return
+  if (!offline.online.value) {
+    checkInWithoutConnection(registrationNumber)
+    return
+  }
   checkingIn.value = true
   try {
     const registration = await checkInRegistration(route.params.id, registrationNumber)
     showToast({ title: `${registration.attendeeName} checked in.`, variant: 'success' })
     checkInNumber.value = ''
-    await Promise.all([loadParticipants(), analyticsPanel.value?.reload()])
+    await refreshAfterCheckIn()
   } catch (error) {
-    showToast({ title: error.message, variant: 'danger' })
+    // The browser may still think it is online while requests fail.
+    if (error?.code === 'NETWORK_ERROR') checkInWithoutConnection(registrationNumber)
+    else showToast({ title: error.message, variant: 'danger' })
   } finally {
     checkingIn.value = false
   }
@@ -107,6 +155,8 @@ onMounted(async () => {
     .then((payload) => { event.value = { id: payload.eventId, name: payload.title } })
     .catch(() => { event.value = { id: route.params.id, name: 'Event' } })
   await loadParticipants()
+  saveRosterForOffline()
+  if (offline.online.value) offline.sync()
 })
 </script>
 
@@ -184,6 +234,29 @@ onMounted(async () => {
           Scan QR
         </button>
       </form>
+    </section>
+
+    <section
+      v-if="!offline.online.value || offline.pending.value.length || offline.failed.value.length"
+      class="console-card offline-card"
+      :class="{ 'is-offline': !offline.online.value }"
+      data-test="offline-status"
+      aria-live="polite"
+    >
+      <strong>
+        {{ !offline.online.value ? 'Offline' : offline.syncing.value ? 'Syncing check-ins...' : 'Back online' }}
+      </strong>
+      <span v-if="offline.pending.value.length">
+        {{ offline.pending.value.length }} check-in{{ offline.pending.value.length === 1 ? '' : 's' }} waiting to sync
+      </span>
+      <span v-if="offline.online.value && offline.pending.value.length && !offline.syncing.value">Retrying automatically every 30 seconds.</span>
+      <span v-else-if="!offline.online.value && !offline.pending.value.length">Check-ins are saved on this device and sync when the connection is back.</span>
+      <ul v-if="offline.failed.value.length" class="offline-failed" data-test="offline-failed">
+        <li v-for="item in offline.failed.value" :key="item.registrationNumber">
+          <span><b>{{ item.name }}</b> ({{ item.registrationNumber }}) could not be synced: {{ item.error }}</span>
+          <button class="console-btn console-btn-outline" type="button" @click="offline.dismiss(item.registrationNumber)">Dismiss</button>
+        </li>
+      </ul>
     </section>
 
     <CheckInScanner v-if="scannerOpen" @detected="checkInScanned" @close="scannerOpen = false" />
@@ -398,6 +471,39 @@ onMounted(async () => {
 .check-in-field {
   flex: 1;
   max-width: 360px;
+}
+
+.offline-card {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 15px;
+  padding: 14px 18px;
+  border-color: var(--console-success);
+  background: var(--console-success-bg);
+  color: var(--console-success-text);
+  font-size: var(--console-fs-sm);
+}
+
+.offline-card.is-offline {
+  border-color: var(--console-warning);
+  background: var(--console-warning-bg);
+  color: var(--console-warning-text);
+}
+
+.offline-failed {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offline-failed li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--console-danger-text);
 }
 
 .guest-tag {

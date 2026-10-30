@@ -56,6 +56,33 @@ describe('Event Check-in', () => {
     cy.contains('button', 'Check in').click()
     cy.getByTestId('analytics-attendance').should('contain.text', '1 / 2')
   })
+  it('keeps checking people in while the connection is down and syncs them when it returns', () => {
+    let networkDown = false
+    // Registered after the stubs, so it runs first; doing nothing hands the request on to the stub.
+    cy.intercept('POST', '**/api/v1/admin/events/*/check-in', (req) => {
+      if (networkDown) req.destroy()
+    })
+    login('admin@example.test')
+    cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
+    cy.get('.participant-table').should('contain.text', 'Alice Attendee')
+
+    cy.then(() => { networkDown = true })
+    cy.get('#check-in-number').type('REG-ATTEND0001')
+    cy.contains('button', 'Check in').click()
+    cy.get('.app-toast').should('contain.text', 'Alice Attendee checked in offline.')
+    cy.contains('.participant-table tr', 'Alice Attendee').should('contain.text', 'Pending sync')
+    cy.getByTestId('offline-status').should('contain.text', '1 check-in waiting to sync')
+
+    // The queue survives a reload while the connection is still down.
+    cy.reload()
+    cy.getByTestId('offline-status').should('contain.text', '1 check-in waiting to sync')
+
+    cy.then(() => { networkDown = false })
+    cy.window().then((win) => win.dispatchEvent(new win.Event('online')))
+    cy.get('.app-toast').should('contain.text', '1 offline check-in synced.')
+    cy.contains('.participant-table tr', 'Alice Attendee').should('contain.text', 'Checked in')
+    cy.getByTestId('offline-status').should('not.exist')
+  })
   it('admin checks in a participant by registration number from the participants page', () => {
     login('admin@example.test')
     cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
