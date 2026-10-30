@@ -1,9 +1,10 @@
 <script setup>
-import { ArrowRight, CalendarDays, Check, Clock3, Mail, MapPin, Phone, QrCode, UserRound, X } from '@lucide/vue'
+import { ArrowRight, CalendarDays, Check, ChevronRight, Clock3, Mail, MapPin, Phone, QrCode, UserRound, X } from '@lucide/vue'
 import QRCode from 'qrcode'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
+import BackLink from '@/shared/ui/BackLink.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
 import { canRegisterForEvent, usePublicEvents, EventCover } from '@/features/events/public.js'
@@ -11,8 +12,8 @@ import { useAuth } from '@/features/auth/public.js'
 
 const route = useRoute()
 const router = useRouter()
-const { register, completeMockPayment, loadRegistrations, findRegistration } = useRegistrations()
-const { currentUser } = useAuth()
+const { register, registerGuest, completeMockPayment, loadRegistrations, findRegistration } = useRegistrations()
+const { currentUser, isAuthenticated, initializeAuth } = useAuth()
 const { findEvent, loadEvent } = usePublicEvents()
 const eventLoading = ref(true)
 const eventError = ref('')
@@ -31,16 +32,30 @@ const detailTarget = computed(() => ({
   query: typeof route.query.from === 'string' ? { from: route.query.from } : {},
 }))
 
+// Guests may register for free events; paying needs an account to own the pending payment.
+const isGuest = computed(() => !isAuthenticated.value)
+const guestNeedsAccount = computed(() => isGuest.value && Boolean(event.value?.price))
+const loginTarget = computed(() => ({ path: '/login', query: { redirect: route.fullPath } }))
+
 const form = reactive({
-  fullName: currentUser.value?.name ?? '',
-  phone: currentUser.value?.phoneNumber ?? '',
-  email: currentUser.value?.email ?? '',
+  fullName: '',
+  phone: '',
+  email: '',
   consent: false,
 })
 
+function fillFromProfile() {
+  form.fullName ||= currentUser.value?.name ?? ''
+  form.phone ||= currentUser.value?.phoneNumber ?? ''
+  form.email ||= currentUser.value?.email ?? ''
+}
+
 onMounted(async () => {
+  // The route is public, so the session may not have been restored yet.
+  await initializeAuth().catch(() => {})
+  fillFromProfile()
   try {
-    await Promise.all([loadEvent(String(route.params.slug || '')), loadRegistrations(true)])
+    await Promise.all([loadEvent(String(route.params.slug || '')), isAuthenticated.value && loadRegistrations(true)])
   } catch (cause) {
     eventError.value = cause?.message || 'Unable to load this event.'
   } finally {
@@ -89,14 +104,30 @@ function attendee() {
 }
 
 async function confirmRegistration() {
-  if (paymentOpen.value || submitting.value || !form.consent) return
-  const existing = findRegistration(event.value.id)
+  if (paymentOpen.value || submitting.value || !form.consent || guestNeedsAccount.value) return
+  const existing = isGuest.value ? null : findRegistration(event.value.id)
   if (!canRegisterForEvent(event.value) && existing?.apiStatus !== 'PENDING_PAYMENT') {
     router.replace(`/events/${event.value.id}`)
     return
   }
 
   submitError.value = ''
+  if (isGuest.value) {
+    submitting.value = true
+    try {
+      const ticket = await registerGuest(event.value, attendee())
+      // The email travels in history state, not the URL, so the ticket page can look the ticket up.
+      router.replace({
+        name: 'guest-ticket',
+        state: { registrationNumber: ticket.registrationNumber, email: form.email, justRegistered: true },
+      })
+    } catch (cause) {
+      submitError.value = cause?.message || 'Unable to complete your registration.'
+    } finally {
+      submitting.value = false
+    }
+    return
+  }
   if (!event.value.price) {
     submitting.value = true
     try {
@@ -164,7 +195,10 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
       <div v-if="eventLoading" class="registration-load">Loading event information...</div>
       <div v-else-if="eventError || !event" class="registration-load error"><strong>Event unavailable</strong><span>{{ eventError || 'This event could not be found.' }}</span><RouterLink to="/events">Back to events</RouterLink></div>
       <template v-else>
-      <div class="registration-breadcrumb"><RouterLink :to="detailTarget">&larr; Back to event details</RouterLink><span>&bull;</span><span>Confirm registration</span></div>
+      <nav class="registration-breadcrumb" aria-label="Registration navigation">
+        <BackLink :to="detailTarget" label="Back to event details" data-test="registration-back" />
+        <ChevronRight :size="15" aria-hidden="true" /><span>Confirm registration</span>
+      </nav>
 
       <div class="registration-heading">
         <p>Registration review</p>
@@ -188,10 +222,18 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
 
         <form class="registration-form" @submit.prevent="confirmRegistration">
           <div class="registration-form__title"><UserRound :size="22" /><div><h2>Attendee information</h2><p>This information will appear on your registration.</p></div></div>
+          <div v-if="guestNeedsAccount" class="registration-guest blocked" data-test="guest-paid-notice">
+            <strong>An account is required for paid events</strong>
+            <span><RouterLink :to="loginTarget">Log in</RouterLink> or <RouterLink to="/register">create an account</RouterLink> to continue.</span>
+          </div>
+          <div v-else-if="isGuest" class="registration-guest" data-test="guest-notice">
+            <strong>Registering as a guest</strong>
+            <span>We will show your ticket after you confirm. Create an account later with the same email and this registration will appear in My Registrations. <RouterLink :to="loginTarget">Log in instead</RouterLink></span>
+          </div>
           <div class="registration-fields">
-            <label class="full"><span>Full name</span><div><UserRound :size="17" /><input v-model.trim="form.fullName" autocomplete="name" required /></div></label>
-            <label><span>Phone number</span><div><Phone :size="17" /><input v-model.trim="form.phone" type="tel" autocomplete="tel" required /></div></label>
-            <label><span>Email</span><div><Mail :size="17" /><input v-model.trim="form.email" type="email" autocomplete="email" required /></div></label>
+            <label class="full"><span>Full name</span><div><UserRound :size="17" /><input v-model.trim="form.fullName" autocomplete="name" placeholder="Enter your full name" required /></div></label>
+            <label><span>Phone number</span><div><Phone :size="17" /><input v-model.trim="form.phone" type="tel" autocomplete="tel" placeholder="e.g. 0812345678" required /></div></label>
+            <label><span>Email</span><div><Mail :size="17" /><input v-model.trim="form.email" type="email" autocomplete="email" placeholder="you@example.com" required /></div></label>
           </div>
           <label class="registration-consent"><input data-test="registration-consent" v-model="form.consent" type="checkbox" required /><span>I confirm that the attendee information is correct and agree to the event terms and privacy policy.</span></label>
           <div class="registration-form__summary"><span>Total</span><strong>{{ formatPrice(event.price) }}</strong></div>
@@ -200,7 +242,7 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
             data-test="registration-confirm" class="registration-confirm"
             :class="{ ready: form.consent }"
             type="submit"
-            :disabled="paymentOpen || submitting || !form.consent"
+            :disabled="paymentOpen || submitting || !form.consent || guestNeedsAccount"
           >
             <span>{{ form.consent ? 'Confirm registration' : 'Accept the terms to continue' }}</span>
             <Check v-if="form.consent" :size="18" />
@@ -251,8 +293,7 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
 .registration-load.error strong { color: #20263a; font-size: 1.25rem; }
 .registration-load a { margin-top: 8px; color: #2455db; }
 .registration-error { margin: 0; color: #b42318; font-size: .85rem; }
-.registration-breadcrumb { display: flex; align-items: center; gap: 9px; color: var(--neutral-600); font-size: .8rem; }
-.registration-breadcrumb a { color: #28314a; text-decoration: none; }
+.registration-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--neutral-600); font-size: .8rem; }
 .registration-heading { margin-top: 32px; }
 .registration-heading p { margin: 0 0 5px; color: #2455db; font-size: .72rem; font-weight: 600; text-transform: uppercase; }
 .registration-heading h1 { margin: 0; font-size: 2.2rem; letter-spacing: 0; }
@@ -274,6 +315,9 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
 .registration-form__title { display: flex; padding-bottom: 20px; align-items: flex-start; gap: 11px; color: #2455db; border-bottom: 1px solid var(--neutral-200); }
 .registration-form__title h2 { margin: 0; color: #20263a; font-size: 1.25rem; }
 .registration-form__title p { margin: 2px 0 0; color: var(--neutral-600); font-size: .78rem; }
+.registration-guest { display: flex; margin-top: 18px; padding: 12px 14px; flex-direction: column; gap: 3px; color: #1e3a8a; background: #eef3ff; border: 1px solid #c9d6fb; border-radius: 7px; font-size: .76rem; }
+.registration-guest.blocked { color: #854d0e; background: #fff8df; border-color: #f1d587; }
+.registration-guest a { color: inherit; font-weight: 600; }
 .registration-fields { display: grid; padding-block: 24px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .registration-fields label { display: grid; gap: 6px; }
 .registration-fields label.full { grid-column: 1 / -1; }

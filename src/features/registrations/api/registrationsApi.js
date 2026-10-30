@@ -12,6 +12,21 @@ export function registerForEvent(eventId, attendee) {
   })
 }
 
+export function registerAsGuest(eventId, attendee) {
+  return apiRequest(`/events/${encodeURIComponent(eventId)}/guest-registrations`, {
+    method: 'POST',
+    body: attendee,
+  })
+}
+
+// POST keeps the email out of the URL.
+export function findGuestTicket(registrationNumber, email) {
+  return apiRequest('/guest-registrations/lookup', {
+    method: 'POST',
+    body: { registrationNumber, email },
+  })
+}
+
 export function confirmMockPayment(registrationId) {
   return authenticatedApiRequest(`/registrations/${encodeURIComponent(registrationId)}/mock-payment/confirm`, {
     method: 'POST',
@@ -29,6 +44,13 @@ export function cancelRegistration(registrationId) {
 export function listEventRegistrations(eventId, { query = '', page = 0, size = 50 } = {}) {
   const params = new URLSearchParams({ query, page: String(page), size: String(size) })
   return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/registrations?${params}`)
+}
+
+export function checkInRegistration(eventId, registrationNumber) {
+  return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/check-in`, {
+    method: 'POST',
+    body: { registrationNumber },
+  })
 }
 
 export function listRecentAdminRegistrations({ size = 5 } = {}) {

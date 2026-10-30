@@ -10,6 +10,10 @@ export function stubAdministration(events, category, iso) {
   const users = [{ userId: 'participant-id', displayName: 'Class Participant', email: 'participant@example.test',
     status: 'ACTIVE', roles: [roles[0]], version: 0, lastLoginAt: null }]
   const page = (content) => ({ content, totalElements: content.length, totalPages: content.length ? 1 : 0, number: 0 })
+  const attendees = [{ registrationId: 'attendee-id', registrationNumber: 'REG-ATTEND0001', status: 'CONFIRMED',
+    attendeeName: 'Alice Attendee', attendeeEmail: 'alice@example.test', attendeePhone: null, registeredAt: iso(-3600000), checkedInAt: null },
+  { registrationId: 'guest-attendee-id', registrationNumber: 'REG-GUESTA0001', status: 'CONFIRMED', registeredAsGuest: true,
+    attendeeName: 'Gary Guest', attendeeEmail: 'gary@example.test', attendeePhone: null, registeredAt: iso(-1800000), checkedInAt: null }]
 
   cy.intercept('**/api/v1/admin/**', (req) => {
     const url = new URL(req.url)
@@ -41,6 +45,15 @@ export function stubAdministration(events, category, iso) {
       reviews.push({ reviewId: `review-${reviews.length}`, event, priority: 'STANDARD', decision: 'PENDING',
         submittedAt: iso(0), submittedBy: { email: 'admin@example.test' } })
       return reply(event)
+    }
+    if (event && path.endsWith('/registrations')) return reply(page(attendees))
+    if (event && path.endsWith('/check-in')) {
+      const attendee = attendees.find(item => item.registrationNumber === req.body.registrationNumber.trim().toUpperCase())
+      if (!attendee) return reply({ code: 'REGISTRATION_NOT_FOUND', message: 'The requested registration was not found.' }, 404)
+      if (attendee.status === 'CHECKED_IN') return reply({ code: 'ALREADY_CHECKED_IN', message: 'This registration has already been checked in.' }, 409)
+      attendee.status = 'CHECKED_IN'
+      attendee.checkedInAt = iso(0)
+      return reply(attendee)
     }
     if (event && path === `/events/${event.eventId}`) {
       if (req.method === 'PATCH') Object.assign(event, req.body, { category, version: event.version + 1 })

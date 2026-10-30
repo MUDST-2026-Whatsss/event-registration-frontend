@@ -1,6 +1,8 @@
 import { readonly, ref } from 'vue'
 import { mapPublicEvent } from '@/features/events/public.js'
-import { cancelRegistration, confirmMockPayment, listMyRegistrations, registerForEvent } from '../api/registrationsApi.js'
+import {
+  cancelRegistration, confirmMockPayment, findGuestTicket, listMyRegistrations, registerAsGuest, registerForEvent,
+} from '../api/registrationsApi.js'
 
 const ACTIVE_STATUSES = ['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN']
 
@@ -53,6 +55,20 @@ export function useRegistrations() {
     return upsert(payload)
   }
 
+  // Guest tickets belong to no account, so they stay out of the signed-in registration list.
+  async function registerGuest(event, attendee) {
+    return mapRegistration(await registerAsGuest(event.eventId, {
+      attendeeName: attendee.fullName,
+      attendeeEmail: attendee.email,
+      attendeePhone: attendee.phone || undefined,
+      consentAccepted: true,
+    }))
+  }
+
+  async function lookupGuestTicket(registrationNumber, email) {
+    return mapRegistration(await findGuestTicket(registrationNumber, email))
+  }
+
   async function cancel(registrationId) {
     return upsert(await cancelRegistration(registrationId))
   }
@@ -73,6 +89,8 @@ export function useRegistrations() {
     registrations: readonly(registrations),
     loadRegistrations,
     register,
+    registerGuest,
+    lookupGuestTicket,
     completeMockPayment,
     cancel,
     findRegistration,

@@ -1,15 +1,24 @@
 const EventRegistrationView = () => import('./pages/EventRegistrationView.vue')
 const RegistrationSuccessView = () => import('./pages/RegistrationSuccessView.vue')
 const MyRegistrationsView = () => import('./pages/MyRegistrationsView.vue')
+const GuestTicketView = () => import('./pages/GuestTicketView.vue')
 
 export const registrationRoutes = [
   {
+    // Public: guests register for free events here; the page asks them to sign in for paid ones.
     path: '/events/:slug/register',
     name: 'event-registration',
     component: EventRegistrationView,
     meta: {
       title: 'Confirm Registration | Eventsss',
-      requiresAuth: true,
+    },
+  },
+  {
+    path: '/tickets',
+    name: 'guest-ticket',
+    component: GuestTicketView,
+    meta: {
+      title: 'Find My Ticket | Eventsss',
     },
   },
   {

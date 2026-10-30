@@ -1,8 +1,9 @@
 <script setup>
-import { CalendarClock, CalendarDays, LockKeyhole, MapPin, RefreshCw, ShieldCheck } from '@lucide/vue'
+import { CalendarClock, CalendarDays, ChevronRight, LockKeyhole, MapPin, RefreshCw, ShieldCheck } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
+import BackLink from '@/shared/ui/BackLink.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useAuth } from '@/features/auth/public.js'
 import { useRegistrations } from '@/features/registrations/public.js'
@@ -20,7 +21,7 @@ const registered = computed(() => Boolean(event.value) && isAuthenticated.value 
 const registrationOpen = computed(() => canRegisterForEvent(event.value))
 const backTarget = computed(() => {
   const origin = typeof route.query.from === 'string' ? route.query.from : ''
-  if (origin === '/' || origin.startsWith('/my-registrations') || /^\/events(?:\?|$)/.test(origin)) return origin
+  if (origin === '/' || /^\/(?:my-registrations|events)(?:\?|$)/.test(origin)) return origin
   return '/events'
 })
 const backLabel = computed(() => {
@@ -31,7 +32,8 @@ const backLabel = computed(() => {
 const registrationMessage = computed(() => {
   if (event.value.status === 'upcoming') return 'Registration has not opened yet. Please check back soon.'
   if (event.value.status === 'closed') return 'Registration is closed for this event.'
-  if (!isAuthenticated.value) return 'Please log in or sign up before registering for this event.'
+  if (!isAuthenticated.value && event.value.price) return 'Please log in or sign up to register for paid events.'
+  if (!isAuthenticated.value && !event.value.full) return 'Register as a guest, or log in to keep this event in your account.'
   if (registered.value) return 'You are registered for this event.'
   if (event.value.full) return 'This event is fully booked.'
   return 'Reserve your place before registration closes.'
@@ -39,7 +41,7 @@ const registrationMessage = computed(() => {
 const registrationButtonLabel = computed(() => {
   if (event.value.status === 'upcoming') return 'Coming Soon'
   if (event.value.status === 'closed') return 'Registration Closed'
-  if (!isAuthenticated.value) return 'Log In / Sign Up'
+  if (!isAuthenticated.value && event.value.price) return 'Log In / Sign Up'
   if (registered.value) return 'Registered'
   return event.value.full ? 'Fully Booked' : 'Register Now'
 })
@@ -53,7 +55,8 @@ function handleRegistration() {
   if (!registrationOpen.value || registered.value) return
   const registrationTarget = { path: `/events/${event.value.id}/register`, query: { from: backTarget.value } }
 
-  if (!isAuthenticated.value) {
+  // Guests register for free events themselves; paid events still need an account.
+  if (!isAuthenticated.value && event.value.price) {
     router.push({ path: '/login', query: { redirect: router.resolve(registrationTarget).fullPath } })
     return
   }
@@ -85,7 +88,10 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
   <div class="detail-page">
     <PublicHeader />
     <main class="detail-shell">
-      <div class="detail-breadcrumb"><RouterLink :to="backTarget">&larr; {{ backLabel }}</RouterLink><template v-if="event"><span>&bull;</span><span>{{ event.categoryName }}</span></template></div>
+      <nav class="detail-breadcrumb" aria-label="Event navigation">
+        <BackLink :to="backTarget" :label="backLabel" data-test="event-back" />
+        <template v-if="event"><ChevronRight :size="15" aria-hidden="true" /><span>{{ event.categoryName }}</span></template>
+      </nav>
 
       <div v-if="loading" class="detail-state" aria-live="polite"><RefreshCw :size="30" class="detail-state__spinner" /><h1>Loading event</h1><p>Fetching the latest event information.</p></div>
       <div v-else-if="error" class="detail-state" role="alert"><CalendarClock :size="32" /><h1>Event unavailable</h1><p>{{ error }}</p><button type="button" @click="fetchEvent(String(route.params.slug || ''))">Try again</button></div>
@@ -122,6 +128,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
           <div class="detail-price"><span>Standard Pass</span><strong>{{ formatPrice(event.price) }}</strong></div>
           <p>{{ registrationMessage }}</p>
           <button data-test="event-register" class="detail-register" type="button" :disabled="registered || !registrationOpen" @click="handleRegistration">{{ registrationButtonLabel }}</button>
+          <RouterLink v-if="!isAuthenticated" class="detail-ticket-link" data-test="find-guest-ticket" to="/tickets">Registered as a guest? Find your ticket</RouterLink>
           <small class="detail-closes">{{ event.status === 'upcoming' ? 'Registration has not opened yet' : event.status === 'closed' ? 'Registration is no longer available' : `Registration closes ${new Date(event.registrationEndAt).toLocaleString()}` }}</small>
           <div v-if="event.contactEmail" class="organizer"><span>@</span><p>Event contact<strong>{{ event.contactEmail }}</strong></p></div>
         </aside>
@@ -135,8 +142,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
 .detail-page { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; color: #20263a; }
 .detail-page main { flex: 1; }
 .detail-shell { width: min(100% - 48px, 1180px); margin-inline: auto; padding-block: 34px 78px; }
-.detail-breadcrumb { display: flex; margin-bottom: 24px; align-items: center; gap: 9px; color: var(--neutral-600); font-size: .8125rem; }
-.detail-breadcrumb a { color: #28314a; text-decoration: none; }
+.detail-breadcrumb { display: flex; margin-bottom: 24px; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--neutral-600); font-size: .8125rem; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr); gap: 28px; align-items: start; }
 .detail-state { display: grid; min-height: 460px; padding: 42px 20px; place-items: center; align-content: center; gap: 8px; color: var(--neutral-600); background: #fafaff; border: 1px dashed var(--neutral-300); border-radius: 8px; text-align: center; }
 .detail-state h1, .detail-state p { margin: 0; }
@@ -185,6 +191,7 @@ watch(() => String(route.params.slug || ''), fetchEvent, { immediate: true })
 .detail-price strong { font-size: 1.25rem; }
 .detail-panel > p { color: var(--neutral-600); font-size: .74rem; }
 .detail-register { display: grid; width: 100%; height: 44px; place-items: center; color: var(--neutral-0); background: #1454d8; border-radius: 6px; cursor: pointer; font-size: .8125rem; text-decoration: none; }
+.detail-ticket-link { display: block; margin-top: 10px; color: #2455db; font-size: .75rem; text-align: center; }
 .detail-register:disabled { color: #686d79; background: #e8e9ed; cursor: not-allowed; }
 .detail-closes { display: block; margin-top: 13px; color: var(--neutral-600); text-align: center; }
 .organizer { display: flex; margin-top: 20px; padding-top: 18px; align-items: center; gap: 10px; border-top: 1px solid var(--neutral-300); }

@@ -1,23 +1,29 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import EventRegistrationView from '../EventRegistrationView.vue'
 
 const mocks = vi.hoisted(() => ({
-  register: vi.fn(), completeMockPayment: vi.fn(), loadRegistrations: vi.fn(), findRegistration: vi.fn(),
-  replace: vi.fn(), loadEvent: vi.fn(), qr: vi.fn(),
+  register: vi.fn(), registerGuest: vi.fn(), completeMockPayment: vi.fn(), loadRegistrations: vi.fn(), findRegistration: vi.fn(),
+  replace: vi.fn(), loadEvent: vi.fn(), qr: vi.fn(), signedIn: true,
   event: { id: 'paid-event', eventId: 'event-uuid', title: 'Paid event', price: 99, image: '', date: 'Oct 20', location: 'Hall' },
   canRegister: true,
 }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { slug: 'paid-event' }, query: {} }), useRouter: () => ({ replace: mocks.replace }) }))
 vi.mock('../../composables/useRegistrations.js', () => ({ useRegistrations: () => mocks }))
 vi.mock('@/features/events/public.js', () => ({ EventCover: { template: '<div />' }, usePublicEvents: () => ({ findEvent: () => mocks.event, loadEvent: mocks.loadEvent }), canRegisterForEvent: () => mocks.canRegister }))
-vi.mock('@/features/auth/public.js', () => ({ useAuth: () => ({ currentUser: ref({ name: 'Test', phoneNumber: '0912345678', email: 'test@example.test' }) }) }))
+vi.mock('@/features/auth/public.js', () => ({
+  useAuth: () => ({
+    currentUser: ref(mocks.signedIn ? { name: 'Test', phoneNumber: '0912345678', email: 'test@example.test' } : null),
+    isAuthenticated: ref(mocks.signedIn),
+    initializeAuth: () => Promise.resolve(),
+  }),
+}))
 vi.mock('qrcode', () => ({ default: { toDataURL: mocks.qr } }))
 
 let wrapper
 async function start() {
-  wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: true } } })
+  wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: RouterLinkStub } } })
   await flushPromises()
   await wrapper.get('input[type="checkbox"]').setValue(true)
   await wrapper.get('form').trigger('submit')
@@ -30,6 +36,7 @@ describe('paid registration process', () => {
     vi.clearAllMocks()
     mocks.event.price = 99
     mocks.canRegister = true
+    mocks.signedIn = true
     mocks.findRegistration.mockReturnValue(null)
     mocks.loadEvent.mockResolvedValue(undefined)
     mocks.loadRegistrations.mockResolvedValue([])
@@ -86,5 +93,51 @@ describe('paid registration process', () => {
     expect(mocks.completeMockPayment).not.toHaveBeenCalled()
     expect(mocks.qr).not.toHaveBeenCalled()
     expect(mocks.replace).toHaveBeenCalledWith({ name: 'registration-success', params: { slug: 'paid-event' } })
+  })
+})
+
+describe('guest registration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.signedIn = false
+    mocks.canRegister = true
+    mocks.event.price = 0
+    mocks.loadEvent.mockResolvedValue(undefined)
+    mocks.registerGuest.mockResolvedValue({ registrationNumber: 'REG-GUEST00001', apiStatus: 'CONFIRMED' })
+  })
+  afterEach(() => { wrapper?.unmount() })
+
+  it('registers a guest for a free event and opens the ticket without putting the email in the URL', async () => {
+    wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: RouterLinkStub } } })
+    await flushPromises()
+    expect(wrapper.find('[data-test="guest-notice"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="registration-back"]').text()).toBe('Back')
+    expect(wrapper.get('input[autocomplete="name"]').attributes('placeholder')).toBe('Enter your full name')
+    expect(wrapper.get('input[type="tel"]').attributes('placeholder')).toBe('e.g. 0812345678')
+    expect(wrapper.get('input[type="email"]').attributes('placeholder')).toBe('you@example.com')
+    expect(mocks.loadRegistrations).not.toHaveBeenCalled()
+
+    await wrapper.get('input[autocomplete="name"]').setValue('Gina Guest')
+    await wrapper.get('input[type="tel"]').setValue('0812345678')
+    await wrapper.get('input[type="email"]').setValue('gina@example.test')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(mocks.registerGuest).toHaveBeenCalledWith(mocks.event, { fullName: 'Gina Guest', phone: '0812345678', email: 'gina@example.test' })
+    expect(mocks.register).not.toHaveBeenCalled()
+    expect(mocks.replace).toHaveBeenCalledWith({
+      name: 'guest-ticket',
+      state: { registrationNumber: 'REG-GUEST00001', email: 'gina@example.test', justRegistered: true },
+    })
+  })
+
+  it('asks a guest to sign in for a paid event and does not submit', async () => {
+    mocks.event.price = 99
+    await start()
+    expect(wrapper.find('[data-test="guest-paid-notice"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="registration-confirm"]').attributes('disabled')).toBeDefined()
+    expect(mocks.registerGuest).not.toHaveBeenCalled()
+    expect(mocks.register).not.toHaveBeenCalled()
   })
 })

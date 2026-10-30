@@ -3,10 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ConsoleIcon as Icon, ConsolePagination } from '@/features/console-shell/public.js'
 import { getAdminEvent } from '@/features/events/api/adminEventsApi.js'
-import { listEventRegistrations } from '../api/registrationsApi.js'
+import { useToast } from '@/shared/composables/useToast.js'
+import { checkInRegistration, listEventRegistrations } from '../api/registrationsApi.js'
+import CheckInScanner from './CheckInScanner.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
 
 const event = ref({ id: route.params.id, name: 'Loading...' })
 const participants = ref([])
@@ -15,6 +18,9 @@ const currentPage = ref(0)
 const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
+const checkInNumber = ref('')
+const checkingIn = ref(false)
+const scannerOpen = ref(false)
 
 const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
@@ -33,6 +39,7 @@ function mapParticipant(registration) {
     email: registration.attendeeEmail,
     tel: registration.attendeePhone || '-',
     payment: STATUS_LABELS[registration.status] || registration.status,
+    guest: Boolean(registration.registeredAsGuest),
   }
 }
 
@@ -47,6 +54,29 @@ async function loadParticipants() {
     totalElements.value = payload.totalElements
   } catch (cause) {
     errorMessage.value = cause?.message || 'Unable to load participants.'
+  }
+}
+
+// Staff scan the participant's QR code or type the registration number shown under it.
+function checkInScanned(registrationNumber) {
+  scannerOpen.value = false
+  checkInNumber.value = registrationNumber
+  submitCheckIn()
+}
+
+async function submitCheckIn() {
+  const registrationNumber = checkInNumber.value.trim()
+  if (!registrationNumber || checkingIn.value) return
+  checkingIn.value = true
+  try {
+    const registration = await checkInRegistration(route.params.id, registrationNumber)
+    showToast({ title: `${registration.attendeeName} checked in.`, variant: 'success' })
+    checkInNumber.value = ''
+    await loadParticipants()
+  } catch (error) {
+    showToast({ title: error.message, variant: 'danger' })
+  } finally {
+    checkingIn.value = false
   }
 }
 
@@ -118,6 +148,41 @@ onMounted(async () => {
     </section>
 
 
+    <!-- CHECK-IN -->
+    <section class="console-card check-in-card">
+      <form class="check-in-form" @submit.prevent="submitCheckIn">
+        <div class="check-in-field">
+          <label class="console-field-label" for="check-in-number">Check in by registration number</label>
+          <input
+            id="check-in-number"
+            v-model="checkInNumber"
+            class="console-input"
+            placeholder="REG-XXXXXXXXXX"
+            autocomplete="off"
+          />
+        </div>
+        <button
+          class="console-btn console-btn-primary"
+          type="submit"
+          :disabled="!checkInNumber.trim() || checkingIn"
+        >
+          {{ checkingIn ? 'Checking in...' : 'Check in' }}
+        </button>
+        <button
+          class="console-btn console-btn-outline"
+          type="button"
+          data-test="check-in-scan"
+          :disabled="checkingIn"
+          @click="scannerOpen = true"
+        >
+          Scan QR
+        </button>
+      </form>
+    </section>
+
+    <CheckInScanner v-if="scannerOpen" @detected="checkInScanned" @close="scannerOpen = false" />
+
+
     <!-- PARTICIPANTS -->
     <section class="console-card participants-card">
 
@@ -171,6 +236,7 @@ onMounted(async () => {
 
               <td>
                 {{ participant.name }}
+                <span v-if="participant.guest" class="guest-tag">Guest</span>
               </td>
 
               <td>
@@ -309,6 +375,36 @@ onMounted(async () => {
 }
 
 /* =========================================================
+   CHECK-IN
+========================================================= */
+
+.check-in-card {
+  margin-bottom: 15px;
+  padding: 16px 18px;
+}
+
+.check-in-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.check-in-field {
+  flex: 1;
+  max-width: 360px;
+}
+
+.guest-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  color: #1e3a8a;
+  background: #eef3ff;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 600;
+}
+
+/* =========================================================
    CARD
 ========================================================= */
 
@@ -426,6 +522,15 @@ onMounted(async () => {
 
 .payment-status.pending .status-dot {
   background: #eea328;
+}
+
+.payment-status.checked {
+  color: #27ae68;
+  background: #e9f9f1;
+}
+
+.payment-status.checked .status-dot {
+  background: #27ae68;
 }
 
 /* =========================================================
