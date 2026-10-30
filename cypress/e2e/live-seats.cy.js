@@ -37,5 +37,22 @@ describe('Live remaining seats', () => {
     cy.window().then((win) => seatSocket(win).push({ eventId, remainingSeats: 0, full: true }))
     cy.contains('Fully booked')
     cy.getByTestId('event-register').should('be.disabled').and('contain.text', 'Fully Booked')
+    cy.window().then(win => seatSocket(win).push({ eventId, remainingSeats: 1, full: false }))
+    cy.contains('1 of 10 spots left').should('be.visible')
+    cy.getByTestId('event-register').should('be.enabled')
+  })
+
+  scenario('live_seats_hidden', function live_seats_hidden() {
+    const eventId = '20000000-0000-0000-0000-000000000001'
+    cy.visit('/events/cloud-security-meetup', { onBeforeLoad: fakeSeatSocket })
+    cy.contains('10 of 10 spots left').should('be.visible')
+    cy.window().should(win => expect(seatSocket(win)?.sent).to.deep.eq([{ subscribe: eventId }]))
+    cy.window().then(win => seatSocket(win).push({ eventId: 'another-event', remainingSeats: 0, full: true }))
+    cy.contains('10 of 10 spots left').should('be.visible')
+    cy.getByTestId('event-register').should('be.enabled')
+    cy.window().then(win => seatSocket(win).push({ eventId, full: false }))
+    cy.contains('10 of 10 spots left').should('not.exist')
+    cy.contains('Registration open').should('be.visible')
+    cy.getByTestId('event-register').should('be.enabled')
   })
 })
