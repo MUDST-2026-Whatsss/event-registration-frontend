@@ -6,7 +6,8 @@ import AppFooter from '@/shared/ui/AppFooter.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useAuth } from '@/features/auth/public.js'
 import { useRegistrations } from '@/features/registrations/public.js'
-import { canRegisterForEvent, usePublicEvents, EventCover } from '../public.js'
+import { canRegisterForEvent, mapPublicEvent, usePublicEvents, EventCover } from '../public.js'
+import { useLiveSeats } from '../composables/useLiveSeats.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +19,12 @@ const loading = ref(true)
 const error = ref('')
 const registered = computed(() => Boolean(event.value) && isAuthenticated.value && isRegistered(event.value.id))
 const registrationOpen = computed(() => canRegisterForEvent(event.value))
+
+// Keep the seat count current while the page is open, without a refresh.
+useLiveSeats(computed(() => event.value?.eventId ?? null), (update) => {
+  if (event.value?.eventId !== update.eventId) return
+  event.value = mapPublicEvent({ ...event.value, remainingSeats: update.remainingSeats ?? null, full: update.full })
+})
 const backTarget = computed(() => {
   const origin = typeof route.query.from === 'string' ? route.query.from : ''
   if (origin === '/' || origin.startsWith('/my-registrations') || /^\/events(?:\?|$)/.test(origin)) return origin
