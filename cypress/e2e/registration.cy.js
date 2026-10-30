@@ -23,6 +23,19 @@ describe('Event Registration Flow', () => {
     cy.getByTestId('registration-status').should('have.text', 'cancelled')
     cy.getByTestId('registration-qr').should('not.exist')
   })
+  it('shows a registration the attendee did not show up for as missed, under past events', () => {
+    login()
+    cy.intercept('GET', '**/api/v1/registrations', [{
+      registrationId: 'missed-id', registrationNumber: 'REG-MISSED0001', status: 'NO_SHOW', cancellable: false,
+      registeredAt: new Date().toISOString(), event: { slug: 'cloud-security-meetup' },
+    }])
+    cy.visit('/my-registrations')
+    cy.contains('button', 'Past').click()
+    cy.getByTestId('registration-status').should('have.text', 'missed')
+    cy.getByTestId('registration-qr').should('not.exist')
+    cy.contains('button', 'Cancelled').click()
+    cy.getByTestId('registration-status').should('not.exist')
+  })
   it('completes free event registration and reflects in user registrations', () => {
     // 1. Authenticate user
     login()
