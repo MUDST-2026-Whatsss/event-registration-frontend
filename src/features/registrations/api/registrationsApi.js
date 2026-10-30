@@ -46,6 +46,10 @@ export function listEventRegistrations(eventId, { query = '', page = 0, size = 5
   return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/registrations?${params}`)
 }
 
+export function getEventAnalytics(eventId) {
+  return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/analytics`)
+}
+
 export function checkInRegistration(eventId, registrationNumber) {
   return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/check-in`, {
     method: 'POST',

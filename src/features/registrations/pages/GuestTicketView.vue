@@ -12,6 +12,7 @@ const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
   CHECKED_IN: 'Checked in',
   PENDING_PAYMENT: 'Pending payment',
+  NO_SHOW: 'Missed',
 }
 
 const router = useRouter()

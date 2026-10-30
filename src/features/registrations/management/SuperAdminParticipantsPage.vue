@@ -6,6 +6,7 @@ import { getAdminEvent } from '@/features/events/api/adminEventsApi.js'
 import { useToast } from '@/shared/composables/useToast.js'
 import { checkInRegistration, listEventRegistrations } from '../api/registrationsApi.js'
 import CheckInScanner from './CheckInScanner.vue'
+import EventAnalyticsPanel from './EventAnalyticsPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +22,7 @@ const totalElements = ref(0)
 const checkInNumber = ref('')
 const checkingIn = ref(false)
 const scannerOpen = ref(false)
+const analyticsPanel = ref(null)
 
 const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
@@ -29,6 +31,8 @@ const STATUS_LABELS = {
   CANCELLED_BY_USER: 'Cancelled',
   CANCELLED_BY_ADMIN: 'Cancelled',
   CANCELLED_EVENT: 'Cancelled',
+  PAYMENT_EXPIRED: 'Expired',
+  NO_SHOW: 'No-show',
 }
 
 function mapParticipant(registration) {
@@ -72,7 +76,7 @@ async function submitCheckIn() {
     const registration = await checkInRegistration(route.params.id, registrationNumber)
     showToast({ title: `${registration.attendeeName} checked in.`, variant: 'success' })
     checkInNumber.value = ''
-    await loadParticipants()
+    await Promise.all([loadParticipants(), analyticsPanel.value?.reload()])
   } catch (error) {
     showToast({ title: error.message, variant: 'danger' })
   } finally {
@@ -147,6 +151,8 @@ onMounted(async () => {
 
     </section>
 
+
+    <EventAnalyticsPanel ref="analyticsPanel" :event-id="String(route.params.id)" />
 
     <!-- CHECK-IN -->
     <section class="console-card check-in-card">

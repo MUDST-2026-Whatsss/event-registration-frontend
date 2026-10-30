@@ -41,6 +41,21 @@ describe('Event Check-in', () => {
       cy.contains('.participant-table tr', 'Gary Guest').should('contain.text', 'Checked in')
     })
   })
+  it('admin sees the event analytics and attendance moves after a check-in', () => {
+    login('admin@example.test')
+    cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
+
+    cy.getByTestId('analytics-signups').should('contain.text', '2').and('contain.text', '1 members · 1 guests')
+    cy.getByTestId('analytics-drop-offs').should('contain.text', '0')
+    // The event has not ended, so attendance shows progress instead of a show rate.
+    cy.getByTestId('analytics-attendance').should('contain.text', 'Attendance').and('contain.text', '0 / 2')
+      .and('not.contain.text', 'Show rate')
+    cy.getByTestId('analytics-daily').find('li').should('have.length', 1)
+
+    cy.get('#check-in-number').type('REG-ATTEND0001')
+    cy.contains('button', 'Check in').click()
+    cy.getByTestId('analytics-attendance').should('contain.text', '1 / 2')
+  })
   it('admin checks in a participant by registration number from the participants page', () => {
     login('admin@example.test')
     cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
