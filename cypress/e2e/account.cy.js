@@ -1,3 +1,4 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi } from '../support/api.js'
 
 describe('Account Sign-up, Recovery and Role Selection', () => {
@@ -12,7 +13,7 @@ describe('Account Sign-up, Recovery and Role Selection', () => {
     cy.get('#confirm-password').type('Password123!')
   }
 
-  it('AUTH-002 creates an account and opens sign-in with the email filled in', () => {
+  scenario('register', function register() {
     cy.visit('/register')
     fillSignUp('new.member@example.test')
     cy.contains('button', 'Create account').click()
@@ -22,7 +23,7 @@ describe('Account Sign-up, Recovery and Role Selection', () => {
     cy.getByTestId('email').should('have.value', 'new.member@example.test')
   })
 
-  it('AUTH-003 shows field and API errors on the sign-up form', () => {
+  scenario('register_errors', function register_errors() {
     cy.visit('/register')
     cy.get('#register-email').type('new.member@example.test')
     cy.get('#register-password').type('Password123!')
@@ -36,7 +37,7 @@ describe('Account Sign-up, Recovery and Role Selection', () => {
     cy.url().should('include', '/register')
   })
 
-  it('AUTH-004 requests a password reset link', () => {
+  scenario('forgot_password', function forgot_password() {
     cy.visit('/forgot-password')
     cy.get('#recovery-email').type('not-an-email')
     cy.get('.forgot-form button[type="submit"]').click()
@@ -47,7 +48,7 @@ describe('Account Sign-up, Recovery and Role Selection', () => {
     cy.get('.request-status').should('have.text', 'If that email is registered, a reset link has been sent.')
   })
 
-  it('AUTH-005 resets the password from a valid link and rejects an expired one', () => {
+  scenario('reset_password', function reset_password() {
     cy.visit('/reset-password?token=expired-token')
     cy.get('#new-password').type('NewPassword123!')
     cy.get('#confirm-new-password').type('NewPassword123!')
@@ -62,7 +63,7 @@ describe('Account Sign-up, Recovery and Role Selection', () => {
     cy.get('.app-toast').should('contain.text', 'Password reset successfully')
   })
 
-  it('AUTH-006 asks a multi-role account to choose a role and opens the matching console', () => {
+  scenario('select_role', function select_role() {
     cy.visit('/login')
     cy.getByTestId('email').type('multi@example.test')
     cy.getByTestId('password').type('test-password-123')

@@ -1,9 +1,10 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi } from '../support/api.js'
 
 describe('Guest Registration', () => {
   beforeEach(stubApi)
 
-  it('a guest registers for a free event without an account and gets a QR ticket', () => {
+  scenario('guest_registration', function guest_registration() {
     cy.visit('/events/cloud-security-meetup')
     cy.getByTestId('event-register').should('have.text', 'Register Now').click()
 
@@ -24,7 +25,7 @@ describe('Guest Registration', () => {
     cy.getByTestId('guest-ticket').should('contain.text', 'Create an account with gina@example.test')
   })
 
-  it('finds a guest ticket again only with the matching email', () => {
+  scenario('guest_ticket_lookup', function guest_ticket_lookup() {
     cy.visit('/events/cloud-security-meetup/register')
     cy.get('input[autocomplete="name"]').type('Lou Lookup')
     cy.get('input[type="tel"]').type('0812345678')
@@ -47,7 +48,7 @@ describe('Guest Registration', () => {
     cy.getByTestId('guest-ticket-status').should('have.text', 'Confirmed')
   })
 
-  it('still sends guests to sign in for paid events', () => {
+  scenario('guest_payment_login', function guest_payment_login() {
     cy.visit('/events/global-tech-summit-2026')
     cy.getByTestId('event-register').should('have.text', 'Log In / Sign Up').click()
     cy.url().should('include', '/login')

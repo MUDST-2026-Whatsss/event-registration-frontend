@@ -1,8 +1,9 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi, login } from '../support/api.js'
 
 describe('Event Registration Flow', () => {
   beforeEach(stubApi)
-  it('lets a guest return to the filtered list, register for free, and view the saved ticket', () => {
+  scenario('guest_registration_back', function guest_registration_back() {
     cy.visit('/events/cloud-security-meetup?from=%2Fevents%3Fgroup%3Dopen')
     cy.getByTestId('event-register').should('have.text', 'Register Now')
     cy.screenshot('guest-event-detail-back', { capture: 'viewport' })
@@ -31,7 +32,7 @@ describe('Event Registration Flow', () => {
     cy.contains('REG-GUEST00001').should('be.visible')
     cy.get('.ticket-qr img').should('have.attr', 'src').and('match', /^data:image\/png/)
   })
-  it('REG-003 shows a QR ticket, cancels a registration and keeps the cancellation after reload', () => {
+  scenario('registration_cancel', function registration_cancel() {
     login()
     cy.visit('/events/cloud-security-meetup/register')
     cy.getByTestId('registration-consent').check()
@@ -52,7 +53,7 @@ describe('Event Registration Flow', () => {
     cy.getByTestId('registration-status').should('have.text', 'cancelled')
     cy.getByTestId('registration-qr').should('not.exist')
   })
-  it('completes free event registration and reflects in user registrations', () => {
+  scenario('registration', function registration() {
     // 1. Authenticate user
     login()
 
@@ -85,7 +86,7 @@ describe('Event Registration Flow', () => {
     cy.getByTestId('registration-card').should('contain.text', 'Cloud Security Community Meetup')
   })
 
-  it('finishes the paid QR process and loads the confirmed record from the API', () => {
+  scenario('registration_payment', function registration_payment() {
     login()
     cy.intercept('POST', '**/mock-payment/confirm').as('paymentConfirm')
     cy.visit('/events/global-tech-summit-2026/register')

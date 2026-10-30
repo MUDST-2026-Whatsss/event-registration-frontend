@@ -1,8 +1,9 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi } from '../support/api.js'
 
 describe('Navigation and Discovery', () => {
   beforeEach(stubApi)
-  it('loads the homepage with title and hero section', () => {
+  scenario('events_home', function events_home() {
     cy.visit('/')
 
     cy.title().should('match', /Eventsss/i)
@@ -11,7 +12,7 @@ describe('Navigation and Discovery', () => {
     cy.contains('.public-header a', 'Login').should('be.visible')
   })
 
-  it('navigates to events page and lists available events', () => {
+  scenario('events_list', function events_list() {
     cy.visit('/')
     cy.contains('nav a', 'Events').click()
 
@@ -19,14 +20,14 @@ describe('Navigation and Discovery', () => {
     cy.getByTestId('event-card').should('have.length.greaterThan', 0)
   })
 
-  it('can search and filter events', () => {
+  scenario('events_search', function events_search() {
     cy.visit('/events')
 
     cy.getByTestId('events-search').type('Global Tech Summit')
     cy.getByTestId('event-card').should('contain.text', 'Global Tech Summit 2026')
   })
 
-  it('navigates to event details page from event card', () => {
+  scenario('events_detail', function events_detail() {
     cy.visit('/events')
 
     cy.getByTestId('event-card').contains('Global Tech Summit 2026').click()
@@ -36,7 +37,7 @@ describe('Navigation and Discovery', () => {
     cy.contains('h2', 'About This Event').should('be.visible')
   })
 
-  it('shows a placeholder when the event has no cover image', () => {
+  scenario('events_cover_placeholder', function events_cover_placeholder() {
     cy.visit('/events')
     cy.getByTestId('event-card').first().find('.event-cover__placeholder').should('be.visible')
     cy.getByTestId('event-card').first().find('img').should('not.exist')
@@ -54,7 +55,7 @@ describe('Navigation and Discovery', () => {
       ])
     })
 
-    it('shows closed registrations after switching from Open to All, including after reload', () => {
+    scenario('events_filter_reload', function events_filter_reload() {
       cy.visit('/events?group=open')
       cy.getByTestId('events-filter').should('have.value', 'open')
       cy.getByTestId('event-card').should('have.length', 1).and('contain.text', 'Available event')
@@ -70,7 +71,7 @@ describe('Navigation and Discovery', () => {
       cy.getByTestId('event-card').should('have.length', 1)
     })
 
-    it('does not promote a future event whose registration has closed', () => {
+    scenario('events_closed_not_promoted', function events_closed_not_promoted() {
       cy.visit('/')
       cy.get('.countdown__event').should('have.text', 'Available event')
       cy.get('.countdown').should('have.attr', 'href', '/events/discovery-open')
