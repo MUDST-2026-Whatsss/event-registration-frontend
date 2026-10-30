@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import EventRegistrationView from '../EventRegistrationView.vue'
@@ -23,7 +23,7 @@ vi.mock('qrcode', () => ({ default: { toDataURL: mocks.qr } }))
 
 let wrapper
 async function start() {
-  wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: true } } })
+  wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: RouterLinkStub } } })
   await flushPromises()
   await wrapper.get('input[type="checkbox"]').setValue(true)
   await wrapper.get('form').trigger('submit')
@@ -108,9 +108,13 @@ describe('guest registration', () => {
   afterEach(() => { wrapper?.unmount() })
 
   it('registers a guest for a free event and opens the ticket without putting the email in the URL', async () => {
-    wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: true } } })
+    wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: RouterLinkStub } } })
     await flushPromises()
     expect(wrapper.find('[data-test="guest-notice"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="registration-back"]').text()).toBe('Back')
+    expect(wrapper.get('input[autocomplete="name"]').attributes('placeholder')).toBe('Enter your full name')
+    expect(wrapper.get('input[type="tel"]').attributes('placeholder')).toBe('e.g. 0812345678')
+    expect(wrapper.get('input[type="email"]').attributes('placeholder')).toBe('you@example.com')
     expect(mocks.loadRegistrations).not.toHaveBeenCalled()
 
     await wrapper.get('input[autocomplete="name"]').setValue('Gina Guest')

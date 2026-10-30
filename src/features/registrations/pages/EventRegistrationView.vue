@@ -1,9 +1,10 @@
 <script setup>
-import { ArrowRight, CalendarDays, Check, Clock3, Mail, MapPin, Phone, QrCode, UserRound, X } from '@lucide/vue'
+import { ArrowRight, CalendarDays, Check, ChevronRight, Clock3, Mail, MapPin, Phone, QrCode, UserRound, X } from '@lucide/vue'
 import QRCode from 'qrcode'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/shared/ui/AppFooter.vue'
+import BackLink from '@/shared/ui/BackLink.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useRegistrations } from '../composables/useRegistrations.js'
 import { canRegisterForEvent, usePublicEvents, EventCover } from '@/features/events/public.js'
@@ -194,7 +195,10 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
       <div v-if="eventLoading" class="registration-load">Loading event information...</div>
       <div v-else-if="eventError || !event" class="registration-load error"><strong>Event unavailable</strong><span>{{ eventError || 'This event could not be found.' }}</span><RouterLink to="/events">Back to events</RouterLink></div>
       <template v-else>
-      <div class="registration-breadcrumb"><RouterLink :to="detailTarget">&larr; Back to event details</RouterLink><span>&bull;</span><span>Confirm registration</span></div>
+      <nav class="registration-breadcrumb" aria-label="Registration navigation">
+        <BackLink :to="detailTarget" label="Back to event details" data-test="registration-back" />
+        <ChevronRight :size="15" aria-hidden="true" /><span>Confirm registration</span>
+      </nav>
 
       <div class="registration-heading">
         <p>Registration review</p>
@@ -227,9 +231,9 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
             <span>We will show your ticket after you confirm. Create an account later with the same email and this registration will appear in My Registrations. <RouterLink :to="loginTarget">Log in instead</RouterLink></span>
           </div>
           <div class="registration-fields">
-            <label class="full"><span>Full name</span><div><UserRound :size="17" /><input v-model.trim="form.fullName" autocomplete="name" required /></div></label>
-            <label><span>Phone number</span><div><Phone :size="17" /><input v-model.trim="form.phone" type="tel" autocomplete="tel" required /></div></label>
-            <label><span>Email</span><div><Mail :size="17" /><input v-model.trim="form.email" type="email" autocomplete="email" required /></div></label>
+            <label class="full"><span>Full name</span><div><UserRound :size="17" /><input v-model.trim="form.fullName" autocomplete="name" placeholder="Enter your full name" required /></div></label>
+            <label><span>Phone number</span><div><Phone :size="17" /><input v-model.trim="form.phone" type="tel" autocomplete="tel" placeholder="e.g. 0812345678" required /></div></label>
+            <label><span>Email</span><div><Mail :size="17" /><input v-model.trim="form.email" type="email" autocomplete="email" placeholder="you@example.com" required /></div></label>
           </div>
           <label class="registration-consent"><input data-test="registration-consent" v-model="form.consent" type="checkbox" required /><span>I confirm that the attendee information is correct and agree to the event terms and privacy policy.</span></label>
           <div class="registration-form__summary"><span>Total</span><strong>{{ formatPrice(event.price) }}</strong></div>
@@ -289,8 +293,7 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
 .registration-load.error strong { color: #20263a; font-size: 1.25rem; }
 .registration-load a { margin-top: 8px; color: #2455db; }
 .registration-error { margin: 0; color: #b42318; font-size: .85rem; }
-.registration-breadcrumb { display: flex; align-items: center; gap: 9px; color: var(--neutral-600); font-size: .8rem; }
-.registration-breadcrumb a { color: #28314a; text-decoration: none; }
+.registration-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--neutral-600); font-size: .8rem; }
 .registration-heading { margin-top: 32px; }
 .registration-heading p { margin: 0 0 5px; color: #2455db; font-size: .72rem; font-weight: 600; text-transform: uppercase; }
 .registration-heading h1 { margin: 0; font-size: 2.2rem; letter-spacing: 0; }
