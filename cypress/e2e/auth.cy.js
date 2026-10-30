@@ -1,9 +1,10 @@
-import { stubApi, login } from '../support/api.js'
+import { scenario } from '../support/scenarios.js'
+import { stubApi, login as signIn } from '../support/api.js'
 
 describe('Authentication and User Sessions', () => {
   beforeEach(stubApi)
 
-  it('keeps sign-in available after a failed session check and allows login to recover', () => {
+  scenario('login_session_recovery', function login_session_recovery() {
     cy.intercept({ method: 'GET', url: '**/api/v1/auth/me', times: 1 }, {
       statusCode: 403,
       body: 'Invalid CORS request',
@@ -20,14 +21,14 @@ describe('Authentication and User Sessions', () => {
     cy.getByTestId('logout').should('be.visible')
   })
 
-  it('redirects unauthenticated users trying to access protected routes', () => {
+  scenario('login_required', function login_required() {
     cy.visit('/profile')
 
     cy.url().should('include', '/login?redirect=/profile')
     cy.getByTestId('login-form').should('be.visible')
   })
 
-  it('displays error message on invalid login credentials', () => {
+  scenario('login_failed', function login_failed() {
     cy.visit('/login')
 
     cy.getByTestId('email').type('wrong@eventsss.com')
@@ -37,8 +38,8 @@ describe('Authentication and User Sessions', () => {
     cy.getByTestId('login-status').should('be.visible').and('have.text', 'Incorrect email or password.')
   })
 
-  it('successfully logs in with valid user credentials and logs out', () => {
-    login()
+  scenario('login', function login() {
+    signIn()
 
     // Header updates with user info and Logout button
     cy.getByTestId('logout').should('be.visible').and('have.text', 'Logout')

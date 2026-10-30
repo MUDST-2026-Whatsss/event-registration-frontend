@@ -1,9 +1,10 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi, login } from '../support/api.js'
 
 describe('Administration Console Pages', () => {
   beforeEach(stubApi)
 
-  it('CONSOLE-001 admin opens a published event from All Events and sees its participants', () => {
+  scenario('admin_participants', function admin_participants() {
     login('admin@example.test')
     cy.visit('/admin/all-events')
 
@@ -17,7 +18,7 @@ describe('Administration Console Pages', () => {
     cy.url().should('include', '/admin/all-events')
   })
 
-  it('CONSOLE-002 super admin sees the platform oversight dashboard', () => {
+  scenario('super_admin_dashboard', function super_admin_dashboard() {
     login('super@example.test')
     cy.visit('/super-admin/dashboard')
 
@@ -27,7 +28,7 @@ describe('Administration Console Pages', () => {
     cy.contains('h2', 'Recent Administrative Activity').should('be.visible')
   })
 
-  it('CONSOLE-003 super admin opens participants from All Events', () => {
+  scenario('super_admin_participants', function super_admin_participants() {
     login('super@example.test')
     cy.visit('/super-admin/all-events')
 
@@ -38,7 +39,7 @@ describe('Administration Console Pages', () => {
     cy.get('.participant-table').should('contain.text', 'REG-ATTEND0001')
   })
 
-  it('CONSOLE-004 super admin opens the audit log page', () => {
+  scenario('audit_logs', function audit_logs() {
     login('super@example.test')
     cy.visit('/super-admin/audit-logs')
 

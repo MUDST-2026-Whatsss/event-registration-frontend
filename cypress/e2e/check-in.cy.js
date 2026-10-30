@@ -1,3 +1,4 @@
+import { scenario } from '../support/scenarios.js'
 import QRCode from 'qrcode'
 import { stubApi, login } from '../support/api.js'
 
@@ -26,7 +27,7 @@ function fakeCameraShowing(win, qrDataUrl) {
 describe('Event Check-in', () => {
   beforeEach(stubApi)
 
-  it('admin scans a guest ticket QR code with the camera to check them in', () => {
+  scenario('check_in_qr', function check_in_qr() {
     const ticket = JSON.stringify({ type: 'eventsss-check-in', registrationId: 'REG-GUESTA0001', eventId: 'cloud-security-meetup' })
     cy.wrap(QRCode.toDataURL(ticket, { width: 280, margin: 2 })).then((qrDataUrl) => {
       login('admin@example.test')
@@ -41,7 +42,7 @@ describe('Event Check-in', () => {
       cy.contains('.participant-table tr', 'Gary Guest').should('contain.text', 'Checked in')
     })
   })
-  it('admin sees the event analytics and attendance moves after a check-in', () => {
+  scenario('analytics_attendance', function analytics_attendance() {
     login('admin@example.test')
     cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
 
@@ -56,7 +57,7 @@ describe('Event Check-in', () => {
     cy.contains('button', 'Check in').click()
     cy.getByTestId('analytics-attendance').should('contain.text', '1 / 2')
   })
-  it('admin checks in a participant by registration number from the participants page', () => {
+  scenario('check_in', function check_in() {
     login('admin@example.test')
     cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
 
@@ -73,7 +74,7 @@ describe('Event Check-in', () => {
     cy.get('#check-in-number').should('have.value', '')
   })
 
-  it('shows the API error when the participant was already checked in or the number is unknown', () => {
+  scenario('check_in_failed', function check_in_failed() {
     login('admin@example.test')
     cy.visit('/admin/events/20000000-0000-0000-0000-000000000001/participants')
 

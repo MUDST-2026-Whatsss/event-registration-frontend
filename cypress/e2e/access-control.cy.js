@@ -1,9 +1,10 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi, login } from '../support/api.js'
 
 describe('User and role administration', () => {
   beforeEach(stubApi)
 
-  it('ROLE-001 creates a role with permissions and assigns it to a user', () => {
+  scenario('role_create_assign', function role_create_assign() {
     login('super@example.test')
     cy.visit('/super-admin/role-management')
     cy.getByTestId('role-create').click()
@@ -24,7 +25,7 @@ describe('User and role administration', () => {
     cy.getByTestId('user-row').should('contain.text', 'Class Reviewer')
   })
 
-  it('USER-001 disables and enables a participant account', () => {
+  scenario('user_disable_enable', function user_disable_enable() {
     login('super@example.test')
     cy.visit('/super-admin/user-management')
     cy.intercept('PATCH', '**/admin/users/*/status').as('status')
@@ -37,7 +38,7 @@ describe('User and role administration', () => {
     cy.getByTestId('user-row').should('contain.text', 'Active')
   })
 
-  it('ACCESS-001 keeps a participant out of the super-admin console', () => {
+  scenario('access_super_admin_denied', function access_super_admin_denied() {
     login()
     cy.visit('/super-admin/user-management')
     cy.url().should('not.include', '/super-admin')

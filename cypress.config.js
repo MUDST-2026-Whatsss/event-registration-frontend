@@ -6,6 +6,8 @@ export default defineConfig({
     viewportWidth: 1280,
     viewportHeight: 720,
     video: false,
+    testIsolation: true,
+    defaultCommandTimeout: 10000,
     supportFile: 'cypress/support/e2e.js',
   },
 })

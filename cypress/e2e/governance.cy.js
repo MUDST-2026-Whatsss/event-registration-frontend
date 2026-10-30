@@ -1,3 +1,4 @@
+import { scenario } from '../support/scenarios.js'
 import { stubApi, login } from '../support/api.js'
 
 const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10)
@@ -54,7 +55,7 @@ function requestTitleChange() {
 describe('Event governance', () => {
   beforeEach(stubApi)
 
-  it('EVENT-001 saves a draft, submits it, approves it and publishes it in the catalogue', () => {
+  scenario('event_approve', function event_approve() {
     submitEvent()
     signInAsReviewer()
     cy.visit('/super-admin/event-approvals')
@@ -65,7 +66,7 @@ describe('Event governance', () => {
     cy.getByTestId('event-card').should('contain.text', 'Class workshop')
   })
 
-  it('CHANGE-001 keeps published data until a change request is approved', () => {
+  scenario('event_change_approve', function event_change_approve() {
     requestTitleChange()
     cy.getByTestId('change-comment').type('Approved for the class.')
     cy.intercept('POST', '**/change-requests/*/approve').as('approveChange')
@@ -75,7 +76,7 @@ describe('Event governance', () => {
     cy.getByTestId('event-card').should('contain.text', 'Updated community workshop')
   })
 
-  it('CHANGE-002 requires a rejection reason and preserves the published event', () => {
+  scenario('event_change_reject', function event_change_reject() {
     requestTitleChange()
     cy.getByTestId('change-reject').should('be.disabled')
     cy.getByTestId('change-comment').type('Please keep the agreed title.')
@@ -88,7 +89,7 @@ describe('Event governance', () => {
     cy.getByTestId('event-card').should('not.contain.text', 'Updated community workshop')
   })
 
-  it('EVENT-002 retains an unsaved draft when the API reports a version conflict', () => {
+  scenario('event_save_conflict', function event_save_conflict() {
     login('admin@example.test')
     cy.visit('/admin/create-event')
     cy.getByTestId('event-title').should('be.enabled').type('Unsaved workshop')
