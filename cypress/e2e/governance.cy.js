@@ -20,7 +20,7 @@ function submitEvent() {
   cy.url().should('include', '/admin/events/created-event/edit')
   cy.reload()
   cy.getByTestId('event-title').should('have.value', 'Class workshop')
-  cy.getByTestId('event-category').select('10000000-0000-0000-0000-000000000001')
+  cy.getByTestId('event-category').should('be.enabled').select('10000000-0000-0000-0000-000000000001')
   cy.getByTestId('event-location').type('University room 101')
   cy.getByTestId('event-date').type(day(7))
   cy.getByTestId('event-startTime').type('10:00')
@@ -102,4 +102,40 @@ describe('Event governance', () => {
     cy.getByTestId('event-title').should('have.value', 'Unsaved workshop')
     cy.url().should('include', '/admin/create-event')
   })
+
+  scenario('event_reject', function event_reject() {
+    submitEvent()
+    signInAsReviewer()
+    cy.visit('/super-admin/event-approvals')
+    cy.contains('button', 'View Details').click()
+    cy.getByTestId('review-modal-reject').should('be.disabled')
+    cy.getByTestId('review-comment').type('Please correct the room number.')
+    cy.intercept('POST', '**/event-reviews/*/reject').as('reject')
+    cy.getByTestId('review-modal-reject').click()
+    cy.wait('@reject').then(({ request, response }) => {
+      expect(request.body.comment).to.eq('Please correct the room number.')
+      expect(response.body.decision).to.eq('REJECTED')
+    })
+    cy.contains('No events to review.').should('be.visible')
+    cy.visit('/events')
+    cy.getByTestId('event-card').should('not.contain.text', 'Class workshop')
+  })
+
+  scenario('event_approve_failed', function event_approve_failed() {
+    submitEvent()
+    signInAsReviewer()
+    cy.intercept('POST', '**/event-reviews/*/approve', {
+      statusCode: 503, body: { code: 'INTERNAL_ERROR', message: 'Approval service is unavailable.' },
+    }).as('approve')
+    cy.visit('/super-admin/event-approvals')
+    cy.getByTestId('review-approve').click()
+    cy.wait('@approve')
+    cy.contains('Approval service is unavailable.').should('be.visible')
+    cy.getByTestId('review-approve').should('be.enabled')
+    cy.reload()
+    cy.contains('PENDING REVIEW').should('be.visible')
+    cy.visit('/events')
+    cy.getByTestId('event-card').should('not.contain.text', 'Class workshop')
+  })
+
 })

@@ -100,4 +100,37 @@ describe('Event Registration Flow', () => {
     cy.getByTestId('registration-card').should('contain.text', 'Global Tech Summit 2026')
     cy.getByTestId('registration-status').should('have.text', 'registered')
   })
+
+  scenario('registration_consent_required', function registration_consent_required() {
+    login()
+    cy.intercept('POST', '**/events/*/registrations').as('register')
+    cy.visit('/events/cloud-security-meetup/register')
+    cy.getByTestId('registration-confirm').should('be.disabled')
+    cy.get('@register.all').should('have.length', 0)
+  })
+
+  scenario('registration_full', function registration_full() {
+    login()
+    cy.intercept('POST', '**/events/*/registrations', { statusCode: 409, body: { code: 'EVENT_FULL', message: 'This event has no remaining seats.' } }).as('full')
+    cy.visit('/events/cloud-security-meetup/register')
+    cy.getByTestId('registration-consent').check()
+    cy.getByTestId('registration-confirm').click()
+    cy.wait('@full')
+    cy.contains('This event has no remaining seats.').should('be.visible')
+    cy.location('pathname').should('not.include', 'registration-success')
+    cy.getByTestId('registration-confirm').should('be.enabled')
+  })
+
+  scenario('registration_payment_failed', function registration_payment_failed() {
+    login()
+    cy.intercept('POST', '**/mock-payment/confirm', { statusCode: 503, body: { code: 'INTERNAL_ERROR', message: 'Mock confirmation failed.' } }).as('paymentFailed')
+    cy.visit('/events/global-tech-summit-2026/register')
+    cy.getByTestId('registration-consent').check()
+    cy.getByTestId('registration-confirm').click()
+    cy.wait('@paymentFailed', { timeout: 15000 })
+    cy.contains('Mock confirmation failed.').should('be.visible')
+    cy.location('pathname').should('not.include', 'registration-success')
+    cy.get('[role="dialog"]').should('not.exist')
+  })
+
 })

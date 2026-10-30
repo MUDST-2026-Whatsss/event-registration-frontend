@@ -106,7 +106,7 @@ const handleSubmit = async () => {
     title="Create account"
     subtitle="Create an account to register for events"
   >
-    <form class="register-form" novalidate @submit.prevent="handleSubmit">
+    <form data-test="register-form" class="register-form" novalidate @submit.prevent="handleSubmit">
       <AuthInput
         id="first-name"
         v-model="form.firstName"
@@ -191,8 +191,8 @@ const handleSubmit = async () => {
         @input="errors.confirmPassword = ''"
       />
 
-      <button class="submit-button" type="submit" :disabled="isSubmitting">{{ isSubmitting ? 'Creating account…' : 'Create account' }}</button>
-      <p v-if="formStatus" class="form-status" role="alert">{{ formStatus }}</p>
+      <button data-test="register-submit" class="submit-button" type="submit" :disabled="isSubmitting">{{ isSubmitting ? 'Creating account…' : 'Create account' }}</button>
+      <p v-if="formStatus" data-test="register-status" class="form-status" role="alert">{{ formStatus }}</p>
     </form>
 
     <p class="login-prompt">

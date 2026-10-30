@@ -93,6 +93,7 @@ async function signOut() {
       <button
         v-for="option in options"
         :key="option.role"
+        :data-test="`select-role-${option.role}`"
         type="button"
         class="role-option"
         :class="{ 'role-option--active': currentRole === option.role }"
@@ -110,8 +111,8 @@ async function signOut() {
       </button>
     </div>
 
-    <p v-if="errorMessage" class="role-error" role="alert">{{ errorMessage }}</p>
-    <button type="button" class="sign-out-link" @click="signOut">Sign in with another account</button>
+    <p v-if="errorMessage" data-test="select-role-error" class="role-error" role="alert">{{ errorMessage }}</p>
+    <button data-test="select-role-logout" type="button" class="sign-out-link" @click="signOut">Sign in with another account</button>
   </AuthLayout>
 </template>
 

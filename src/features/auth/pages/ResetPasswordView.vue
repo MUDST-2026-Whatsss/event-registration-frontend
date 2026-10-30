@@ -84,7 +84,7 @@ const handleSubmit = async () => {
     title="Set a new password"
     subtitle="Create a new password for your account"
   >
-    <form class="reset-form" novalidate @submit.prevent="handleSubmit">
+    <form data-test="reset-password-form" class="reset-form" novalidate @submit.prevent="handleSubmit">
       <AuthInput
         id="new-password"
         v-model="password"
@@ -113,10 +113,10 @@ const handleSubmit = async () => {
         @input="errors.confirmPassword = ''"
       />
 
-      <button class="submit-button" type="submit" :disabled="isSubmitting">
+      <button data-test="reset-password-submit" class="submit-button" type="submit" :disabled="isSubmitting">
         {{ isSubmitting ? 'Resetting…' : 'Reset password' }}
       </button>
-      <p v-if="formStatus" class="form-status" role="alert">{{ formStatus }}</p>
+      <p v-if="formStatus" data-test="reset-password-status" class="form-status" role="alert">{{ formStatus }}</p>
     </form>
 
     <p class="login-prompt">

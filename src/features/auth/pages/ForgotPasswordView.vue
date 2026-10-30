@@ -56,7 +56,7 @@ const handleSubmit = async () => {
     title="Forgot password"
     subtitle="Enter your email to receive a password reset link"
   >
-    <form class="forgot-form" novalidate @submit.prevent="handleSubmit">
+    <form data-test="forgot-password-form" class="forgot-form" novalidate @submit.prevent="handleSubmit">
       <AuthInput
         id="recovery-email"
         v-model="email"
@@ -72,11 +72,11 @@ const handleSubmit = async () => {
         @input="emailError = ''"
       />
 
-      <button class="submit-button" type="submit" :disabled="isSubmitting">
+      <button data-test="forgot-password-submit" class="submit-button" type="submit" :disabled="isSubmitting">
         {{ isSubmitting ? 'Sending…' : 'Send reset link' }}
       </button>
-      <p v-if="formStatus" class="request-status" aria-live="polite">{{ formStatus }}</p>
-      <p v-if="formError" class="request-error" role="alert">{{ formError }}</p>
+      <p v-if="formStatus" data-test="forgot-password-status" class="request-status" aria-live="polite">{{ formStatus }}</p>
+      <p v-if="formError" data-test="forgot-password-error" class="request-error" role="alert">{{ formError }}</p>
 
       <RouterLink class="login-link" to="/login">
         <ArrowLeft :size="14" aria-hidden="true" />

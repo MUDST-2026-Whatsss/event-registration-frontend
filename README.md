@@ -60,6 +60,9 @@ from the backend directory to apply it to a source build.
 
 ## Commands
 
+See [the E2E command and case guide](docs/e2e.md). `npm run login` runs the login group;
+`npm run login_failed` runs one case. `npm run test:e2e` starts its own Vite test server on a free port.
+
 ```bash
 npm run dev
 npm test

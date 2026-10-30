@@ -191,29 +191,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
               <img v-if="profile.avatar" :src="profile.avatar" alt="Profile" />
               <span v-else>{{ profile.firstName.charAt(0) }}{{ profile.lastName.charAt(0) }}</span>
               <button type="button" :aria-label="profile.avatar ? 'Change profile photo' : 'Add profile photo'" :title="profile.avatar ? 'Change profile photo' : 'Add profile photo'" @click="avatarInput.click()"><Pencil v-if="profile.avatar" :size="14" /><Camera v-else :size="16" /></button>
-              <input ref="avatarInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="handleAvatarChange" />
+              <input data-test="profile-avatar-file" ref="avatarInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="handleAvatarChange" />
             </div>
             <div class="profile-identity"><h2>{{ profile.firstName }} {{ profile.lastName }}</h2><span>{{ profile.role }}</span></div>
-            <button v-if="profile.avatar" class="profile-remove-photo" type="button" @click="handleRemoveAvatar"><Trash2 :size="14" />Remove photo</button>
+            <button data-test="profile-avatar-remove" v-if="profile.avatar" class="profile-remove-photo" type="button" @click="handleRemoveAvatar"><Trash2 :size="14" />Remove photo</button>
             <dl><div><dt><Mail :size="16" /></dt><dd>{{ profile.email }}</dd></div><div><dt><Phone :size="16" /></dt><dd>{{ profile.phone }}</dd></div></dl>
             <RouterLink to="/my-registrations">View my registrations</RouterLink>
           </aside>
           <section class="security-summary">
             <div class="security-summary__icon"><ShieldCheck :size="21" /></div>
             <div><h2>Security</h2><p>Keep your account protected with a strong password.</p></div>
-            <button type="button" @click="openSecurity">Change password</button>
+            <button data-test="change-password-open" type="button" @click="openSecurity">Change password</button>
           </section>
         </div>
 
         <form class="profile-form personal-form" @submit.prevent="saveProfile">
           <div class="profile-form__title"><UserRound :size="21" /><div><h2>Personal information</h2><p>Update the information associated with your account.</p></div></div>
           <div class="profile-form__grid">
-            <label><span>First name</span><input v-model.trim="profile.firstName" required /></label>
-            <label><span>Last name</span><input v-model.trim="profile.lastName" required /></label>
-            <label class="full"><span>Email</span><input v-model.trim="profile.email" type="email" disabled aria-describedby="email-edit-help" /><small id="email-edit-help">Contact support to change your sign-in email.</small></label>
-            <label class="full"><span>Phone number</span><input v-model.trim="profile.phone" type="tel" /></label>
+            <label><span>First name</span><input data-test="profile-first-name" v-model.trim="profile.firstName" required /></label>
+            <label><span>Last name</span><input data-test="profile-last-name" v-model.trim="profile.lastName" required /></label>
+            <label class="full"><span>Email</span><input data-test="profile-email" v-model.trim="profile.email" type="email" disabled aria-describedby="email-edit-help" /><small id="email-edit-help">Contact support to change your sign-in email.</small></label>
+            <label class="full"><span>Phone number</span><input data-test="profile-phone" v-model.trim="profile.phone" type="tel" /></label>
           </div>
-          <div class="profile-form__footer"><p v-if="saved"><Check :size="16" />Profile saved</p><button type="submit" :disabled="isSavingProfile">{{ isSavingProfile ? 'Saving…' : 'Save changes' }}</button></div>
+          <div class="profile-form__footer"><p v-if="saved"><Check :size="16" />Profile saved</p><button data-test="profile-save" type="submit" :disabled="isSavingProfile">{{ isSavingProfile ? 'Saving…' : 'Save changes' }}</button></div>
         </form>
       </div>
     </main>
@@ -232,7 +232,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           </div>
           <PasswordField id="confirm-profile-new-password" v-model="passwordForm.confirm" variant="profile" label="Confirm new password" autocomplete="new-password" :error="confirmPasswordError" @blur="passwordTouched.confirm = true" />
         </div>
-        <div class="security-dialog__actions"><button type="button" @click="closeSecurity">Cancel</button><button class="primary" type="submit" :disabled="!isPasswordFormValid || isChangingPassword">{{ isChangingPassword ? 'Updating…' : 'Update password' }}</button></div>
+        <div class="security-dialog__actions"><button data-test="change-password-cancel" type="button" @click="closeSecurity">Cancel</button><button data-test="change-password-submit" class="primary" type="submit" :disabled="!isPasswordFormValid || isChangingPassword">{{ isChangingPassword ? 'Updating…' : 'Update password' }}</button></div>
       </form>
     </div>
   </div>

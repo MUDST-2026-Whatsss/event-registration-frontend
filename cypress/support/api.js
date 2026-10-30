@@ -1,7 +1,7 @@
 import { stubAdministration } from './administration.js'
 
 // Every API request is intercepted: these browser tests never write to the shared backend.
-export function stubApi() {
+export function stubApi(options = {}) {
   let user = null
   const registrations = []
   const guestRegistrations = []
@@ -15,7 +15,7 @@ export function stubApi() {
     timezone: 'Asia/Bangkok', locationType: 'ONSITE', locationName: 'Bangkok Hall',
     startAt: iso(604800000), endAt: iso(608400000), registrationStartAt: iso(-86400000), registrationEndAt: iso(518400000),
     maximumParticipants: 10, remainingSeats: 10, full: false, allowCancellation: true, showRemainingSeats: true,
-    status: 'PUBLISHED', version: 0, registrationCount: 0, updatedAt: iso(0),
+    status: 'PUBLISHED', version: 0, registrationCount: 0, updatedAt: iso(0), ...options.event,
   }
   const paid = { ...free, eventId: '20000000-0000-0000-0000-000000000002', slug: 'global-tech-summit-2026', title: 'Global Tech Summit 2026', eventType: 'PAID', price: 99 }
   const events = [free, paid]
@@ -23,6 +23,16 @@ export function stubApi() {
     const path = new URL(req.url).pathname.replace('/api/v1', '')
     const reply = (body, statusCode = 200) => req.reply({ statusCode, body, headers: { 'content-type': 'application/json' } })
     if (path === '/auth/csrf') return reply({ token: 'test-csrf' })
+    if (path === '/auth/me' && req.method === 'PATCH') {
+      if (!user) return reply({ code: 'UNAUTHENTICATED', message: 'Please sign in.' }, 401)
+      user = { ...user, ...req.body }
+      return reply(user)
+    }
+    if (path === '/auth/change-password') {
+      if (!user) return reply({ code: 'UNAUTHENTICATED', message: 'Please sign in.' }, 401)
+      user = null
+      return reply({ message: 'Password changed.' })
+    }
     if (path === '/auth/me' || path === '/auth/refresh') return user
       ? reply(path === '/auth/me' ? user : { user }) : reply({ code: 'UNAUTHENTICATED', message: 'Please sign in.' }, 401)
     if (path === '/auth/login') {
