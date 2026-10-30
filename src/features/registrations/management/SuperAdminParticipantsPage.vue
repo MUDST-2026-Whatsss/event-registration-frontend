@@ -42,6 +42,14 @@ const OFFLINE_MESSAGES = {
   'no-roster': () => ({ title: 'No participant list saved on this device.', message: 'Open this page once while online before checking in offline.', variant: 'danger' }),
 }
 
+// Queue state can change without reloading the server list (retry, rejection or dismissal).
+const visibleParticipants = computed(() => participants.value.map(participant => ({
+  ...participant,
+  payment: offline.isPending(participant.registrationNumber) ? 'Pending sync'
+    : offline.failed.value.some(item => item.registrationNumber === participant.registrationNumber)
+      ? 'Sync failed' : participant.payment,
+})))
+
 const STATUS_LABELS = {
   CONFIRMED: 'Confirmed',
   PENDING_PAYMENT: 'Pending',
@@ -60,9 +68,7 @@ function mapParticipant(registration) {
     name: registration.attendeeName,
     email: registration.attendeeEmail,
     tel: registration.attendeePhone || '-',
-    payment: offline.isPending(registration.registrationNumber)
-      ? 'Pending sync'
-      : STATUS_LABELS[registration.status] || registration.status,
+    payment: STATUS_LABELS[registration.status] || registration.status,
     guest: Boolean(registration.registeredAsGuest),
   }
 }
@@ -98,8 +104,6 @@ function checkInWithoutConnection(registrationNumber) {
   showToast(OFFLINE_MESSAGES[result.status](result.name))
   if (result.status === 'queued') {
     checkInNumber.value = ''
-    participants.value = participants.value.map((row) => (row.registrationNumber === registrationNumber.toUpperCase()
-      ? { ...row, payment: 'Pending sync' } : row))
   }
 }
 
@@ -309,7 +313,7 @@ onMounted(async () => {
 
             <!-- USERS -->
             <tr
-              v-for="participant in participants"
+              v-for="participant in visibleParticipants"
               :key="participant.id"
             >
 

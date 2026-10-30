@@ -126,6 +126,30 @@ describe('useOfflineCheckIn', () => {
     expect(offline.pending.value).toHaveLength(1)
   })
 
+  it.each([429, 503])('retries HTTP %s without turning a temporary outage into a rejected check-in', async (status) => {
+    vi.useFakeTimers()
+    try {
+      const checkIn = vi.fn()
+        .mockRejectedValueOnce(Object.assign(apiError('TEMPORARY_ERROR'), { status }))
+        .mockResolvedValueOnce({})
+      const { offline, onSynced } = start(checkIn)
+      offline.saveRoster(roster)
+      offline.checkInOffline('REG-ALICE00001')
+      const scannedAt = offline.pending.value[0].scannedAt
+
+      await offline.sync()
+
+      expect(offline.failed.value).toHaveLength(0)
+      expect(offline.pending.value).toHaveLength(1)
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(checkIn).toHaveBeenLastCalledWith(EVENT, 'REG-ALICE00001', scannedAt)
+      expect(onSynced).toHaveBeenCalledWith(1)
+      expect(offline.pending.value).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('loses the saved participant list at sign-out but keeps unsynced check-ins', () => {
     const { offline } = start()
     offline.saveRoster(roster)

@@ -91,8 +91,10 @@ export function useOfflineCheckIn(eventId, { checkIn, onSynced = () => {} }) {
           queue.value = queue.value.filter((queued) => queued !== item)
           synced += 1
         } catch (error) {
-          // Still offline, or signed out: keep the rest queued and try again later.
-          if (error?.code === 'NETWORK_ERROR' || error?.status === 401) break
+          // An outage, an expired session or a rate limit is temporary. Preserve the scan time
+          // and retry the same queue later instead of asking staff to dismiss a valid check-in.
+          if (error?.code === 'NETWORK_ERROR' || [401, 408, 429].includes(error?.status)
+            || error?.status >= 500) break
           if (error?.code === 'ALREADY_CHECKED_IN') {
             // Another device got there first; the person is checked in either way.
             queue.value = queue.value.filter((queued) => queued !== item)
