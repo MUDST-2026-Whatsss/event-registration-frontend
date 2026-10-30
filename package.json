@@ -101,7 +101,18 @@
     "reset_password_mismatch": "node scripts/cypress-runner.js --serve reset_password_mismatch",
     "reset_password_weak": "node scripts/cypress-runner.js --serve reset_password_weak",
     "select_role_failed": "node scripts/cypress-runner.js --serve select_role_failed",
-    "select_role_logout": "node scripts/cypress-runner.js --serve select_role_logout"
+    "select_role_logout": "node scripts/cypress-runner.js --serve select_role_logout",
+    "analytics": "node scripts/cypress-runner.js --serve analytics",
+    "analytics_show_rate": "node scripts/cypress-runner.js --serve analytics_show_rate",
+    "analytics_empty": "node scripts/cypress-runner.js --serve analytics_empty",
+    "analytics_failed": "node scripts/cypress-runner.js --serve analytics_failed",
+    "analytics_attendance": "node scripts/cypress-runner.js --serve analytics_attendance",
+    "offline_check_in": "node scripts/cypress-runner.js --serve offline_check_in",
+    "live_seats": "node scripts/cypress-runner.js --serve live_seats",
+    "live_seats_hidden": "node scripts/cypress-runner.js --serve live_seats_hidden",
+    "offline_check_in_retry": "node scripts/cypress-runner.js --serve offline_check_in_retry",
+    "offline_check_in_rejected": "node scripts/cypress-runner.js --serve offline_check_in_rejected",
+    "registration_no_show": "node scripts/cypress-runner.js --serve registration_no_show"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-thai": "^5.3.0",

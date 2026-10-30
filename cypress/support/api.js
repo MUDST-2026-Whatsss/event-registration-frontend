@@ -2,6 +2,20 @@ import { stubAdministration } from './administration.js'
 
 // Every API request is intercepted: these browser tests never write to the shared backend.
 export function stubApi(options = {}) {
+  // Keep fixture browser tests off the shared backend. Dedicated seat tests supply their own socket.
+  cy.on('window:before:load', win => {
+    if (win.fakeSockets || typeof win.WebSocket !== 'function') return
+    const NativeSocket = win.WebSocket
+    function FixtureSocket(url, protocols) {
+      if (String(url).includes('/api/v1/ws/seats')) {
+        return { readyState: 0, send() {}, close() { this.readyState = 3 } }
+      }
+      return protocols === undefined ? new NativeSocket(url) : new NativeSocket(url, protocols)
+    }
+    FixtureSocket.prototype = NativeSocket.prototype
+    Object.setPrototypeOf(FixtureSocket, NativeSocket)
+    win.WebSocket = FixtureSocket
+  })
   let user = null
   const registrations = []
   const guestRegistrations = []

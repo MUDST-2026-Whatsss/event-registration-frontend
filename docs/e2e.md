@@ -40,20 +40,23 @@ Frontend เปิด Vite สำหรับทดสอบบนพอร์�
 | `access_control.cy.js` | `access_admin_denied`, `access_reviewer_denied` |
 | `account.cy.js` | `register`, `register_errors`, `forgot_password`, `reset_password`, `select_role` |
 | `admin.cy.js` | `admin_login_required`, `admin_dashboard` |
+| `analytics.cy.js` | `analytics_show_rate`, `analytics_empty`, `analytics_failed` |
 | `auth.cy.js` | `login_session_recovery`, `login_required`, `login_failed`, `login` |
 | `change_password.cy.js` | `change_password`, `change_password_failed`, `change_password_mismatch`, `change_password_cancel` |
-| `check-in.cy.js` | `check_in_qr`, `check_in`, `check_in_failed` |
+| `check-in.cy.js` | `check_in_qr`, `analytics_attendance`, `offline_check_in`, `check_in`, `check_in_failed` |
 | `console.cy.js` | `admin_participants`, `super_admin_dashboard`, `super_admin_participants`, `audit_logs` |
 | `event.cy.js` | `event_draft_empty`, `event_submit_incomplete`, `event_draft_failed`, `event_change_missing_reason` |
 | `events.cy.js` | `events_no_results`, `events_failed`, `events_not_found`, `events_full` |
 | `forgot_password.cy.js` | `forgot_password_empty`, `forgot_password_failed` |
 | `governance.cy.js` | `event_approve`, `event_change_approve`, `event_change_reject`, `event_save_conflict`, `event_reject`, `event_approve_failed` |
 | `guest-registration.cy.js` | `guest_registration`, `guest_ticket_lookup`, `guest_payment_login` |
+| `live-seats.cy.js` | `live_seats`, `live_seats_hidden` |
 | `login.cy.js` | `login_empty`, `login_invalid_email`, `login_short_password`, `login_locked`, `login_server_error`, `login_redirect`, `login_role_redirect` |
 | `navigation.cy.js` | `events_home`, `events_list`, `events_search`, `events_detail`, `events_cover_placeholder`, `events_filter_reload`, `events_closed_not_promoted` |
+| `offline_check_in.cy.js` | `offline_check_in_retry`, `offline_check_in_rejected` |
 | `profile.cy.js` | `profile`, `profile_update`, `profile_update_failed`, `profile_avatar_invalid` |
 | `register.cy.js` | `register_empty`, `register_invalid_phone`, `register_weak_password`, `register_field_error` |
-| `registration.cy.js` | `guest_registration_back`, `registration_cancel`, `registration`, `registration_payment`, `registration_consent_required`, `registration_full`, `registration_payment_failed` |
+| `registration.cy.js` | `guest_registration_back`, `registration_cancel`, `registration_no_show`, `registration`, `registration_payment`, `registration_consent_required`, `registration_full`, `registration_payment_failed` |
 | `reset_password.cy.js` | `reset_password_missing_token`, `reset_password_mismatch`, `reset_password_weak` |
 | `select_role.cy.js` | `select_role_failed`, `select_role_logout` |
 
