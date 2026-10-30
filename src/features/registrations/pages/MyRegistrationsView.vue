@@ -47,9 +47,11 @@ const visibleEvents = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   return registeredEvents.value.filter((event) => {
     const isPast = event.status === 'closed'
+    // A missed registration belongs to an event that has already ended.
     const matchesFilter = activeFilter.value === 'cancelled'
       ? event.registrationStatus === 'cancelled'
-      : ['registered', 'pending payment'].includes(event.registrationStatus) && (activeFilter.value === 'past' ? isPast : !isPast)
+      : activeFilter.value === 'past' && event.registrationStatus === 'missed'
+        || ['registered', 'pending payment'].includes(event.registrationStatus) && (activeFilter.value === 'past' ? isPast : !isPast)
     return matchesFilter && (!query || `${event.title} ${event.location}`.toLowerCase().includes(query))
   })
 })
@@ -164,7 +166,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <article v-for="event in visibleEvents" :key="event.id" data-test="registration-card" class="registration-card">
           <EventCover class="registration-card__cover" :src="event.image" :title="event.title" :category="event.categoryName" />
           <div class="registration-card__content">
-            <span data-test="registration-status" class="registration-card__status" :class="{ cancelled: event.registrationStatus === 'cancelled' }">{{ event.registrationStatus }}</span>
+            <span data-test="registration-status" class="registration-card__status" :class="{ cancelled: event.registrationStatus === 'cancelled', missed: event.registrationStatus === 'missed' }">{{ event.registrationStatus }}</span>
             <h2>{{ event.title }}</h2>
             <p><CalendarDays :size="16" />{{ event.date }}</p>
             <p><MapPin :size="16" />{{ event.location }}</p>
@@ -253,6 +255,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .registration-card__content { padding: 20px 22px; }
 .registration-card__status { display: inline-flex; padding: 3px 8px; color: #176a3f; background: #dff7e9; border-radius: 3px; font-size: .65rem; font-weight: 600; text-transform: uppercase; }
 .registration-card__status.cancelled { color: #9a3540; background: #fde3e5; }
+.registration-card__status.missed { color: #525866; background: #eceef2; }
 .registration-card h2 { margin: 8px 0 9px; font-size: 1.15rem; }
 .registration-card p { display: flex; margin: 4px 0; align-items: center; gap: 7px; color: var(--neutral-600); font-size: .78rem; }
 .registration-card small { display: block; margin-top: 10px; color: #8a8e99; }

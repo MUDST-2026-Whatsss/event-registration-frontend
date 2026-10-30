@@ -47,6 +47,17 @@ export function stubAdministration(events, category, iso) {
       return reply(event)
     }
     if (event && path.endsWith('/registrations')) return reply(page(attendees))
+    if (event && path.endsWith('/analytics')) {
+      const count = (status) => attendees.filter(item => item.status === status).length
+      const guestSignups = attendees.filter(item => item.registeredAsGuest).length
+      const checkedIn = count('CHECKED_IN')
+      const noShows = count('NO_SHOW')
+      const eventEnded = new Date(event.endAt) <= new Date()
+      return reply({ signups: attendees.length, memberSignups: attendees.length - guestSignups, guestSignups,
+        dropOffs: 0, dropOffRate: 0, cancelledByAdmin: 0, confirmed: count('CONFIRMED'), checkedIn, noShows,
+        showRate: eventEnded && checkedIn + noShows ? checkedIn / (checkedIn + noShows) : null, eventEnded,
+        dailySignups: [{ date: iso(0).slice(0, 10), count: attendees.length }] })
+    }
     if (event && path.endsWith('/check-in')) {
       const attendee = attendees.find(item => item.registrationNumber === req.body.registrationNumber.trim().toUpperCase())
       if (!attendee) return reply({ code: 'REGISTRATION_NOT_FOUND', message: 'The requested registration was not found.' }, 404)
