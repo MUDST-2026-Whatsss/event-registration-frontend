@@ -29,7 +29,19 @@ export function stubApi() {
       const role = req.body.email === 'super@example.test' ? 'SUPER_ADMIN' : req.body.email === 'admin@example.test' ? 'ADMIN' : 'USER'
       user = { userId: '30000000-0000-0000-0000-000000000001', email: req.body.email, name: 'Demo User', firstName: 'Demo', lastName: 'User', phoneNumber: '0912345678',
         role, roles: [role], permissions: ['EVENT_CREATE', 'EVENT_UPDATE', 'REGISTRATION_CREATE_SELF', 'REGISTRATION_READ_SELF', 'REGISTRATION_CANCEL_SELF'] }
+      // A multi-role account has no active role until it is chosen on the role selection page.
+      if (req.body.email === 'multi@example.test') Object.assign(user, { role: null, roles: ['USER', 'ADMIN'], roleNames: { USER: 'Participant', ADMIN: 'Administrator' } })
       return reply({ user })
+    }
+    if (path === '/auth/select-role') { user = { ...user, role: req.body.role }; return reply({ user }) }
+    if (path === '/auth/register') {
+      if (req.body.email === 'taken@example.test') return reply({ code: 'EMAIL_ALREADY_REGISTERED', message: 'That email address cannot be registered.' }, 409)
+      return reply({ message: 'Account created.' }, 201)
+    }
+    if (path === '/auth/forgot-password') return reply({ message: 'If that email is registered, a reset link has been sent.' })
+    if (path === '/auth/reset-password') {
+      if (req.body.token !== 'valid-token') return reply({ code: 'INVALID_PASSWORD_RESET_TOKEN', message: 'This password reset link is invalid or has expired.' }, 400)
+      return reply({ message: 'Password reset successfully. Sign in with your new password.' })
     }
     if (path === '/auth/logout') { user = null; return reply({}) }
     if (path === '/events') return reply(events.filter(event => event.status === 'PUBLISHED'))
