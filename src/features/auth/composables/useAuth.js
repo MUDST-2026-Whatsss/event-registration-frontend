@@ -1,5 +1,6 @@
 import { computed, readonly, ref } from 'vue'
 import { ApiError, apiRequest, resetCsrfToken } from '@/shared/lib/apiClient.js'
+import { clearPrivateStorage } from '@/shared/lib/privateStorage.js'
 
 export const USER_ROLE = 'user'
 export const SUPER_ADMIN_ROLE = 'super-admin'
@@ -230,6 +231,7 @@ export function useAuth() {
       await apiRequest('/auth/logout', { method: 'POST' })
     } finally {
       clearUser()
+      clearPrivateStorage()
       resetCsrfToken()
       isInitialized.value = true
     }
