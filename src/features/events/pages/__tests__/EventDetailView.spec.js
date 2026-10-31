@@ -50,14 +50,14 @@ describe('guest event detail and return navigation', () => {
     expect(mocks.loadRegistrations).not.toHaveBeenCalled()
   })
 
-  it('still requires login for a paid event and retains the return destination', async () => {
+  it('lets a guest open paid registration and retains the return destination', async () => {
     mocks.loadEvent.mockResolvedValue({ id: 'free-event', price: 99, status: 'open', full: false })
     const router = await render('/events?group=open&q=design')
-    expect(wrapper.get('[data-test="event-register"]').text()).toBe('Log In / Sign Up')
+    expect(wrapper.get('[data-test="event-register"]').text()).toBe('Register Now')
     await wrapper.get('[data-test="event-register"]').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.path).toBe('/login')
-    expect(router.currentRoute.value.query.redirect).toContain('/events/free-event/register?')
+    expect(router.currentRoute.value.path).toBe('/events/free-event/register')
+    expect(router.currentRoute.value.query.from).toBe('/events?group=open&q=design')
   })
 
   it.each([
