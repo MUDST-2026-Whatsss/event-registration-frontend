@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import EventRegistrationView from '../EventRegistrationView.vue'
 
 const mocks = vi.hoisted(() => ({
-  register: vi.fn(), registerGuest: vi.fn(), completeMockPayment: vi.fn(), loadRegistrations: vi.fn(), findRegistration: vi.fn(),
+  register: vi.fn(), registerGuest: vi.fn(), completeMockPayment: vi.fn(), completeGuestMockPayment: vi.fn(), loadRegistrations: vi.fn(), findRegistration: vi.fn(),
   replace: vi.fn(), loadEvent: vi.fn(), qr: vi.fn(), signedIn: true,
   event: { id: 'paid-event', eventId: 'event-uuid', title: 'Paid event', price: 99, image: '', date: 'Oct 20', location: 'Hall' },
   canRegister: true,
@@ -98,14 +98,30 @@ describe('paid registration process', () => {
 
 describe('guest registration', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
     mocks.signedIn = false
     mocks.canRegister = true
     mocks.event.price = 0
     mocks.loadEvent.mockResolvedValue(undefined)
+    mocks.qr.mockResolvedValue('data:image/png;base64,test')
     mocks.registerGuest.mockResolvedValue({ registrationNumber: 'REG-GUEST00001', apiStatus: 'CONFIRMED' })
+    mocks.completeGuestMockPayment.mockResolvedValue({ registrationNumber: 'REG-GUEST00001', attendeeEmail: 'gina@example.test', apiStatus: 'CONFIRMED' })
   })
-  afterEach(() => { wrapper?.unmount() })
+  afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
+
+  async function submitPaidGuest() {
+    mocks.event.price = 99
+    mocks.registerGuest.mockResolvedValue({ registrationNumber: 'REG-GUEST00001', attendeeEmail: 'gina@example.test', apiStatus: 'PENDING_PAYMENT' })
+    wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: RouterLinkStub } } })
+    await flushPromises()
+    await wrapper.get('input[autocomplete="name"]').setValue('Gina Guest')
+    await wrapper.get('input[type="tel"]').setValue('0812345678')
+    await wrapper.get('input[type="email"]').setValue('gina@example.test')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+  }
 
   it('registers a guest for a free event and opens the ticket without putting the email in the URL', async () => {
     wrapper = mount(EventRegistrationView, { global: { stubs: { PublicHeader: true, AppFooter: true, RouterLink: RouterLinkStub } } })
@@ -132,12 +148,43 @@ describe('guest registration', () => {
     })
   })
 
-  it('asks a guest to sign in for a paid event and does not submit', async () => {
-    mocks.event.price = 99
-    await start()
-    expect(wrapper.find('[data-test="guest-paid-notice"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="registration-confirm"]').attributes('disabled')).toBeDefined()
+  it('shows the same payment QR for a guest and opens the persisted confirmed ticket', async () => {
+    await submitPaidGuest()
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Scan to pay')
     expect(mocks.registerGuest).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(6000)
+    await flushPromises()
+    expect(mocks.registerGuest).toHaveBeenCalledTimes(1)
+    expect(mocks.completeGuestMockPayment).toHaveBeenCalledWith('REG-GUEST00001', 'gina@example.test')
     expect(mocks.register).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1200)
+    expect(mocks.replace).toHaveBeenCalledWith({ name: 'guest-ticket', state: {
+      registrationNumber: 'REG-GUEST00001', email: 'gina@example.test', justRegistered: true,
+    } })
+  })
+
+  it('keeps a failed guest confirmation pending and retries the same reserved last seat', async () => {
+    mocks.completeGuestMockPayment.mockRejectedValueOnce(new Error('Confirmation failed'))
+    await submitPaidGuest()
+    await vi.advanceTimersByTimeAsync(7200)
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Confirmation failed')
+    expect(mocks.replace).not.toHaveBeenCalled()
+    mocks.canRegister = false
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(7200)
+    await flushPromises()
+    expect(mocks.registerGuest).toHaveBeenCalledTimes(1)
+    expect(mocks.completeGuestMockPayment).toHaveBeenCalledTimes(2)
+    expect(mocks.replace).toHaveBeenCalledWith(expect.objectContaining({ name: 'guest-ticket' }))
+  })
+
+  it('closing the guest QR before processing does not reserve a seat', async () => {
+    await submitPaidGuest()
+    await wrapper.get('[aria-label="Close payment"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(7200)
+    expect(mocks.registerGuest).not.toHaveBeenCalled()
+    expect(mocks.completeGuestMockPayment).not.toHaveBeenCalled()
   })
 })

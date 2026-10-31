@@ -5,7 +5,7 @@ const GuestTicketView = () => import('./pages/GuestTicketView.vue')
 
 export const registrationRoutes = [
   {
-    // Public: guests register for free events here; the page asks them to sign in for paid ones.
+    // Public: guests and members share the form and optional mock payment process.
     path: '/events/:slug/register',
     name: 'event-registration',
     component: EventRegistrationView,

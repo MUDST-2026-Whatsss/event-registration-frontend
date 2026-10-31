@@ -1,7 +1,7 @@
 import { readonly, ref } from 'vue'
 import { mapPublicEvent } from '@/features/events/public.js'
 import {
-  cancelRegistration, confirmMockPayment, findGuestTicket, listMyRegistrations, registerAsGuest, registerForEvent,
+  cancelRegistration, confirmGuestMockPayment, confirmMockPayment, findGuestTicket, listMyRegistrations, registerAsGuest, registerForEvent,
 } from '../api/registrationsApi.js'
 
 const ACTIVE_STATUSES = ['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN']
@@ -83,6 +83,10 @@ export function useRegistrations() {
     return upsert(await confirmMockPayment(registrationId))
   }
 
+  async function completeGuestMockPayment(registrationNumber, email) {
+    return mapRegistration(await confirmGuestMockPayment(registrationNumber, email))
+  }
+
   function findRegistration(slug) {
     return registrations.value.find((item) => item.eventId === slug) || null
   }
@@ -98,6 +102,7 @@ export function useRegistrations() {
     registerGuest,
     lookupGuestTicket,
     completeMockPayment,
+    completeGuestMockPayment,
     cancel,
     findRegistration,
     isRegistered,

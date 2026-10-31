@@ -33,6 +33,13 @@ export function confirmMockPayment(registrationId) {
   })
 }
 
+export function confirmGuestMockPayment(registrationNumber, email) {
+  return apiRequest('/guest-registrations/mock-payment/confirm', {
+    method: 'POST',
+    body: { registrationNumber, email },
+  })
+}
+
 export function listMyRegistrations() {
   return apiRequest('/registrations')
 }

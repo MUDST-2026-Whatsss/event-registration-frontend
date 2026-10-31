@@ -39,7 +39,6 @@ const backLabel = computed(() => {
 const registrationMessage = computed(() => {
   if (event.value.status === 'upcoming') return 'Registration has not opened yet. Please check back soon.'
   if (event.value.status === 'closed') return 'Registration is closed for this event.'
-  if (!isAuthenticated.value && event.value.price) return 'Please log in or sign up to register for paid events.'
   if (!isAuthenticated.value && !event.value.full) return 'Register as a guest, or log in to keep this event in your account.'
   if (registered.value) return 'You are registered for this event.'
   if (event.value.full) return 'This event is fully booked.'
@@ -48,7 +47,6 @@ const registrationMessage = computed(() => {
 const registrationButtonLabel = computed(() => {
   if (event.value.status === 'upcoming') return 'Coming Soon'
   if (event.value.status === 'closed') return 'Registration Closed'
-  if (!isAuthenticated.value && event.value.price) return 'Log In / Sign Up'
   if (registered.value) return 'Registered'
   return event.value.full ? 'Fully Booked' : 'Register Now'
 })
@@ -61,12 +59,6 @@ function formatPrice(price) {
 function handleRegistration() {
   if (!registrationOpen.value || registered.value) return
   const registrationTarget = { path: `/events/${event.value.id}/register`, query: { from: backTarget.value } }
-
-  // Guests register for free events themselves; paid events still need an account.
-  if (!isAuthenticated.value && event.value.price) {
-    router.push({ path: '/login', query: { redirect: router.resolve(registrationTarget).fullPath } })
-    return
-  }
 
   router.push(registrationTarget)
 }
