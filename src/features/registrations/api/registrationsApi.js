@@ -33,6 +33,13 @@ export function confirmMockPayment(registrationId) {
   })
 }
 
+export function confirmGuestMockPayment(registrationNumber, email) {
+  return apiRequest('/guest-registrations/mock-payment/confirm', {
+    method: 'POST',
+    body: { registrationNumber, email },
+  })
+}
+
 export function listMyRegistrations() {
   return apiRequest('/registrations')
 }
@@ -46,11 +53,26 @@ export function listEventRegistrations(eventId, { query = '', page = 0, size = 5
   return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/registrations?${params}`)
 }
 
-export function checkInRegistration(eventId, registrationNumber) {
-  return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/check-in`, {
+export function getEventAnalytics(eventId) {
+  return apiRequest(`/admin/events/${encodeURIComponent(eventId)}/analytics`)
+}
+
+// scannedAt is sent for offline check-ins synced later; the session may have expired by then.
+export function checkInRegistration(eventId, registrationNumber, scannedAt) {
+  return authenticatedApiRequest(`/admin/events/${encodeURIComponent(eventId)}/check-in`, {
     method: 'POST',
-    body: { registrationNumber },
+    body: scannedAt ? { registrationNumber, checkedInAt: scannedAt } : { registrationNumber },
   })
+}
+
+/** Every registration of the event, page by page, for the offline check-in list. */
+export async function listAllEventRegistrations(eventId) {
+  const all = []
+  for (let page = 0; ; page += 1) {
+    const payload = await listEventRegistrations(eventId, { page, size: 500 })
+    all.push(...payload.content)
+    if (page + 1 >= payload.totalPages) return all
+  }
 }
 
 export function listRecentAdminRegistrations({ size = 5 } = {}) {

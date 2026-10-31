@@ -77,21 +77,25 @@ export function stubApi() {
     if (req.method === 'POST' && /^\/events\/[^/]+\/guest-registrations$/.test(path)) {
       const event = events.find(e => path === `/events/${e.eventId}/guest-registrations`)
       if (!event) return reply({ code: 'EVENT_NOT_FOUND' }, 404)
-      if (event.eventType === 'PAID') return reply({ code: 'GUEST_PAID_REGISTRATION_UNAVAILABLE', message: 'Sign in to register for paid events.' }, 409)
       const email = req.body.attendeeEmail.toLowerCase()
       if (guestRegistrations.some(r => r.event.eventId === event.eventId && r.attendeeEmail.toLowerCase() === email)) {
         return reply({ code: 'GUEST_ALREADY_REGISTERED', message: 'This email address is already registered for this event.' }, 409)
       }
       const registration = { registrationId: '50000000-0000-0000-0000-00000000000' + (guestRegistrations.length + 1),
-        registrationNumber: 'REG-GUEST0000' + (guestRegistrations.length + 1), status: 'CONFIRMED', registeredAsGuest: true,
-        attendeeName: req.body.attendeeName, attendeeEmail: req.body.attendeeEmail, registeredAt: iso(0), confirmedAt: iso(0), cancellable: false, event }
+        registrationNumber: 'REG-GUEST0000' + (guestRegistrations.length + 1), status: event.eventType === 'PAID' ? 'PENDING_PAYMENT' : 'CONFIRMED', registeredAsGuest: true,
+        attendeeName: req.body.attendeeName, attendeeEmail: req.body.attendeeEmail, registeredAt: iso(0), confirmedAt: event.eventType === 'PAID' ? null : iso(0), cancellable: false, event }
       guestRegistrations.push(registration)
       return reply(registration, 201)
     }
-    if (req.method === 'POST' && path === '/guest-registrations/lookup') {
+    if (req.method === 'POST' && ['/guest-registrations/lookup', '/guest-registrations/mock-payment/confirm'].includes(path)) {
       const found = guestRegistrations.find(r => r.registrationNumber === req.body.registrationNumber.trim().toUpperCase()
         && r.attendeeEmail.toLowerCase() === req.body.email.trim().toLowerCase())
-      return found ? reply(found) : reply({ code: 'REGISTRATION_NOT_FOUND', message: 'The requested registration was not found.' }, 404)
+      if (!found) return reply({ code: 'REGISTRATION_NOT_FOUND', message: 'The requested registration was not found.' }, 404)
+      if (path.endsWith('/mock-payment/confirm')) {
+        found.status = 'CONFIRMED'
+        found.confirmedAt = iso(0)
+      }
+      return reply(found)
     }
     if (req.method === 'POST' && path.endsWith('/mock-payment/confirm')) {
       const registration = registrations.find(r => path === `/registrations/${r.registrationId}/mock-payment/confirm`)

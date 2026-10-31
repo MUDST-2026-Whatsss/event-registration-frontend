@@ -7,7 +7,8 @@ import BackLink from '@/shared/ui/BackLink.vue'
 import PublicHeader from '@/app/components/PublicHeader.vue'
 import { useAuth } from '@/features/auth/public.js'
 import { useRegistrations } from '@/features/registrations/public.js'
-import { canRegisterForEvent, usePublicEvents, EventCover } from '../public.js'
+import { canRegisterForEvent, mapPublicEvent, usePublicEvents, EventCover } from '../public.js'
+import { useLiveSeats } from '../composables/useLiveSeats.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +20,12 @@ const loading = ref(true)
 const error = ref('')
 const registered = computed(() => Boolean(event.value) && isAuthenticated.value && isRegistered(event.value.id))
 const registrationOpen = computed(() => canRegisterForEvent(event.value))
+
+// Keep the seat count current while the page is open, without a refresh.
+useLiveSeats(computed(() => event.value?.eventId ?? null), (update) => {
+  if (event.value?.eventId !== update.eventId) return
+  event.value = mapPublicEvent({ ...event.value, remainingSeats: update.remainingSeats ?? null, full: update.full })
+})
 const backTarget = computed(() => {
   const origin = typeof route.query.from === 'string' ? route.query.from : ''
   if (origin === '/' || /^\/(?:my-registrations|events)(?:\?|$)/.test(origin)) return origin
@@ -32,7 +39,6 @@ const backLabel = computed(() => {
 const registrationMessage = computed(() => {
   if (event.value.status === 'upcoming') return 'Registration has not opened yet. Please check back soon.'
   if (event.value.status === 'closed') return 'Registration is closed for this event.'
-  if (!isAuthenticated.value && event.value.price) return 'Please log in or sign up to register for paid events.'
   if (!isAuthenticated.value && !event.value.full) return 'Register as a guest, or log in to keep this event in your account.'
   if (registered.value) return 'You are registered for this event.'
   if (event.value.full) return 'This event is fully booked.'
@@ -41,7 +47,6 @@ const registrationMessage = computed(() => {
 const registrationButtonLabel = computed(() => {
   if (event.value.status === 'upcoming') return 'Coming Soon'
   if (event.value.status === 'closed') return 'Registration Closed'
-  if (!isAuthenticated.value && event.value.price) return 'Log In / Sign Up'
   if (registered.value) return 'Registered'
   return event.value.full ? 'Fully Booked' : 'Register Now'
 })
@@ -54,12 +59,6 @@ function formatPrice(price) {
 function handleRegistration() {
   if (!registrationOpen.value || registered.value) return
   const registrationTarget = { path: `/events/${event.value.id}/register`, query: { from: backTarget.value } }
-
-  // Guests register for free events themselves; paid events still need an account.
-  if (!isAuthenticated.value && event.value.price) {
-    router.push({ path: '/login', query: { redirect: router.resolve(registrationTarget).fullPath } })
-    return
-  }
 
   router.push(registrationTarget)
 }

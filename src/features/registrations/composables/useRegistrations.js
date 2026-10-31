@@ -1,7 +1,7 @@
 import { readonly, ref } from 'vue'
 import { mapPublicEvent } from '@/features/events/public.js'
 import {
-  cancelRegistration, confirmMockPayment, findGuestTicket, listMyRegistrations, registerAsGuest, registerForEvent,
+  cancelRegistration, confirmGuestMockPayment, confirmMockPayment, findGuestTicket, listMyRegistrations, registerAsGuest, registerForEvent,
 } from '../api/registrationsApi.js'
 
 const ACTIVE_STATUSES = ['PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN']
@@ -10,14 +10,20 @@ const registrations = ref([])
 let loadRequest = null
 
 // Keeps the shape the pages already use: eventId is the event slug, status is registered/cancelled.
+// NO_SHOW is "missed": the attendee did not come, but they never cancelled.
+function registrationStatus(apiStatus) {
+  if (apiStatus === 'PENDING_PAYMENT') return 'pending payment'
+  if (apiStatus === 'NO_SHOW') return 'missed'
+  return ACTIVE_STATUSES.includes(apiStatus) ? 'registered' : 'cancelled'
+}
+
 function mapRegistration(registration) {
   return {
     ...registration,
     id: registration.registrationId,
     eventId: registration.event?.slug,
     event: registration.event ? mapPublicEvent(registration.event) : null,
-    status: registration.status === 'PENDING_PAYMENT' ? 'pending payment'
-      : ACTIVE_STATUSES.includes(registration.status) ? 'registered' : 'cancelled',
+    status: registrationStatus(registration.status),
     apiStatus: registration.status,
     registeredAt: registration.registeredAt?.slice(0, 10),
   }
@@ -77,6 +83,10 @@ export function useRegistrations() {
     return upsert(await confirmMockPayment(registrationId))
   }
 
+  async function completeGuestMockPayment(registrationNumber, email) {
+    return mapRegistration(await confirmGuestMockPayment(registrationNumber, email))
+  }
+
   function findRegistration(slug) {
     return registrations.value.find((item) => item.eventId === slug) || null
   }
@@ -92,6 +102,7 @@ export function useRegistrations() {
     registerGuest,
     lookupGuestTicket,
     completeMockPayment,
+    completeGuestMockPayment,
     cancel,
     findRegistration,
     isRegistered,

@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.VITE_API_PROXY_TARGET || 'http://localhost:8080',
           changeOrigin: true,
+          // Live seat counts arrive over a WebSocket at /api/v1/ws/seats.
+          ws: true,
         },
       },
     },

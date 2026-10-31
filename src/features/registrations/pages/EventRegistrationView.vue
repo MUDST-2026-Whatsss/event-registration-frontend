@@ -12,7 +12,7 @@ import { useAuth } from '@/features/auth/public.js'
 
 const route = useRoute()
 const router = useRouter()
-const { register, registerGuest, completeMockPayment, loadRegistrations, findRegistration } = useRegistrations()
+const { register, registerGuest, completeMockPayment, completeGuestMockPayment, loadRegistrations, findRegistration } = useRegistrations()
 const { currentUser, isAuthenticated, initializeAuth } = useAuth()
 const { findEvent, loadEvent } = usePublicEvents()
 const eventLoading = ref(true)
@@ -25,6 +25,7 @@ const paymentOpen = ref(false)
 const paymentState = ref('idle')
 const qrDataUrl = ref('')
 const qrError = ref(false)
+const pendingGuestPayment = ref(null)
 const timers = []
 let paymentRunId = 0
 const detailTarget = computed(() => ({
@@ -32,9 +33,8 @@ const detailTarget = computed(() => ({
   query: typeof route.query.from === 'string' ? { from: route.query.from } : {},
 }))
 
-// Guests may register for free events; paying needs an account to own the pending payment.
+// Both guests and members use the same QR payment process for paid events.
 const isGuest = computed(() => !isAuthenticated.value)
-const guestNeedsAccount = computed(() => isGuest.value && Boolean(event.value?.price))
 const loginTarget = computed(() => ({ path: '/login', query: { redirect: route.fullPath } }))
 
 const form = reactive({
@@ -73,13 +73,23 @@ function clearPaymentTimers() {
 
 async function finishPayment(runId) {
   if (runId !== paymentRunId) return
-  let transactionId
+  const guest = isGuest.value
+  let confirmed
 
   try {
-    const pending = await register(event.value, attendee())
-    const confirmed = await completeMockPayment(pending.id)
+    if (guest) {
+      const key = JSON.stringify(attendee())
+      let pending = pendingGuestPayment.value?.key === key ? pendingGuestPayment.value.ticket : null
+      if (!pending) {
+        pending = await registerGuest(event.value, attendee())
+        pendingGuestPayment.value = { key, ticket: pending }
+      }
+      confirmed = await completeGuestMockPayment(pending.registrationNumber, pending.attendeeEmail || form.email)
+    } else {
+      const pending = await register(event.value, attendee())
+      confirmed = await completeMockPayment(pending.id)
+    }
     if (confirmed.apiStatus !== 'CONFIRMED') throw new Error('Your registration has not been confirmed. Please try again.')
-    transactionId = `MOCK-${confirmed.registrationNumber}`
   } catch (cause) {
     if (runId !== paymentRunId) return
     paymentOpen.value = false
@@ -91,10 +101,14 @@ async function finishPayment(runId) {
   paymentState.value = 'success'
 
   timers.push(window.setTimeout(() => {
+    if (guest) {
+      openGuestTicket(confirmed)
+      return
+    }
     router.replace({
       name: 'registration-success',
       params: { slug: event.value.id },
-      query: { transaction: transactionId },
+      query: { transaction: `MOCK-${confirmed.registrationNumber}` },
     })
   }, 1200))
 }
@@ -103,24 +117,30 @@ function attendee() {
   return { fullName: form.fullName, phone: form.phone, email: form.email }
 }
 
+function openGuestTicket(ticket) {
+  // Keep guest identity out of URLs and out of the signed-in registration store.
+  router.replace({
+    name: 'guest-ticket',
+    state: { registrationNumber: ticket.registrationNumber, email: ticket.attendeeEmail || form.email, justRegistered: true },
+  })
+}
+
 async function confirmRegistration() {
-  if (paymentOpen.value || submitting.value || !form.consent || guestNeedsAccount.value) return
-  const existing = isGuest.value ? null : findRegistration(event.value.id)
+  if (paymentOpen.value || submitting.value || !form.consent) return
+  const existing = isGuest.value
+    ? (pendingGuestPayment.value?.key === JSON.stringify(attendee()) ? pendingGuestPayment.value.ticket : null)
+    : findRegistration(event.value.id)
   if (!canRegisterForEvent(event.value) && existing?.apiStatus !== 'PENDING_PAYMENT') {
     router.replace(`/events/${event.value.id}`)
     return
   }
 
   submitError.value = ''
-  if (isGuest.value) {
+  if (isGuest.value && !event.value.price) {
     submitting.value = true
     try {
       const ticket = await registerGuest(event.value, attendee())
-      // The email travels in history state, not the URL, so the ticket page can look the ticket up.
-      router.replace({
-        name: 'guest-ticket',
-        state: { registrationNumber: ticket.registrationNumber, email: form.email, justRegistered: true },
-      })
+      openGuestTicket(ticket)
     } catch (cause) {
       submitError.value = cause?.message || 'Unable to complete your registration.'
     } finally {
@@ -222,11 +242,7 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
 
         <form class="registration-form" @submit.prevent="confirmRegistration">
           <div class="registration-form__title"><UserRound :size="22" /><div><h2>Attendee information</h2><p>This information will appear on your registration.</p></div></div>
-          <div v-if="guestNeedsAccount" class="registration-guest blocked" data-test="guest-paid-notice">
-            <strong>An account is required for paid events</strong>
-            <span><RouterLink :to="loginTarget">Log in</RouterLink> or <RouterLink to="/register">create an account</RouterLink> to continue.</span>
-          </div>
-          <div v-else-if="isGuest" class="registration-guest" data-test="guest-notice">
+          <div v-if="isGuest" class="registration-guest" data-test="guest-notice">
             <strong>Registering as a guest</strong>
             <span>We will show your ticket after you confirm. Create an account later with the same email and this registration will appear in My Registrations. <RouterLink :to="loginTarget">Log in instead</RouterLink></span>
           </div>
@@ -242,13 +258,13 @@ onBeforeUnmount(() => { paymentRunId += 1; clearPaymentTimers() })
             data-test="registration-confirm" class="registration-confirm"
             :class="{ ready: form.consent }"
             type="submit"
-            :disabled="paymentOpen || submitting || !form.consent || guestNeedsAccount"
+            :disabled="paymentOpen || submitting || !form.consent"
           >
             <span>{{ form.consent ? 'Confirm registration' : 'Accept the terms to continue' }}</span>
             <Check v-if="form.consent" :size="18" />
             <ArrowRight v-else :size="18" />
           </button>
-          <p class="registration-note">The PromptPay QR and payment status will be processed automatically.</p>
+          <p class="registration-note">{{ event.price ? 'The PromptPay QR and payment status will be processed automatically.' : 'Your ticket will be available after you confirm your registration.' }}</p>
         </form>
       </div>
       </template>
