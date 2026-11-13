@@ -28,6 +28,10 @@ const qrError = ref(false)
 const pendingGuestPayment = ref(null)
 const timers = []
 let paymentRunId = 0
+const QR_DISPLAY_MS = 8000
+const PAYMENT_CHECK_MS = 2500
+// Optional real bank QR kept only on the demo machine (gitignored); otherwise a demo QR is generated.
+const STATIC_QR_PATHS = ['/payment-qr.jpg', '/payment-qr.png']
 const detailTarget = computed(() => ({
   path: `/events/${event.value.id}`,
   query: typeof route.query.from === 'string' ? { from: route.query.from } : {},
@@ -65,6 +69,19 @@ onMounted(async () => {
 
 function formatPrice(price) {
   return price ? `฿${price.toLocaleString('th-TH')}` : 'Free'
+}
+
+async function findStaticQr() {
+  for (const path of STATIC_QR_PATHS) {
+    try {
+      const response = await fetch(path, { method: 'HEAD', cache: 'no-store' })
+      // The SPA fallback answers missing files with index.html, so only accept an image.
+      if (response.ok && response.headers.get('content-type')?.startsWith('image/')) return path
+    } catch {
+      // Try the next file, then fall back to the generated QR.
+    }
+  }
+  return ''
 }
 
 function clearPaymentTimers() {
@@ -171,7 +188,7 @@ async function confirmRegistration() {
   paymentModal.value?.focus()
 
   try {
-    qrDataUrl.value = await QRCode.toDataURL(JSON.stringify({
+    qrDataUrl.value = await findStaticQr() || await QRCode.toDataURL(JSON.stringify({
       type: 'eventsss-promptpay',
       eventId: event.value.id,
       amount: event.value.price ?? 0,
@@ -191,8 +208,8 @@ async function confirmRegistration() {
   timers.push(window.setTimeout(() => {
     if (runId !== paymentRunId) return
     paymentState.value = 'checking'
-    timers.push(window.setTimeout(() => finishPayment(runId), 2500))
-  }, 3500))
+    timers.push(window.setTimeout(() => finishPayment(runId), PAYMENT_CHECK_MS))
+  }, QR_DISPLAY_MS))
 }
 
 function closePaymentModal() {
