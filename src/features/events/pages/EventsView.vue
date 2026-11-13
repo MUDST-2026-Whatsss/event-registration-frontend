@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowRight, CalendarX2, ListFilter, RefreshCw, Search } from '@lucide/vue'
+import { ArrowRight, CalendarX2, ListFilter, RefreshCw, Search, Tag } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import heroImage from '@/assets/events/hero.jpg'
@@ -22,6 +22,19 @@ const selectedStatus = computed({
     router.push({ path: '/events', query })
   },
 })
+// Built from the loaded events, so a category with nothing published is never offered.
+const categoryOptions = computed(() => [...new Set(events.value.map((event) => event.categoryName).filter(Boolean))]
+  .sort((a, b) => a.localeCompare(b)))
+const selectedCategory = computed({
+  get: () => typeof route.query.category === 'string' && route.query.category ? route.query.category : 'all',
+  set: (category) => {
+    const query = { ...route.query }
+    if (category === 'all') delete query.category
+    else query.category = category
+    router.push({ path: '/events', query })
+  },
+})
+const filtering = computed(() => Boolean(searchQuery.value.trim()) || selectedCategory.value !== 'all')
 const filterOptions = [
   { value: 'all', label: 'All events' }, { value: 'open', label: 'Open' },
   { value: 'upcoming', label: 'Upcoming' }, { value: 'closed', label: 'Registration closed / Past' },
@@ -33,7 +46,8 @@ const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
   const visibleGroups = selectedStatus.value === 'all' ? eventGroups.value : eventGroups.value.filter((group) => group.id === selectedStatus.value)
   return visibleGroups.map((group) => ({ ...group, events: group.events.filter((event) => {
-    return !query || `${event.title} ${event.location}`.toLocaleLowerCase().includes(query)
+    if (selectedCategory.value !== 'all' && event.categoryName !== selectedCategory.value) return false
+    return !query || `${event.title} ${event.location} ${event.categoryName ?? ''}`.toLocaleLowerCase().includes(query)
   }) }))
 })
 
@@ -57,6 +71,7 @@ onMounted(() => loadEvents().catch(() => {}))
         <section class="event-tools" aria-label="Event search and filters">
           <label class="event-tools__search"><span class="sr-only">Search events</span><Search :size="19" /><input data-test="events-search" v-model="searchQuery" type="search" placeholder="What kind of event are you looking for?" /></label>
           <label class="event-tools__filter"><ListFilter :size="17" /><span class="sr-only">Filter by status</span><select data-test="events-filter" v-model="selectedStatus"><option v-for="option in filterOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
+          <label class="event-tools__filter event-tools__filter--category"><Tag :size="17" /><span class="sr-only">Filter by category</span><select data-test="events-category-filter" v-model="selectedCategory"><option value="all">All categories</option><option v-if="selectedCategory !== 'all' && !categoryOptions.includes(selectedCategory)" :value="selectedCategory">{{ selectedCategory }}</option><option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option></select></label>
         </section>
         <section v-for="group in filteredGroups" :key="group.id" class="event-group" :aria-labelledby="`${group.id}-title`">
           <div class="event-group__heading">
@@ -65,9 +80,9 @@ onMounted(() => loadEvents().catch(() => {}))
             <RouterLink v-else :to="{ path: '/events', query: { group: group.id } }">View all <ArrowRight :size="14" /></RouterLink>
           </div>
           <div v-if="group.events.length" class="event-grid"><EventCard v-for="event in group.events" :key="event.id" :event="event" /></div>
-          <p v-else class="event-group__empty">{{ group.id === 'upcoming' && !searchQuery.trim() ? 'No upcoming events are published yet.' : 'No events match your search.' }}</p>
+          <p v-else class="event-group__empty">{{ group.id === 'upcoming' && !filtering ? 'No upcoming events are published yet.' : 'No events match your search.' }}</p>
         </section>
-        <div v-if="!visibleEventCount && (searchQuery.trim() || !filteredGroups.length)" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
+        <div v-if="!visibleEventCount && (filtering || !filteredGroups.length)" class="events-state"><Search :size="30" /><h2>No matching events</h2><p>Try another search term or filter.</p></div>
         </template>
       </div>
     </main>
@@ -90,6 +105,7 @@ onMounted(() => loadEvents().catch(() => {}))
 .event-tools__search:focus-within, .event-tools__filter:focus-within { border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgb(91 124 250 / 14%); }
 .event-tools__search input { width: 100%; min-width: 0; padding: 0; color: var(--neutral-950); background: transparent; border: 0; outline: 0; font-size: .875rem; }
 .event-tools__filter { width: 156px; padding-inline: 14px 12px; }
+.event-tools__filter--category { width: 190px; }
 .event-tools__filter select { width: 100%; height: 100%; padding: 0 10px 0 8px; color: #4d5263; background: transparent; border: 0; outline: 0; cursor: pointer; font-size: .875rem; }
 .event-group + .event-group { margin-top: 68px; }
 .event-group__heading { display: flex; margin-bottom: 20px; align-items: center; justify-content: space-between; gap: 16px; }

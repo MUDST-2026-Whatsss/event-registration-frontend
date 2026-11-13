@@ -82,6 +82,45 @@ describe('event discovery filters', () => {
     expect(wrapper.text()).not.toContain('No upcoming events are published yet.')
   })
 
+  const categorised = [
+    { id: 'talk', status: 'open', title: 'Tech talk', categoryName: 'Seminar' },
+    { id: 'jam', status: 'open', title: 'Music jam', categoryName: 'Concert' },
+    { id: 'gig', status: 'closed', title: 'Rock gig', categoryName: 'Concert' },
+  ]
+
+  it('offers only the categories of loaded events, sorted', async () => {
+    await render('/events', EventsView, categorised)
+    const options = wrapper.get('[data-test="events-category-filter"]').findAll('option').map(option => option.text())
+    expect(options).toEqual(['All categories', 'Concert', 'Seminar'])
+  })
+
+  it('filters by the category in the URL and clears it when All is chosen', async () => {
+    const router = await render('/events?category=Concert', EventsView, categorised)
+    expect(wrapper.findAll('.test-event-card').map(card => card.text())).toEqual(['Music jam', 'Rock gig'])
+    await wrapper.get('[data-test="events-category-filter"]').setValue('all')
+    await flushPromises()
+    expect(router.currentRoute.value.query.category).toBeUndefined()
+    expect(wrapper.findAll('.test-event-card')).toHaveLength(3)
+  })
+
+  it('combines the category with the status group and matches category names in search', async () => {
+    const router = await render('/events?group=open', EventsView, categorised)
+    await wrapper.get('[data-test="events-category-filter"]').setValue('Concert')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ group: 'open', category: 'Concert' })
+    expect(wrapper.findAll('.test-event-card').map(card => card.text())).toEqual(['Music jam'])
+    await router.push('/events')
+    await flushPromises()
+    await wrapper.get('[data-test="events-search"]').setValue('seminar')
+    expect(wrapper.findAll('.test-event-card').map(card => card.text())).toEqual(['Tech talk'])
+  })
+
+  it('reports no matches for a category that has no published events', async () => {
+    await render('/events?category=Workshop', EventsView, categorised)
+    expect(wrapper.get('[data-test="events-category-filter"]').element.value).toBe('Workshop')
+    expect(wrapper.text()).toContain('No matching events')
+  })
+
   it('only promotes a future event with registration open and available seats', async () => {
     const future = new Date(Date.now() + 86400000).toISOString()
     await render('/', HomeView, [
