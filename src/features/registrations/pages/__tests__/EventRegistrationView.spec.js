@@ -43,14 +43,37 @@ describe('paid registration process', () => {
     mocks.qr.mockResolvedValue('data:image/png;base64,test')
     mocks.register.mockResolvedValue({ id: 'saved-id', apiStatus: 'PENDING_PAYMENT' })
     mocks.completeMockPayment.mockResolvedValue({ id: 'saved-id', apiStatus: 'CONFIRMED', registrationNumber: 'REG-123' })
+    // No local bank QR by default, matching a fresh checkout.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, headers: new Headers() }))
   })
-  afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
+  afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.unstubAllGlobals() })
+
+  it('shows the local bank QR image when one is provided', async () => {
+    fetch.mockImplementation(async (path) => (path === '/payment-qr.jpg'
+      ? { ok: true, headers: new Headers({ 'content-type': 'image/jpeg' }) }
+      : { ok: false, headers: new Headers() }))
+    await start()
+    expect(wrapper.get('.payment-qr img').attributes('src')).toBe('/payment-qr.jpg')
+    expect(mocks.qr).not.toHaveBeenCalled()
+  })
+
+  it('ignores the SPA fallback page and generates the demo QR instead', async () => {
+    fetch.mockResolvedValue({ ok: true, headers: new Headers({ 'content-type': 'text/html' }) })
+    await start()
+    expect(wrapper.get('.payment-qr img').attributes('src')).toBe('data:image/png;base64,test')
+  })
+
+  it('keeps the QR on screen long enough to scan', async () => {
+    await start()
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Scan to pay')
+  })
 
   it('keeps the QR process and confirms the saved registration before success', async () => {
     await start()
     expect(wrapper.get('[role="dialog"]').text()).toContain('Scan to pay')
     expect(mocks.register).not.toHaveBeenCalled()
-    await vi.advanceTimersByTimeAsync(6000)
+    await vi.advanceTimersByTimeAsync(10500)
     await flushPromises()
     expect(mocks.completeMockPayment).toHaveBeenCalledWith('saved-id')
     expect(wrapper.text()).toContain('Your registration has been confirmed.')
@@ -61,7 +84,7 @@ describe('paid registration process', () => {
   it('does not show success or navigate when confirmation fails', async () => {
     mocks.completeMockPayment.mockRejectedValue(new Error('Unable to save confirmation'))
     await start()
-    await vi.advanceTimersByTimeAsync(7200)
+    await vi.advanceTimersByTimeAsync(11700)
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Unable to save confirmation')
     expect(mocks.replace).not.toHaveBeenCalled()
@@ -71,7 +94,7 @@ describe('paid registration process', () => {
   it('closing the QR before processing does not register or confirm', async () => {
     await start()
     await wrapper.get('[aria-label="Close payment"]').trigger('click')
-    await vi.advanceTimersByTimeAsync(7200)
+    await vi.advanceTimersByTimeAsync(11700)
     expect(mocks.register).not.toHaveBeenCalled()
     expect(mocks.completeMockPayment).not.toHaveBeenCalled()
   })
@@ -80,7 +103,7 @@ describe('paid registration process', () => {
     mocks.canRegister = false
     mocks.findRegistration.mockReturnValue({ apiStatus: 'PENDING_PAYMENT' })
     await start()
-    await vi.advanceTimersByTimeAsync(6000)
+    await vi.advanceTimersByTimeAsync(10500)
     await flushPromises()
     expect(mocks.completeMockPayment).toHaveBeenCalledWith('saved-id')
   })
@@ -107,8 +130,9 @@ describe('guest registration', () => {
     mocks.qr.mockResolvedValue('data:image/png;base64,test')
     mocks.registerGuest.mockResolvedValue({ registrationNumber: 'REG-GUEST00001', apiStatus: 'CONFIRMED' })
     mocks.completeGuestMockPayment.mockResolvedValue({ registrationNumber: 'REG-GUEST00001', attendeeEmail: 'gina@example.test', apiStatus: 'CONFIRMED' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, headers: new Headers() }))
   })
-  afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
+  afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.unstubAllGlobals() })
 
   async function submitPaidGuest() {
     mocks.event.price = 99
@@ -152,7 +176,7 @@ describe('guest registration', () => {
     await submitPaidGuest()
     expect(wrapper.get('[role="dialog"]').text()).toContain('Scan to pay')
     expect(mocks.registerGuest).not.toHaveBeenCalled()
-    await vi.advanceTimersByTimeAsync(6000)
+    await vi.advanceTimersByTimeAsync(10500)
     await flushPromises()
     expect(mocks.registerGuest).toHaveBeenCalledTimes(1)
     expect(mocks.completeGuestMockPayment).toHaveBeenCalledWith('REG-GUEST00001', 'gina@example.test')
@@ -166,14 +190,14 @@ describe('guest registration', () => {
   it('keeps a failed guest confirmation pending and retries the same reserved last seat', async () => {
     mocks.completeGuestMockPayment.mockRejectedValueOnce(new Error('Confirmation failed'))
     await submitPaidGuest()
-    await vi.advanceTimersByTimeAsync(7200)
+    await vi.advanceTimersByTimeAsync(11700)
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Confirmation failed')
     expect(mocks.replace).not.toHaveBeenCalled()
     mocks.canRegister = false
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    await vi.advanceTimersByTimeAsync(7200)
+    await vi.advanceTimersByTimeAsync(11700)
     await flushPromises()
     expect(mocks.registerGuest).toHaveBeenCalledTimes(1)
     expect(mocks.completeGuestMockPayment).toHaveBeenCalledTimes(2)
@@ -183,7 +207,7 @@ describe('guest registration', () => {
   it('closing the guest QR before processing does not reserve a seat', async () => {
     await submitPaidGuest()
     await wrapper.get('[aria-label="Close payment"]').trigger('click')
-    await vi.advanceTimersByTimeAsync(7200)
+    await vi.advanceTimersByTimeAsync(11700)
     expect(mocks.registerGuest).not.toHaveBeenCalled()
     expect(mocks.completeGuestMockPayment).not.toHaveBeenCalled()
   })

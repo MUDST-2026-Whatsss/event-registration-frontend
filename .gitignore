@@ -17,6 +17,9 @@ coverage
 .env.*
 !.env.example
 AGENTS.md
+
+# Local-only bank payment QR for demos (contains personal account details)
+/public/payment-qr.*
 .codex-*
 .vite/
 
