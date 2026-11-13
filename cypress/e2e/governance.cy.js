@@ -19,7 +19,8 @@ function submitEvent() {
   cy.url().should('include', '/admin/events/created-event/edit')
   cy.reload()
   cy.getByTestId('event-title').should('have.value', 'Class workshop')
-  cy.getByTestId('event-category').select('10000000-0000-0000-0000-000000000001')
+  // The form stays disabled until the reloaded draft and categories finish loading.
+  cy.getByTestId('event-category').should('be.enabled').select('10000000-0000-0000-0000-000000000001')
   cy.getByTestId('event-location').type('University room 101')
   cy.getByTestId('event-date').type(day(7))
   cy.getByTestId('event-startTime').type('10:00')
